@@ -26,7 +26,7 @@ Parâmetros de URL úteis:
 node scripts/capture.mjs            # 5 larguras, cursor, arraste, scroll ida/volta, reduced motion, sem WebGL, sem JS
 node scripts/still.mjs nome 1440 900 [query]
 node scripts/sheet.mjs nome "pose=..." "pose=..."   # folha de contato para direção de arte
-node scripts/poster.mjs             # regenera public/hero-poster.png a partir do próprio render
+node scripts/poster.mjs             # regenera src/assets/hero-poster.png a partir do próprio render
 ```
 
 Capturas vão para `captures/` (fora do git).

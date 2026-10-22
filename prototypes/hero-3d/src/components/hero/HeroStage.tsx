@@ -1,6 +1,8 @@
 "use client";
 
 import Image from "next/image";
+// Import estático: a URL leva o hash do conteúdo, então um poster novo nunca é servido do cache antigo.
+import poster from "@/assets/hero-poster.png";
 import { useEffect, useRef, useState } from "react";
 import type { EngineStats, HeroEngine } from "@/three/engine";
 import styles from "./HeroStage.module.css";
@@ -78,7 +80,7 @@ export function HeroStage({ className }: { className?: string }) {
       <div ref={stageRef} className={`${styles.stage} ${className ?? ""}`} data-status={status} aria-hidden={status === "live" ? undefined : true}>
         <Image
           className={styles.poster}
-          src="/hero-poster.png"
+          src={poster}
           alt=""
           aria-hidden="true"
           fill

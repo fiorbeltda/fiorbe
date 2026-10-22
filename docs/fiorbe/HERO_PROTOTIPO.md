@@ -1,5 +1,27 @@
 # Protótipo do hero interativo
 
+## Rodada 4 — figura humana (22/10/2026) — branch `exp/hero-fidelidade`
+
+**Pesquisa e decisão.** Opção de asset com licença limpa encontrada: Quaternius Universal Animation Library (CC0, glTF, 120+ animações). Descartada para esta cena porque o personagem é um manequim nu e liso — exatamente a leitura que o usuário quer evitar — e vesti-lo exigiria modelagem em Blender (indisponível nesta sessão). Os personagens dos exemplos do three.js (Soldier, Michelle) têm origem Mixamo e licença não confirmada. Escolha: **figura construída em código com esqueleto real** (`src/three/figure/figureRig.ts`): 20 ossos, `SkinnedMesh` com pesos misturados nas articulações, silhueta de terno (ombros estruturados, paletó com barra, calça reta, sapatos), ~7,6 cabeças de proporção. Nenhum download. A arquitetura aceita trocar por um GLB rigado (mocap) depois sem mudar o resto.
+
+**Animação** (`src/three/figure/figureMotion.ts`), tudo com dt real:
+1. Pose-base em contrapposto (peso na perna direita, cabeça levemente erguida para a escultura) — `AnimationAction` normal.
+2. Respiração — clip **aditivo** (`makeClipAdditive` + `AdditiveAnimationBlendMode`): peito abre, ombros sobem um fio; inspira mais curta que expira.
+3. Transferência de peso — clip **aditivo**: quadril desloca milímetros, tronco compensa.
+   Período e peso dos dois derivam por ruído suave (respiração 4,2–5,4 s; peso 11–17 s, às vezes quase parado) → sem loop mecânico.
+4. Olhar — molas criticamente amortecidas na cabeça/pescoço, alvos pequenos sorteados a cada 5–12 s.
+5. Mãos — oscilação mínima defasada.
+6. **IK por CCD** (canela→coxa, 3 iterações) devolve cada pé ao ponto de apoio, registrado no espaço local da figura (scroll/parallax não "puxam" os pés); o pé mantém a orientação de apoio.
+Crossfade entre clips não foi usado: não há troca de estado, e a pesquisa apontou o problema de aditivo durante crossfade somar sobre a pose errada.
+
+**Integração.** Contraluz só na borda voltada para a luz (fresnel enviesado, sem contorno total); halo próximo atrás da figura; poça de luz no piso; sombra de contato; reflexo com o **mesmo esqueleto** (SkinnedMesh em modo `detached` com matriz de espelho) desenhado escuro sobre a poça; feixes reduzidos a 3, largos e com bordas suaves. Sem reação ao cursor (decisão: nenhuma reação é melhor que uma artificial).
+
+**Medições (Intel UHD 630, 1440×900, DPR 1):** GPU 18,1 ms/quadro (antes 17,7 ms; +0,4 ms); CPU do movimento da figura 0,075 ms/quadro; FPS observado 52–60. Idle em 16 s: pés variam ≤ 0,2% da altura da figura (subpixel), quadril 0,55%, cabeça 0,87%. Reduced motion e pausado: 0,000%. 0 erros de console, sem overflow nas 5 larguras, build ok. Poster passou a ser import estático com hash (o cache de imagens do Next servia o poster antigo).
+
+**Ainda não está no nível desejado:** proporções boas mas a malha é low-poly e lisa — não há dobras de tecido nem mãos com dedos (invisíveis nesta escala, mas perceptíveis em zoom); o movimento é procedural, não captura de movimento real; o fundo imediatamente atrás da figura ainda é menos luminoso que na referência; o reflexo não esmaece com a distância dos pés.
+
+---
+
 ## Rodada de fidelidade artística (22/10/2026) — branch `exp/hero-fidelidade`
 
 Objetivo do usuário: aproximar a abertura da imagem `E:\dev\fiorbe\referencias\hero\referencia-hero-v1.png` (1672×941), inclusive nos detalhes, sem perder interatividade. Baseline registrada antes das mudanças (`captures\cmp-baseline.png`); comparações em `captures\compare-ciclo1..8.png` e `compare-final.png` (referência | antes | depois, mesmo enquadramento), geradas por `scripts\compare.mjs`.

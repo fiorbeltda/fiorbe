@@ -34,8 +34,8 @@
 /* Poster: render próprio da escultura (scripts/poster.mjs), visível antes/sem o 3D. */
 .poster {
   object-fit: contain;
-  /* o render extrapola o palco à esquerda: some em fade em vez de corte seco */
-  mask-image: linear-gradient(to right, transparent 0, #000 14%);
+  /* o render extrapola o palco nas laterais: some em fade em vez de corte seco */
+  mask-image: linear-gradient(to right, transparent 0, #000 14%, #000 90%, transparent 100%);
   opacity: 1;
   transition: opacity 900ms var(--ease-out);
   pointer-events: none;

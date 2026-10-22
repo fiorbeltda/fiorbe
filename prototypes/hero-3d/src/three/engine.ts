@@ -138,11 +138,13 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
       bounds: { minX: box.min.x, maxX: box.max.x, minZ: box.min.z, maxZ: box.max.z, height: box.max.y - floorLocal },
       reflections,
       person: useKnot ? null : PERSON_LOCAL,
+      reducedMotion,
     },
     reflectionGeometry ? { geometry: reflectionGeometry, material } : null,
   );
   scrollRig.add(set.group);
   if (set.reflection) scene.add(set.reflection);
+  if (set.figureReflection) scene.add(set.figureReflection);
 
   const interaction = new InteractionController(
     stage,
@@ -227,6 +229,7 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
     const heroW = reducedMotion ? 0 : t.heroWeight;
     updateIdle(idleRig, uniforms, idleTime, paused || reducedMotion ? 0 : heroW);
     interaction.update(dt, interactionRig, heroW);
+    set.update(dt, heroW, paused);
 
     // --- Recomposição pelo scroll (dono: scrollRig) ---
     const motion = reducedMotion ? 0 : 1;
@@ -321,6 +324,13 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
   if (debug) {
     // Custo real de GPU por quadro, independente do rAF (que o navegador pode estrangular).
     (window as unknown as { __fiorbe?: unknown }).__fiorbe = {
+      figure: () => set.probe(),
+      /** CPU por quadro do movimento da figura (mixer + molas + IK), em ms. */
+      figureCpu(iterations = 300) {
+        const t0 = performance.now();
+        for (let i = 0; i < iterations; i++) set.update(1 / 60, 1, false);
+        return Math.round(((performance.now() - t0) / iterations) * 1000) / 1000;
+      },
       bench(frames = 120) {
         // readPixels de 1 px força a GPU a concluir cada quadro (gl.finish não bloqueia no ANGLE).
         const gl = renderer.getContext();
