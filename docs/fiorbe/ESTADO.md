@@ -11,10 +11,10 @@
 |---|---|
 | **Objetivo principal** | Concluir a landing page institucional da FIORBE (`/` e `/produtos/motor-fiscal`) no nível de qualidade definido em `CLAUDE.md`. |
 | **Etapa atual** | Hero Experience — protótipo isolado em `E:\dev\fiorbe\prototypes\hero-3d` (antecede as etapas 02–05 do plano). Etapa 01 (Design System) em revisão em paralelo. |
-| **Componentes em desenvolvimento** | `RIB-001` — Escultura viva (v3.1: fita única com torção autoral — lâmina) ([ficha](tarefas/RIB-001.md)) · `FIG-001` — Figura humana (v1, aguardando revisão) ([ficha](tarefas/FIG-001.md)) |
-| **Tarefa ativa** | `RIB-001` v3.1 — torção autoral, aguardando revisão visual do usuário |
-| **Próximo objetivo** | Revisão da v3.1 (`captures\refino-v3-vs-r3.png`, `captures\refino-v3-vs-r3-b.png`, vídeo `captures\onda-r3.webm`). Depois, conforme o retorno: ajuste fino da torção por trecho, espessura visível nas bordas de lâmina e, se a composição pedir, uma passagem adicional no quadrante esquerdo. Desfiar continua desligado. |
-| **Branch / último checkpoint** | `exp/hero-fidelidade` · `3d878e3` (torção autoral v3.1). `main` está em `d498026`. Remoto: `origin` = https://github.com/fiorbeltda/fiorbe (privado), as duas branches enviadas em 22/10/2026 com autorização. Merge em `main` continua exigindo autorização. |
+| **Componentes em desenvolvimento** | `RIB-001` — Escultura viva (v3.2: fita única mais larga, torções em leque, entrelaçamento mais profundo) ([ficha](tarefas/RIB-001.md)) · `FIG-001` — Figura humana (v1, aguardando revisão) ([ficha](tarefas/FIG-001.md)) |
+| **Tarefa ativa** | `RIB-001` v3.2 — geometria, aguardando revisão visual do usuário |
+| **Próximo objetivo** | Revisão da v3.2 (`captures\escultura-anterior-vs-r4.png`, `captures\ref-vs-r4.png`). Maior distância restante da referência: a grande varredura ascendente (baixo-esquerda → alto-direita) e o redemoinho central — próximo passo é desenhar essa passagem no percurso, ou abrir o laboratório em Blender se a modelagem em código estagnar. Luz: só refinamentos registrados, sem intensidade nova. |
+| **Branch / último checkpoint** | `exp/hero-fidelidade` · ver Log (último enviado ao GitHub: `2b4ed80`). `main` está em `d498026`. Remoto: `origin` = https://github.com/fiorbeltda/fiorbe (privado), as duas branches enviadas em 22/10/2026 com autorização. Merge em `main` continua exigindo autorização. |
 | **Servidor local** | `npm run dev` em `E:\dev\fiorbe\prototypes\hero-3d` → http://localhost:3100 (`?debug` mostra fps/qualidade) |
 
 ### Aprovado pelo usuário
@@ -36,6 +36,7 @@
 - (Histórico) `RIB-001` v2: onda percorre a fita inteira (volta completa) e só então transfere no cruzamento; torção + flexão limitadas pela folga local; cruzamento A×B sem interpenetração; desfiar em fios por faixa com bordas suavizadas (flag `?fios=0`). Debug `?ondadebug`. DPR 1,25 em GPU integrada.
 
 ### Pendências e bloqueios
+- **Luz do hero — base experimental aprovada pelo usuário (22/10/2026); refinamentos futuros, sem aumentar intensidade nem novas paredes:** região central-direita lê como painel plano em alguns trechos; transições das colunas mais naturais; profundidade atmosférica; reflexos mais integrados ao piso.
 - **Documento `FIORBE_Sistema_de_Execucao_e_Plano_Figura.md` não foi recebido** nesta sessão — informar o caminho para incorporar o mini-plano à ficha `FIG-001`.
 - Decisões visuais da Etapa 01 (ver "Decisões pendentes") bloqueiam a Camada B (tokens no repositório).
 - Asset rigado externo para a figura: só com aprovação explícita (arquivo, origem, licença, tamanho).
@@ -101,6 +102,9 @@ Componentes ganham ficha em `tarefas/` quando entram em desenvolvimento. Correç
 | 22/10/2026 | HERO-001..005 | Rodada de fidelidade à referência (8 ciclos comparativos) na branch `exp/hero-fidelidade`; commit `517b62f` | Visual pendente |
 | 22/10/2026 | FIG-001 | Figura v1: esqueleto, idle em camadas, IK, integração de luz; commit `763b72a` | Visual pendente |
 | 22/10/2026 | Gestão | Painel central, hierarquia de componentes, fichas em `tarefas/`, skill `/fiorbe-status` | Pedido do usuário |
+| 22/10/2026 | RIB-001 | v3.2: fitas mais largas, torções em leque nas varreduras, profundidade dos cruzamentos ×1,3; testada e descartada uma segunda volta aninhada (duplicava as passagens e poluía a forma); 0 interseções; ≈18 ms (+1 ms, fitas maiores). Comparações `captures\escultura-anterior-vs-r4.png`, `captures\ref-vs-r4.png` | Visual pendente |
+| 22/10/2026 | Repositório | Enviados `7ab9b74` e `2b4ed80` para `exp/hero-fidelidade` (autorizado; repositório privado, sem segredos; `main` intocada) | Autorizado pelo usuário |
+| 22/10/2026 | HERO (cenário) | Luz aprovada como base experimental; refinamentos registrados em Pendências | Aprovação parcial (base) |
 | 22/10/2026 | HERO (cenário) | Arquitetura de luz reforçada após o usuário reenviar o pedido (a versão anterior ficou discreta): núcleo e colunas mais presentes, segunda parede ao fundo e deslocada (camadas de profundidade), ponto quente contido. Comparação `captures\luz3-comparacao.png`. Custo ≈ 17 ms | Visual pendente |
 | 22/10/2026 | HERO (cenário) | Luz de fundo redirecionada: arquitetura de luz monumental atrás da escultura (parede escura em gradação, núcleo amplo, 6 colunas verticais suaves, névoa e brilho do horizonte), reflexos das colunas no piso traçados para a câmera, contraluz e sombra da figura. Comparação `captures\luz2-comparacao.png`. Custo ≈ 16,4 ms | Visual pendente |
 | 22/10/2026 | Repositório | Criado `fiorbeltda/fiorbe` (privado) no GitHub; enviadas `main` e `exp/hero-fidelidade` | Autorizado pelo usuário |

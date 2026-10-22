@@ -40,26 +40,39 @@ export const FLOOR_LOCAL = -1.5;
 /** Fita que recebe a onda. */
 export const MAIN_BAND = 0;
 
+type ControlPoint = [number, number, number, number, number];
+
+/** Primeira volta da fita (o desenho autoral). */
+const LAP: ControlPoint[] = [
+  // 1 — arco superior: da ponta esquerda ao topo; nasce de lado na ponta e abre uma face larga no alto
+  [650, 478, 0.75, 0.9, 1.15], [672, 405, 0.5, 1.1, 0.75], [745, 315, 0.3, 1.3, 0.35], [880, 190, 0.0, 1.45, 0.1], [1060, 115, -0.1, 1.5, -0.1], [1220, 140, -0.05, 1.35, -0.55],
+  // 2 — diagonal do topo ao pé central (À FRENTE da varredura média): mostra a borda no alto e reabre ao descer
+  [1250, 250, 0.25, 1.1, -0.85], [1200, 400, 0.45, 1.2, -0.45], [1100, 540, 0.75, 1.15, 0.05], [1015, 652, 0.85, 1.05, 0.4],
+  // 3 — do pé central para a esquerda, subindo por trás — de lâmina
+  [880, 612, 0.5, 0.9, 0.95], [760, 540, 0.15, 0.95, 1.35], [690, 470, -0.35, 0.85, 0.95],
+  // 4 — varredura média para a direita (POR TRÁS da diagonal): abre em leque e vira de lado na borda direita
+  [860, 360, -0.48, 0.9, 0.9], [1110, 312, -0.4, 1.05, 0.25], [1380, 292, -0.25, 1.1, -0.45], [1570, 336, 0.0, 1.0, -1.1], [1640, 320, -0.08, 0.95, -1.45],
+  // 5 — sobe pela borda direita e volta pelo alto, ao fundo
+  [1590, 200, -0.4, 1.3, -0.6], [1430, 145, -0.6, 1.35, 0.0], [1270, 180, -0.8, 1.1, 0.5],
+  // 6 — laço interno, atrás de tudo — face larga: dá massa ao centro-direita
+  [1150, 300, -0.9, 0.8, 0.5], [1185, 460, -0.95, 0.9, 0.15], [1380, 535, -0.9, 0.9, -0.1], [1540, 470, -0.7, 0.85, -0.35],
+  // 7 — desce pela borda direita até o pé direito
+  [1650, 455, -0.35, 1.1, -0.3], [1600, 585, 0.05, 1.05, -0.6], [1470, 650, 0.45, 0.9, -0.2],
+  // 8 — varredura baixa frontal até a ponta esquerda (À FRENTE da diagonal): rola de face para borda e volta
+  [1330, 622, 1.2, 0.75, 0.2], [1160, 566, 1.5, 0.8, 0.75], [970, 525, 1.6, 0.85, 1.2], [800, 560, 1.35, 0.75, 0.6], [700, 525, 1.0, 0.75, 0.9],
+];
+
+/**
+ * Profundidade dos cruzamentos: o desenho de z é ampliado em torno do plano
+ * médio — mais espaço entre a passagem da frente e a de trás (entrelaçamento
+ * legível e paralaxe ao arrastar), sem mudar a silhueta na câmera principal.
+ */
+const DEPTH = 1.3;
+const deepen = (p: ControlPoint): ControlPoint => [p[0], p[1], p[2] * DEPTH, p[3], p[4]];
+
 export const MONUMENT: readonly MonumentRibbon[] = [
   {
-    points: [
-      // 1 — arco superior: da ponta esquerda ao topo (a ponta dobra quase de lado)
-      [650, 478, 0.75, 0.85, 1.15], [672, 405, 0.5, 0.95, 0.75], [745, 315, 0.3, 1.0, 0.35], [880, 190, 0.0, 1.1, 0.1], [1060, 115, -0.1, 1.15, -0.1], [1220, 140, -0.05, 1.1, -0.55],
-      // 2 — diagonal do topo ao pé central (passa À FRENTE da varredura média); gira e reabre
-      [1250, 250, 0.25, 1.05, -1.05], [1200, 400, 0.45, 1.0, -0.45], [1100, 540, 0.75, 1.0, 0.05], [1015, 652, 0.85, 0.95, 0.4],
-      // 3 — do pé central para a esquerda, subindo por trás — de lâmina
-      [880, 612, 0.5, 0.85, 0.95], [760, 540, 0.15, 0.8, 1.35], [690, 470, -0.35, 0.75, 0.95],
-      // 4 — varredura média para a direita (POR TRÁS da diagonal)
-      [860, 360, -0.3, 0.75, 0.3], [1110, 312, -0.4, 0.8, 0.0], [1380, 292, -0.25, 0.8, -0.3], [1570, 336, 0.0, 0.8, -0.9], [1640, 320, -0.08, 0.9, -1.3],
-      // 5 — sobe pela borda direita e volta pelo alto, ao fundo
-      [1590, 200, -0.4, 1.05, -0.6], [1430, 145, -0.6, 1.05, 0.0], [1270, 180, -0.8, 0.9, 0.5],
-      // 6 — laço interno, atrás de tudo — face larga: dá massa ao centro-direita
-      [1150, 300, -0.9, 0.8, 0.5], [1185, 460, -0.95, 0.9, 0.15], [1380, 535, -0.9, 0.9, -0.1], [1540, 470, -0.7, 0.85, -0.35],
-      // 7 — desce pela borda direita até o pé direito
-      [1650, 455, -0.35, 0.9, -0.3], [1600, 585, 0.05, 0.9, -0.6], [1470, 650, 0.45, 0.8, -0.2],
-      // 8 — varredura baixa frontal até a ponta esquerda (À FRENTE da diagonal)
-      [1330, 622, 1.2, 0.6, 0.6], [1160, 566, 1.5, 0.55, 1.0], [970, 525, 1.6, 0.55, 0.6], [800, 560, 1.35, 0.55, 0.2], [700, 525, 1.0, 0.65, 0.8],
-    ],
+    points: LAP.map(deepen),
     width: 1,
     colorPhase: 0.05,
     colorCycles: 6,
@@ -68,7 +81,7 @@ export const MONUMENT: readonly MonumentRibbon[] = [
   {
     points: [
       [645, 455, -1.2, 1, 0], [770, 225, -1.3, 1, 0], [1000, 98, -1.4, 1, 0], [1350, 105, -1.4, 1, 0], [1610, 215, -1.2, 1, 0],
-      [1660, 420, -1.0, 1, 0], [1590, 600, -0.9, 1, 0], [1300, 640, -1.0, 1, 0], [920, 610, -1.1, 1, 0], [700, 560, -1.2, 1, 0],
+      [1668, 420, -1.45, 1, 0], [1590, 600, -0.9, 1, 0], [1300, 640, -1.0, 1, 0], [920, 610, -1.1, 1, 0], [700, 560, -1.2, 1, 0],
     ],
     width: 0.022,
     colorPhase: 0.6,

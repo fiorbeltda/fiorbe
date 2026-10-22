@@ -248,10 +248,10 @@ if (uFray > 0.5 && vFray > 0.004) {
  */
 const NORMAL_MAPS = /* glsl */ `
 #ifdef USE_BUMPMAP
-  float fpGraze = smoothstep(0.12, 0.45, abs(dot(normal, normalize(vViewPosition))));
+  float fpGraze = smoothstep(0.2, 0.55, abs(dot(normal, normalize(vViewPosition))));
   // ...e quando as ranhuras ficam mais finas que ~2 px na tela (parte interna das curvas).
   fpGraze *= 1.0 - smoothstep(0.009, 0.018, fwidth(vBumpMapUv.y)); // 36 ranhuras na largura: período 0,028
-  fpGraze *= 1.0 - smoothstep(0.25, 0.55, vBend); // curvas fechadas
+  fpGraze *= 1.0 - smoothstep(0.15, 0.45, vBend); // curvas fechadas
   normal = perturbNormalArb( - vViewPosition, normal, dHdxy_fwd() * fpGraze, faceDirection );
 #endif
 `;
