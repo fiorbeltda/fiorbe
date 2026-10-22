@@ -23,6 +23,7 @@ import { createSculptureMaterial, createSculptureUniforms } from "./sculpture/ma
 import { createFiberNoise, createGrooveTexture } from "./sculpture/textures";
 import { computeContacts } from "./sculpture/ribbonSpace";
 import { WaveDirector } from "./motion/waveDirector";
+import { createWaveDebug } from "./motion/waveDebug";
 import { createStudioEnvironment } from "./scene/environment";
 import { updateIdle } from "./motion/idle";
 import { InteractionController } from "./motion/interaction";
@@ -109,7 +110,7 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
   uniforms.uFray.value = params.get("fios") === "0" ? 0 : 1;
   const waves =
     monument && params.get("onda") !== "0"
-      ? new WaveDirector(monument.lengths, computeContacts(monument.curves, 0.9), uniforms)
+      ? new WaveDirector(monument.lengths, computeContacts(monument.curves, 1.6), uniforms)
       : null;
   if (monument) uniforms.uLen.value = monument.lengths.slice();
   uniforms.uFloorY.value = FLOOR_LOCAL;
@@ -120,6 +121,8 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
   if (pose && pose.length === 3 && pose.every(Number.isFinite)) mesh.rotation.set(pose[0]!, pose[1]!, pose[2]!);
   else mesh.rotation.set(rest.x, rest.y, rest.z);
   mesh.frustumCulled = false;
+  const waveDebug = waves && monument && params.has("ondadebug") ? createWaveDebug(waves, monument.curves, mesh) : null;
+  let holdWaves = false;
 
   // Hierarquia de donos únicos: scroll > interação > ambiente > malha.
   const scrollRig = new Group();
@@ -243,7 +246,8 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
     updateIdle(idleRig, uniforms, idleTime, paused || reducedMotion ? 0 : heroW);
     interaction.update(dt, interactionRig, heroW);
     set.update(dt, heroW, paused);
-    waves?.update(dt, reducedMotion ? 0 : heroW, paused || reducedMotion);
+    waves?.update(dt, reducedMotion ? 0 : heroW, paused || reducedMotion || holdWaves);
+    waveDebug?.update(dt);
 
     // --- Recomposição pelo scroll (dono: scrollRig) ---
     const motion = reducedMotion ? 0 : 1;
@@ -340,6 +344,17 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
     (window as unknown as { __fiorbe?: unknown }).__fiorbe = {
       figure: () => set.probe(),
       waves: () => waves?.snapshot() ?? [],
+      /** Congela só as ondas e avança o tempo delas (capturas determinísticas). */
+      holdWaves(hold: boolean) {
+        holdWaves = hold;
+      },
+      stepWaves(seconds: number) {
+        waves?.advance(seconds);
+      },
+      waveLog: () => ({ order: waves?.order ?? [], log: waves?.log ?? [] }),
+      setFray(on: boolean) {
+        uniforms.uFray.value = on ? 1 : 0;
+      },
       /** CPU por quadro do movimento da figura (mixer + molas + IK), em ms. */
       figureCpu(iterations = 300) {
         const t0 = performance.now();
@@ -389,6 +404,7 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
       material.dispose();
       grooves.dispose();
       fiber.dispose();
+      waveDebug?.dispose();
       env.dispose();
       renderer.dispose();
       root.style.removeProperty("--hero-out");

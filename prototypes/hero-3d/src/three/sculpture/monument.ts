@@ -1,5 +1,6 @@
 import { BufferAttribute, BufferGeometry, CatmullRomCurve3, Color, Vector3 } from "three";
 import type { RibbonQuality } from "./ribbonGeometry";
+import { computeClearance } from "./ribbonSpace";
 
 /**
  * Escultura monumental com fitas AUTORAIS: cada fita é uma curva fechada
@@ -30,8 +31,8 @@ export const MONUMENT: readonly MonumentRibbon[] = [
   // A — grande arco esquerdo: nasce na ponta esquerda, sobe ao topo, desce pelo centro até o pé.
   {
     points: [
-      [655, 452, 0.2], [760, 300, 0.1], [900, 175, -0.3], [1060, 112, -0.6], [1220, 150, -0.5],
-      [1265, 300, 0.1], [1200, 450, 0.7], [1080, 590, 0.9], [1015, 657, 0.8], [900, 600, 0.6], [760, 520, 0.4],
+      [655, 452, 0.2], [760, 300, 0.1], [900, 175, -0.1], [1060, 112, -0.05], [1220, 150, 0.0],
+      [1265, 300, 0.2], [1200, 450, 0.7], [1080, 590, 0.9], [1015, 657, 0.8], [900, 600, 0.6], [760, 520, 0.4],
     ],
     width: 1.1,
     twist: [0.1, 0.28],
@@ -40,8 +41,8 @@ export const MONUMENT: readonly MonumentRibbon[] = [
   // B — grande laço direito: do topo central à borda direita, desce ao pé direito.
   {
     points: [
-      [1160, 260, -0.2], [1330, 150, -0.5], [1520, 205, -0.3], [1635, 380, 0.1], [1610, 545, 0.4],
-      [1460, 655, 0.6], [1330, 640, 0.5], [1250, 520, 0.2], [1190, 390, -0.1],
+      [1160, 260, -0.35], [1330, 150, -0.55], [1520, 205, -0.3], [1635, 380, 0.1], [1610, 545, 0.4],
+      [1460, 655, 0.6], [1330, 640, 0.5], [1250, 520, 0.2], [1190, 390, -0.25],
     ],
     width: 1.15,
     twist: [-0.12, 0.26],
@@ -51,7 +52,7 @@ export const MONUMENT: readonly MonumentRibbon[] = [
   {
     points: [
       [690, 470, 0.9], [880, 345, 1.1], [1120, 305, 1.25], [1380, 290, 1.15], [1590, 335, 0.9],
-      [1560, 445, 0.7], [1360, 420, 0.95], [1110, 455, 1.05], [880, 545, 1.0],
+      [1560, 445, 0.7], [1360, 420, 1.05], [1110, 455, 1.2], [880, 545, 1.0],
     ],
     width: 0.72,
     twist: [0.2, 0.3],
@@ -70,8 +71,8 @@ export const MONUMENT: readonly MonumentRibbon[] = [
   // E — varredura baixa frontal, rasante ao chão.
   {
     points: [
-      [760, 585, 1.5], [960, 470, 1.6], [1170, 515, 1.7], [1330, 600, 1.75], [1520, 645, 1.6],
-      [1360, 657, 1.8], [1110, 640, 1.85], [900, 630, 1.7],
+      [760, 585, 1.5], [960, 470, 1.6], [1170, 515, 1.7], [1330, 600, 1.6], [1520, 645, 1.55],
+      [1360, 657, 1.95], [1110, 640, 1.85], [900, 630, 1.7],
     ],
     width: 0.52,
     twist: [-0.2, 0.3],
@@ -125,6 +126,7 @@ export function createMonumentGeometry(quality: RibbonQuality): MonumentBuild {
   const colors = new Float32Array(total * 3);
   const rib = new Float32Array(total * 3);
   const tangents = new Float32Array(total * 3);
+  const halves = new Float32Array(total);
   const lengths: number[] = [];
   const curves: CatmullRomCurve3[] = [];
   const indices = new Uint32Array(segments * across * 6 * MONUMENT.length);
@@ -188,6 +190,7 @@ export function createMonumentGeometry(quality: RibbonQuality): MonumentBuild {
         tangents[idx * 3] = T.x;
         tangents[idx * 3 + 1] = T.y;
         tangents[idx * 3 + 2] = T.z;
+        halves[idx] = half;
       }
     }
     for (let i = 0; i < segments; i++) {
@@ -211,6 +214,8 @@ export function createMonumentGeometry(quality: RibbonQuality): MonumentBuild {
   geometry.setAttribute("color", new BufferAttribute(colors, 3));
   geometry.setAttribute("aRib", new BufferAttribute(rib, 3));
   geometry.setAttribute("aTan", new BufferAttribute(tangents, 3));
+  geometry.setAttribute("aHalf", new BufferAttribute(halves, 1));
+  geometry.setAttribute("aClear", new BufferAttribute(computeClearance(positions, rib, rings, cols, MONUMENT.length), 1));
   geometry.setIndex(new BufferAttribute(indices, 1));
   geometry.computeBoundingBox();
   geometry.computeBoundingSphere();

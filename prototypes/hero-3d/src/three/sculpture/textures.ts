@@ -36,49 +36,40 @@ export function createGrooveTexture(size = 256): DataTexture {
 }
 
 /**
- * Ruído "fibroso" para o desfiar (RIB-03): baixa frequência ao longo da fita
- * (x) e alta através dela (y) — o limiar abre fios alongados, não manchas.
- * Repetível nos dois eixos; distribuição aproximadamente uniforme em [0,1]
- * para o limiar responder de forma linear.
+ * Fibras do desfiar (RIB-03): cada LINHA da textura é um fio através da
+ * largura da fita. O valor de cada fio = viés próprio (uns soltam antes que
+ * outros) + ruído lento ao longo do comprimento (o fio recua em pontas longas).
+ * Periódico em x; equalizado por histograma para o limiar ser linear.
  */
-export function createFiberNoise(width = 256, height = 256): DataTexture {
+export function createFiberNoise(width = 256, rows = 28): DataTexture {
   let seed = 31;
   const rand = () => {
     seed = (seed * 16807) % 2147483647;
     return seed / 2147483647;
   };
-  const lattice = (gx: number, gy: number) => Array.from({ length: gx * gy }, rand);
-  const octaves: Array<{ gx: number; gy: number; w: number; g: number[] }> = [
-    { gx: 5, gy: 30, w: 0.66, g: [] },
-    { gx: 12, gy: 64, w: 0.24, g: [] },
-    { gx: 32, gy: 32, w: 0.1, g: [] },
-  ];
-  octaves.forEach((o) => (o.g = lattice(o.gx, o.gy)));
   const fade = (t: number) => t * t * (3 - 2 * t);
-  const raw = new Float32Array(width * height);
-  for (let y = 0; y < height; y++) {
+  const periodic = (cells: number) => {
+    const g = Array.from({ length: cells }, rand);
+    return (x: number) => {
+      const f = x * cells;
+      const i = Math.floor(f);
+      return g[i % cells]! + (g[(i + 1) % cells]! - g[i % cells]!) * fade(f - i);
+    };
+  };
+  const raw = new Float32Array(width * rows);
+  for (let y = 0; y < rows; y++) {
+    const bias = rand();
+    const slow = periodic(4);
+    const fine = periodic(11);
     for (let x = 0; x < width; x++) {
-      let v = 0;
-      for (const o of octaves) {
-        const fx = (x / width) * o.gx;
-        const fy = (y / height) * o.gy;
-        const x0 = Math.floor(fx);
-        const y0 = Math.floor(fy);
-        const tx = fade(fx - x0);
-        const ty = fade(fy - y0);
-        const at = (i: number, j: number) => o.g[((j % o.gy) * o.gx + (i % o.gx)) % o.g.length]!;
-        const a = at(x0, y0) + (at(x0 + 1, y0) - at(x0, y0)) * tx;
-        const b = at(x0, y0 + 1) + (at(x0 + 1, y0 + 1) - at(x0, y0 + 1)) * tx;
-        v += o.w * (a + (b - a) * ty);
-      }
-      raw[y * width + x] = v;
+      const t = x / width;
+      raw[y * width + x] = 0.5 * bias + 0.35 * slow(t) + 0.15 * fine(t);
     }
   }
-  // Equaliza por histograma → limiar linear.
   const order = Array.from(raw.keys()).sort((i, j) => raw[i]! - raw[j]!);
-  const data = new Uint8Array(width * height);
+  const data = new Uint8Array(width * rows);
   order.forEach((idx, rank) => (data[idx] = Math.round((rank / (order.length - 1)) * 255)));
-  const tex = new DataTexture(data, width, height, RedFormat, UnsignedByteType);
+  const tex = new DataTexture(data, width, rows, RedFormat, UnsignedByteType);
   tex.wrapS = RepeatWrapping;
   tex.wrapT = RepeatWrapping;
   tex.magFilter = LinearFilter;
