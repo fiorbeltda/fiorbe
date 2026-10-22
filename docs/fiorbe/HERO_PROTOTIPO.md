@@ -1,5 +1,7 @@
 # Protótipo do hero interativo
 
+> Registro **técnico** das rodadas (decisões, arquitetura, medições). Status e aprovações ficam no painel de `docs/fiorbe/ESTADO.md`; plano de cada componente em `docs/fiorbe/tarefas/`.
+
 ## Rodada 4 — figura humana (22/10/2026) — branch `exp/hero-fidelidade`
 
 **Pesquisa e decisão.** Opção de asset com licença limpa encontrada: Quaternius Universal Animation Library (CC0, glTF, 120+ animações). Descartada para esta cena porque o personagem é um manequim nu e liso — exatamente a leitura que o usuário quer evitar — e vesti-lo exigiria modelagem em Blender (indisponível nesta sessão). Os personagens dos exemplos do three.js (Soldier, Michelle) têm origem Mixamo e licença não confirmada. Escolha: **figura construída em código com esqueleto real** (`src/three/figure/figureRig.ts`): 20 ossos, `SkinnedMesh` com pesos misturados nas articulações, silhueta de terno (ombros estruturados, paletó com barra, calça reta, sapatos), ~7,6 cabeças de proporção. Nenhum download. A arquitetura aceita trocar por um GLB rigado (mocap) depois sem mudar o resto.

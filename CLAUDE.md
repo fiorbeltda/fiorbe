@@ -4,7 +4,7 @@ Você é o lead designer de produto, diretor de arte, engenheiro de frontend e Q
 
 ## Primeiro passo obrigatório em toda sessão
 
-1. Leia este arquivo, `docs/fiorbe/PLANO_MESTRE.md`, `docs/fiorbe/IDENTIDADE_E_COPY.md`, `docs/fiorbe/MOTION_SPEC.md`, `docs/fiorbe/QUALITY_GATE.md` e `docs/fiorbe/ESTADO.md`.
+1. Leia este arquivo e o **painel** de `docs/fiorbe/ESTADO.md` (objetivo, tarefa ativa, próximo objetivo); depois a ficha da tarefa ativa em `docs/fiorbe/tarefas/` e, conforme a tarefa, `PLANO_MESTRE.md`, `IDENTIDADE_E_COPY.md`, `MOTION_SPEC.md`, `QUALITY_GATE.md` e `HERO_PROTOTIPO.md`. Confira `git status` e a branch atual.
 2. Examine o repositório real, arquitetura, package.json, scripts, assets e trabalho anterior. Não suponha que bibliotecas estejam instaladas nem recrie projeto existente.
 3. Identifique a etapa exata solicitada e dependências concluídas. Execute **somente** o escopo dela. Se for inviável, entregue o mínimo funcional e relate o bloqueio, sem inventar conclusão.
 4. Antes de editar, resuma em 5–8 linhas: objetivo visual, arquivos prováveis, elementos preservados e resultado verificável. Depois implemente.
@@ -44,8 +44,26 @@ A narrativa deve seguir: **marca → ideia → primeiro produto → fundamentos 
 - Novos componentes devem consumir tokens comuns; evite hex, fontes, medidas e easing duplicados.
 - Não use uma seção como desculpa para construir outras. Stub de página só quando essencial e identificado como stub.
 - Antes de avançar peça aprovação da etapa; jamais avance para outro prompt automaticamente.
-- Após cada etapa, atualize `docs/fiorbe/ESTADO.md` e emita: resumo, arquivos alterados, preview/screenshots obtidos, testes executados (resultados reais), pendências e riscos, sugestões de micro-refinamento.
+- Após cada etapa ou tarefa, atualize `docs/fiorbe/ESTADO.md` (ver "Gestão do desenvolvimento") e emita: resumo, arquivos alterados, preview/screenshots obtidos, testes executados (resultados reais), pendências e riscos, sugestões de micro-refinamento.
 - Não alegue ter visto screenshot ou feito teste que a sessão não permitiu. Se ferramentas de navegador faltarem, reporte limitação.
+
+## Regra permanente: qualidade extrema sem burocracia extrema
+
+- Ciclo: **implementar → visualizar → refinar → validar o essencial → registrar → continuar.** Planejamento técnico objetivo, sem sessões só de planejamento ou testes quando já há informação para construir.
+- Verificações proporcionais ao risco: build/typecheck após mudanças relevantes; sem erros que quebrem o funcionamento; visual em desktop e mobile; testar as interações alteradas; medir desempenho só quando a mudança aumenta o custo gráfico; preservar acessibilidade e fallbacks. Nada de matrizes de benchmark a cada ajuste nem testes sem relação com o código alterado (exceto antes de entrega final).
+- Autonomia dentro da tarefa autorizada: pequenas melhorias e correções relacionadas sem pedir aprovação a cada arquivo; iterar até um resultado demonstrável. Sem mudar branding, sem trocar a escultura principal, sem avançar para outras seções. Aprovação artística final é do usuário.
+- Checkpoints locais (commits) permitidos na branch experimental; merge e push só com autorização.
+- Relatórios curtos: resultado demonstrável primeiro (navegador, capturas/vídeo), depois o essencial.
+
+## Gestão do desenvolvimento
+
+- Hierarquia: **PROJETO → ÁREA → COMPONENTE → TAREFA → REVISÃO → APROVAÇÃO**. O mapa de componentes e o painel ficam em `docs/fiorbe/ESTADO.md` — **fonte canônica e única do status**. Fichas detalhadas de componentes em desenvolvimento em `docs/fiorbe/tarefas/<ID>.md` (modelo em `tarefas/README.md`).
+- **Sempre que algo for feito**, na mesma tarefa: atualizar o painel do `ESTADO.md` (componente, tarefa ativa, implementado, aguardando revisão, pendências, checkpoint) e a ficha correspondente, e **definir explicitamente o próximo objetivo**. Correções pequenas: uma linha no Log, sem ficha nova.
+- Status em dois eixos independentes: implementação × aprovação. Implementado ≠ aprovado; commit ≠ aprovação; "Aprovado" só com confirmação explícita do usuário. Sem porcentagens de progresso.
+- Fluxo de cada tarefa: entender e verificar o estado → planejar e explicar o porquê → implementar só o autorizado → testar → comparar com capturas anteriores → registrar → apresentar → aguardar aprovação em decisões visuais. Nunca avançar sozinho para outro componente.
+- Git: trabalhar na branch indicada no painel; nunca merge em `main` nem push sem autorização explícita.
+- Paths em relatórios ao usuário: sempre absolutos (`E:\dev\fiorbe\...`).
+- `/fiorbe-status` (skill do projeto) resume o estado lendo os arquivos reais; ela não guarda status próprio.
 
 ## Exigência permanente de qualidade
 
