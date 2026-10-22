@@ -20,7 +20,9 @@ import { createSculptureGeometry } from "./sculpture/ribbonGeometry";
 import { createMonumentGeometry, FLOOR_LOCAL, PERSON_LOCAL } from "./sculpture/monument";
 import { createSculptureSet } from "./scene/set";
 import { createSculptureMaterial, createSculptureUniforms } from "./sculpture/material";
-import { createGrooveTexture } from "./sculpture/textures";
+import { createFiberNoise, createGrooveTexture } from "./sculpture/textures";
+import { computeContacts } from "./sculpture/ribbonSpace";
+import { WaveDirector } from "./motion/waveDirector";
 import { createStudioEnvironment } from "./scene/environment";
 import { updateIdle } from "./motion/idle";
 import { InteractionController } from "./motion/interaction";
@@ -99,7 +101,18 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
   const useKnot = params.get("geo") === "knot";
   const uniforms = createSculptureUniforms();
   const grooves = createGrooveTexture();
-  const geometry = useKnot ? createSculptureGeometry(profile.geometry) : createMonumentGeometry(profile.geometry).geometry;
+  const monument = useKnot ? null : createMonumentGeometry(profile.geometry);
+  const geometry = monument ? monument.geometry : createSculptureGeometry(profile.geometry);
+  // RIB-02/03: onda viajante (?onda=0 desliga) e desfiar experimental (?fios=0 desliga).
+  const fiber = createFiberNoise();
+  uniforms.uFiber.value = fiber;
+  uniforms.uFray.value = params.get("fios") === "0" ? 0 : 1;
+  const waves =
+    monument && params.get("onda") !== "0"
+      ? new WaveDirector(monument.lengths, computeContacts(monument.curves, 0.9), uniforms)
+      : null;
+  if (monument) uniforms.uLen.value = monument.lengths.slice();
+  uniforms.uFloorY.value = FLOOR_LOCAL;
   const material = createSculptureMaterial(uniforms, grooves);
   const mesh = new Mesh(geometry, material);
   const rest = useKnot ? REST_KNOT : REST_MONUMENT;
@@ -230,6 +243,7 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
     updateIdle(idleRig, uniforms, idleTime, paused || reducedMotion ? 0 : heroW);
     interaction.update(dt, interactionRig, heroW);
     set.update(dt, heroW, paused);
+    waves?.update(dt, reducedMotion ? 0 : heroW, paused || reducedMotion);
 
     // --- Recomposição pelo scroll (dono: scrollRig) ---
     const motion = reducedMotion ? 0 : 1;
@@ -325,6 +339,7 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
     // Custo real de GPU por quadro, independente do rAF (que o navegador pode estrangular).
     (window as unknown as { __fiorbe?: unknown }).__fiorbe = {
       figure: () => set.probe(),
+      waves: () => waves?.snapshot() ?? [],
       /** CPU por quadro do movimento da figura (mixer + molas + IK), em ms. */
       figureCpu(iterations = 300) {
         const t0 = performance.now();
@@ -373,6 +388,7 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
       set.dispose();
       material.dispose();
       grooves.dispose();
+      fiber.dispose();
       env.dispose();
       renderer.dispose();
       root.style.removeProperty("--hero-out");

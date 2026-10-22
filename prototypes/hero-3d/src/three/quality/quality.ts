@@ -30,8 +30,28 @@ export function detectTier(): Tier {
   return "high";
 }
 
+/**
+ * GPU integrada (Intel UHD/Iris, Apple sem M-Pro, Mali/Adreno de entrada):
+ * a cena é limitada por preenchimento — medido na UHD 630: DPR 1 ≈ 18 ms,
+ * DPR 2 ≈ 40 ms por quadro. Nessas GPUs o DPR fica limitado a 1,25.
+ */
+function isIntegratedGpu(): boolean {
+  try {
+    const gl = document.createElement("canvas").getContext("webgl2");
+    const ext = gl?.getExtension("WEBGL_debug_renderer_info");
+    const name = ext ? String(gl!.getParameter(ext.UNMASKED_RENDERER_WEBGL)) : "";
+    gl?.getExtension("WEBGL_lose_context")?.loseContext();
+    return /intel|uhd|iris|mali|adreno [1-6]/i.test(name);
+  } catch {
+    return false;
+  }
+}
+
 export function profileFor(tier: Tier): QualityProfile {
-  return { tier, ...PROFILES[tier] };
+  const base = PROFILES[tier];
+  const forcedDpr = new URLSearchParams(window.location.search).has("fulldpr");
+  const maxDpr = !forcedDpr && isIntegratedGpu() ? Math.min(base.maxDpr, 1.25) : base.maxDpr;
+  return { tier, ...base, maxDpr };
 }
 
 /**

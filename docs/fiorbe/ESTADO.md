@@ -11,9 +11,9 @@
 |---|---|
 | **Objetivo principal** | Concluir a landing page institucional da FIORBE (`/` e `/produtos/motor-fiscal`) no nível de qualidade definido em `CLAUDE.md`. |
 | **Etapa atual** | Hero Experience — protótipo isolado em `E:\dev\fiorbe\prototypes\hero-3d` (antecede as etapas 02–05 do plano). Etapa 01 (Design System) em revisão em paralelo. |
-| **Componentes em desenvolvimento** | `FIG-001` — Figura humana (v1 implementada, aguardando revisão) ([ficha](tarefas/FIG-001.md)) · `RIB-001` — Escultura viva (planejado) ([ficha](tarefas/RIB-001.md)) |
-| **Tarefa ativa** | Nenhuma em execução. Plano do `RIB-001` entregue para aprovação. |
-| **Próximo objetivo** | Recomendado: `RIB-01` — diagnóstico de desempenho com chaves de debug (isolar custo de reflexo, MSAA, clearcoat, glows, figura), porque a cena está no limite de 60 fps e é limitada por preenchimento; serve de base também para `FIG-01`. Alternativa: `FIG-01`. Decisão do usuário. |
+| **Componentes em desenvolvimento** | `RIB-001` — Escultura viva (onda e desfiar v1 implementados) ([ficha](tarefas/RIB-001.md)) · `FIG-001` — Figura humana (v1, aguardando revisão) ([ficha](tarefas/FIG-001.md)) |
+| **Tarefa ativa** | `RIB-02`/`RIB-03` — refino visual da onda e do desfiar |
+| **Próximo objetivo** | Com o servidor ativo: aumentar a leitura da deformação da onda, gravar vídeo da onda + desfiar, medir o custo de GPU dessas camadas; em seguida fios soltos instanciados (RIB-03 B) ou hover (RIB-04). |
 | **Branch / último checkpoint** | `exp/hero-fidelidade` · `763b72a` (figura com esqueleto). `main` está em `d498026`. Sem remoto. Nenhum merge/push autorizado. |
 | **Servidor local** | `npm run dev` em `E:\dev\fiorbe\prototypes\hero-3d` → http://localhost:3100 (`?debug` mostra fps/qualidade) |
 
@@ -24,12 +24,14 @@
 - Hero: navegação Produtos · Sobre · Contato; CTA do header "Conversar".
 - Direção do estudo do hero: aproximar da imagem `E:\dev\fiorbe\referencias\hero\referencia-hero-v1.png` (direção autorizada para o estudo, **não** aprovação visual do resultado).
 - Commits locais autorizados até aqui (não equivalem a aprovação visual).
+- `RIB-001`: conceito "a escultura é percorrida por ondas que a desfiam em fios e a reconstroem" (experimental) e cursor B.
+- Metodologia: implementar → visualizar → refinar → validar o essencial → registrar → continuar (regra permanente em `CLAUDE.md`).
 
 ### Implementado, aguardando revisão visual do usuário
 - Laboratório visual da Etapa 01 (canvas, rodadas 1 e 2) — paleta, tipografia, lettering, direções.
 - Hero: composição/interface da referência, escultura de fitas autorais, cenário (chão, reflexo, trilhas, luz), interação (cursor/arraste limitados), transição de scroll (protótipo técnico).
 - Figura humana v1 (esqueleto, idle em camadas, IK nos pés, integração de luz).
-- Plano do `RIB-001` (escultura viva): auditoria, baseline, pesquisa, especificação e 6 subtarefas — **planejado, nada implementado**.
+- `RIB-001`: onda viajante com revezamento entre fitas (v1) e desfiar em fios experimental (flag `?fios=0`). DPR limitado a 1,25 em GPU integrada.
 
 ### Pendências e bloqueios
 - **Documento `FIORBE_Sistema_de_Execucao_e_Plano_Figura.md` não foi recebido** nesta sessão — informar o caminho para incorporar o mini-plano à ficha `FIG-001`.
@@ -50,7 +52,7 @@ Legenda — **Implementação:** Não iniciado · Em andamento · Implementado �
 | Hero Experience | HERO-002 | Escultura 3D (geometria e material) | 04 | Implementado (protótipo) | Aguardando revisão | `HERO_PROTOTIPO.md` |
 | Hero Experience | HERO-003 | Cenário: chão, reflexo, trilhas, luz | 04 | Implementado (protótipo) | Aguardando revisão | `HERO_PROTOTIPO.md` |
 | Hero Experience | FIG-001 | Figura humana tridimensional | 04 | Em andamento (v1 implementada) | Aguardando revisão | [tarefas/FIG-001.md](tarefas/FIG-001.md) |
-| Hero Experience | RIB-001 | Escultura viva: onda, desfiar/recompor, hover, atmosfera, otimização | 04–05 | Planejado | Plano aguardando aprovação | [tarefas/RIB-001.md](tarefas/RIB-001.md) |
+| Hero Experience | RIB-001 | Escultura viva: onda, desfiar/recompor, hover, atmosfera, otimização | 04–05 | Em andamento (onda + desfiar v1) | Conceito e cursor B aprovados; visual aguardando revisão | [tarefas/RIB-001.md](tarefas/RIB-001.md) |
 | Hero Experience | HERO-004 | Interação e física (cursor, arraste, inércia) | 04 | Implementado (protótipo) | Aguardando revisão | `HERO_PROTOTIPO.md` |
 | Hero Experience | HERO-005 | Transição de scroll | 05 | Implementado (protótipo técnico) | Aguardando revisão | `HERO_PROTOTIPO.md` |
 | Hero Experience | HERO-006 | Integração do hero ao site definitivo | 02–05 | Não iniciado (depende de DS-002) | — | — |
@@ -97,6 +99,7 @@ Componentes ganham ficha em `tarefas/` quando entram em desenvolvimento. Correç
 | 22/10/2026 | HERO-001..005 | Rodada de fidelidade à referência (8 ciclos comparativos) na branch `exp/hero-fidelidade`; commit `517b62f` | Visual pendente |
 | 22/10/2026 | FIG-001 | Figura v1: esqueleto, idle em camadas, IK, integração de luz; commit `763b72a` | Visual pendente |
 | 22/10/2026 | Gestão | Painel central, hierarquia de componentes, fichas em `tarefas/`, skill `/fiorbe-status` | Pedido do usuário |
+| 22/10/2026 | RIB-001 | Onda v1 + desfiar v1 (flag) + DPR 1,25 em GPU integrada; servidores encerrados pelo sistema por falta de memória antes do vídeo | Visual pendente |
 | 22/10/2026 | RIB-001 | Plano da escultura viva: auditoria, baseline de desempenho (tiers × DPR × larguras), pesquisa, especificação matemática, arquitetura e RIB-01..06. Sem código | Plano aguardando aprovação |
 
 ## Decisões pendentes
@@ -109,8 +112,7 @@ Componentes ganham ficha em `tarefas/` quando entram em desenvolvimento. Correç
 | Direção artística do site | Quiet Premium × Precision × Fluid Editorial × **Fluid Precision** (recomendada); hero em estudo de fidelidade à referência | DS-001 / HERO-001 |
 | Copy do hero | "Tecnologia que transforma complexidade em clareza." (usuário) × propostas do kit | HERO-001 |
 | Asset da figura | Manter figura procedural × trocar por personagem rigado externo (exige aprovação de arquivo/licença) | FIG-001 |
-| Linguagem do efeito da escultura | Conceito proposto "a fita se desfia em fios e se recompõe"; só shader × híbrido com fios instanciados; cursor opção B | RIB-001 |
-| Ordem de trabalho | `RIB-01` (recomendado) × `FIG-01` | Painel |
+| Desfiar: só shader × híbrido com fios soltos | Decidir por comparação A/B no RIB-03 B | RIB-001 |
 | Manifesto, pilares, ecossistema, processo | Conflitos de copy do kit (`AUDITORIA_00.md` §3) | SEC-06, SEC-08, SEC-09, SEC-10 |
 | E-mail público `fiorbeltda@gmail.com` | Sem resposta ("ltda" pode soar como alegação societária) | SEC-02 / SEC-12 |
 

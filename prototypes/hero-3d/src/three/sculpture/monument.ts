@@ -103,7 +103,16 @@ function paletteAt(x: number, out: Color): Color {
 const toLocal = ([x, y, z]: [number, number, number]) =>
   new Vector3((x - REF_CENTER_X) * PX, FLOOR_LOCAL + (REF_FLOOR_PX - y) * PX, z);
 
-export function createMonumentGeometry(quality: RibbonQuality): { geometry: BufferGeometry; bands: number } {
+export interface MonumentBuild {
+  geometry: BufferGeometry;
+  bands: number;
+  /** Comprimento de arco de cada fita (unidades locais). */
+  lengths: number[];
+  /** Curvas-espinha (para pontos de contato entre fitas). */
+  curves: CatmullRomCurve3[];
+}
+
+export function createMonumentGeometry(quality: RibbonQuality): MonumentBuild {
   const { segments, across } = quality;
   const rings = segments + 1;
   const cols = across + 1;
@@ -115,6 +124,9 @@ export function createMonumentGeometry(quality: RibbonQuality): { geometry: Buff
   const uvs = new Float32Array(total * 2);
   const colors = new Float32Array(total * 3);
   const rib = new Float32Array(total * 3);
+  const tangents = new Float32Array(total * 3);
+  const lengths: number[] = [];
+  const curves: CatmullRomCurve3[] = [];
   const indices = new Uint32Array(segments * across * 6 * MONUMENT.length);
 
   const P = new Vector3();
@@ -132,6 +144,8 @@ export function createMonumentGeometry(quality: RibbonQuality): { geometry: Buff
   MONUMENT.forEach((r, band) => {
     const curve = new CatmullRomCurve3(r.points.map(toLocal), true, "centripetal");
     const length = curve.getLength();
+    lengths.push(length);
+    curves.push(curve);
     const base = band * perBand;
 
     for (let i = 0; i < rings; i++) {
@@ -171,6 +185,9 @@ export function createMonumentGeometry(quality: RibbonQuality): { geometry: Buff
         rib[idx * 3] = u;
         rib[idx * 3 + 1] = v;
         rib[idx * 3 + 2] = band;
+        tangents[idx * 3] = T.x;
+        tangents[idx * 3 + 1] = T.y;
+        tangents[idx * 3 + 2] = T.z;
       }
     }
     for (let i = 0; i < segments; i++) {
@@ -193,10 +210,11 @@ export function createMonumentGeometry(quality: RibbonQuality): { geometry: Buff
   geometry.setAttribute("uv", new BufferAttribute(uvs, 2));
   geometry.setAttribute("color", new BufferAttribute(colors, 3));
   geometry.setAttribute("aRib", new BufferAttribute(rib, 3));
+  geometry.setAttribute("aTan", new BufferAttribute(tangents, 3));
   geometry.setIndex(new BufferAttribute(indices, 1));
   geometry.computeBoundingBox();
   geometry.computeBoundingSphere();
-  return { geometry, bands: MONUMENT.length };
+  return { geometry, bands: MONUMENT.length, lengths, curves };
 }
 
 /** Posição da figura humana na referência (x≈1495 px, à frente do pé direito). */
