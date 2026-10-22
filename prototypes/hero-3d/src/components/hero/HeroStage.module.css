@@ -1,0 +1,113 @@
+/* Canvas fixo atrás do conteúdo; o scroll da página é sempre nativo. */
+.canvas {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: var(--z-canvas);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 600ms var(--ease-out);
+}
+
+.canvas[data-status="live"] {
+  transition: none;
+}
+
+.canvas[data-status="fallback"] {
+  display: none;
+}
+
+.stage {
+  position: relative;
+  z-index: var(--z-content);
+  cursor: grab;
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.stage[data-dragging="true"] {
+  cursor: grabbing;
+}
+
+/* Poster: render próprio da escultura (scripts/poster.mjs), visível antes/sem o 3D. */
+.poster {
+  object-fit: contain;
+  /* o render extrapola o palco à esquerda: some em fade em vez de corte seco */
+  mask-image: linear-gradient(to right, transparent 0, #000 14%);
+  opacity: 1;
+  transition: opacity 900ms var(--ease-out);
+  pointer-events: none;
+}
+
+.stage[data-status="live"] .poster {
+  opacity: 0;
+}
+
+.controls {
+  position: absolute;
+  right: var(--space-4);
+  bottom: var(--space-4);
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  opacity: calc(1 - var(--hero-out, 0) * 3);
+}
+
+.hint {
+  font-size: 12px;
+  color: var(--color-text-3);
+}
+
+.pause {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 36px;
+  padding: 0 14px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-line-strong);
+  background: rgb(6 12 24 / 0.55);
+  color: var(--color-text-2);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    color var(--motion-fast) var(--ease-out),
+    border-color var(--motion-fast) var(--ease-out);
+}
+
+.pause:hover {
+  color: var(--color-text);
+  border-color: #3b4f73;
+}
+
+.debug {
+  position: fixed;
+  left: 12px;
+  bottom: 12px;
+  z-index: 100;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: rgb(0 0 0 / 0.6);
+  font: 12px/1 ui-monospace, monospace;
+  color: var(--color-mint);
+}
+
+@media (max-width: 1023px) {
+  .hint {
+    display: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .pause {
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    justify-content: center;
+    font-size: 0;
+  }
+}

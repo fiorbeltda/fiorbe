@@ -17,3 +17,7 @@ Thumbs.db
 *.log
 .vscode/*
 !.vscode/extensions.json
+
+# capturas locais do protótipo
+prototypes/*/captures/
+*.tsbuildinfo

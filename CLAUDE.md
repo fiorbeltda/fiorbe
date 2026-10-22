@@ -47,6 +47,13 @@ A narrativa deve seguir: **marca → ideia → primeiro produto → fundamentos 
 - Após cada etapa, atualize `docs/fiorbe/ESTADO.md` e emita: resumo, arquivos alterados, preview/screenshots obtidos, testes executados (resultados reais), pendências e riscos, sugestões de micro-refinamento.
 - Não alegue ter visto screenshot ou feito teste que a sessão não permitiu. Se ferramentas de navegador faltarem, reporte limitação.
 
+## Exigência permanente de qualidade
+
+- O projeto FIORBE **não aceita** interfaces genéricas, composições previsíveis (hero "texto à esquerda, imagem à direita" sem razão própria, grades de cards iguais, kits de SaaS), animações decorativas excessivas nem resultados visualmente medianos. "Funciona" não é sinônimo de "está pronto".
+- Toda entrega passa por autocrítica visual com renderização real (capturas quando houver navegador): "isto parece uma experiência autoral de uma empresa premium ou mais um site tecnológico genérico?". Se for genérico, nomear o que muda e refazer.
+- O critério de aprovação de qualquer etapa inclui, além do QUALITY_GATE: **originalidade, qualidade de direção de arte, refinamento técnico, consistência entre as partes, acessibilidade e desempenho**. Falhar em qualquer um bloqueia a aprovação.
+- Linear, Vercel, Stripe e projetos do Awwwards calibram o rigor de execução; nunca são interfaces a copiar.
+
 ## Padrão de aceitação
 
 Consulte `docs/fiorbe/QUALITY_GATE.md`. Uma etapa só está pronta se for consistente com o sistema visual, legível, responsiva, acessível, tecnicamente verificável e se a pessoa responsável aprovar o resultado visual.
