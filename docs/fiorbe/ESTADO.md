@@ -31,6 +31,7 @@
 - Laboratório visual da Etapa 01 (canvas, rodadas 1 e 2) — paleta, tipografia, lettering, direções.
 - Hero: composição/interface da referência, escultura de fitas autorais, cenário (chão, reflexo, trilhas, luz), interação (cursor/arraste limitados), transição de scroll (protótipo técnico).
 - Figura humana v1 (esqueleto, idle em camadas, IK nos pés, integração de luz).
+- Cenário do hero: luz de fundo cinematográfica atrás da figura (abertura ao fundo + contraluz + luz no piso).
 - `RIB-001` v3: escultura refeita como UMA fita contínua fechada (8 trechos, por cima/por baixo alternados, 0 interseções); duas ondas circulam continuamente, sem troca de peça; desfiar desligado (`?fios=1` liga); `?clay` mostra só a forma.
 - (Histórico) `RIB-001` v2: onda percorre a fita inteira (volta completa) e só então transfere no cruzamento; torção + flexão limitadas pela folga local; cruzamento A×B sem interpenetração; desfiar em fios por faixa com bordas suavizadas (flag `?fios=0`). Debug `?ondadebug`. DPR 1,25 em GPU integrada.
 
@@ -100,6 +101,7 @@ Componentes ganham ficha em `tarefas/` quando entram em desenvolvimento. Correç
 | 22/10/2026 | HERO-001..005 | Rodada de fidelidade à referência (8 ciclos comparativos) na branch `exp/hero-fidelidade`; commit `517b62f` | Visual pendente |
 | 22/10/2026 | FIG-001 | Figura v1: esqueleto, idle em camadas, IK, integração de luz; commit `763b72a` | Visual pendente |
 | 22/10/2026 | Gestão | Painel central, hierarquia de componentes, fichas em `tarefas/`, skill `/fiorbe-status` | Pedido do usuário |
+| 22/10/2026 | HERO (cenário) | Luz de fundo refeita (`src\three\scene\backlight.ts`): abertura luminosa atrás da escultura (núcleo, halo, feixes discretos, brilho do horizonte), contraluz estreita da figura e luz derramada no piso com sombra da figura; substitui o halo que lavava a fita. Comparação `captures\luz-comparacao.png`. Custo ≈ igual (≈15,8 ms) | Visual pendente |
 | 22/10/2026 | RIB-001 | v3: fita única contínua autoentrelaçada (substitui as 6 fitas), ondas contínuas, desfiar desligado, modo argila; comparação com referência e versão anterior; commit `2f50dc4` | Visual pendente |
 | 22/10/2026 | RIB-001 | v2: volta completa + transferência no cruzamento, cruzamentos A×B/A×C/E corrigidos (0 interseções), desfiar por fios com cobertura suave, vídeo e quadros | Visual pendente |
 | 22/10/2026 | RIB-001 | Onda v1 + desfiar v1 (flag) + DPR 1,25 em GPU integrada; servidores encerrados pelo sistema por falta de memória antes do vídeo | Visual pendente |

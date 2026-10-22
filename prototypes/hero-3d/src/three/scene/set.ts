@@ -17,6 +17,7 @@ import {
 } from "three";
 import { createFigureRig } from "../figure/figureRig";
 import { FigureMotion } from "../figure/figureMotion";
+import { createBacklight } from "./backlight";
 
 /**
  * Cenário da abertura: chão escuro com reflexo controlado, figura humana para dar escala monumental e luz de fundo junto a ela.
@@ -66,31 +67,11 @@ function radialTexture(stops: Array<[number, string]>): CanvasTexture {
   });
 }
 
-function verticalFadeTexture(): CanvasTexture {
-  // Feixe volumétrico: forte na base, some para cima e tem bordas laterais suaves.
-  return canvasTexture(64, 256, (g) => {
-    const v = g.createLinearGradient(0, 256, 0, 0);
-    v.addColorStop(0, "#ffffff");
-    v.addColorStop(0.35, "rgba(255,255,255,0.4)");
-    v.addColorStop(1, "rgba(255,255,255,0)");
-    g.fillStyle = v;
-    g.fillRect(0, 0, 64, 256);
-    g.globalCompositeOperation = "destination-in";
-    const h = g.createLinearGradient(0, 0, 64, 0);
-    h.addColorStop(0, "rgba(0,0,0,0)");
-    h.addColorStop(0.5, "rgba(0,0,0,1)");
-    h.addColorStop(1, "rgba(0,0,0,0)");
-    g.fillStyle = h;
-    g.fillRect(0, 0, 64, 256);
-  });
-}
-
-
 export function createSculptureSet(opts: SetOptions, reflectionSource: { geometry: BufferGeometry; material: Material } | null): SculptureSet {
   const { floorY: F, bounds } = opts;
   const group = new Group();
   const disposables: Array<{ dispose: () => void }> = [];
-  const fadeables: Array<{ material: MeshBasicMaterial | MeshStandardMaterial; base: number }> = [];
+  const fadeables: Array<{ material: { opacity: number }; base: number }> = [];
   const track = <M extends MeshBasicMaterial | MeshStandardMaterial>(m: M, base: number) => {
     fadeables.push({ material: m, base });
     disposables.push(m);
@@ -128,71 +109,26 @@ export function createSculptureSet(opts: SetOptions, reflectionSource: { geometr
   floor.renderOrder = 1;
   group.add(floor);
 
-  // --- Luz de fundo junto à figura: halo + feixes verticais ---
+  // --- Luz de fundo atrás da figura: abertura ao fundo, contraluz e luz no chão ---
   const px = opts.person?.x ?? bounds.maxX * 0.93;
   const pz = opts.person?.z ?? bounds.maxZ * 1.05;
-  const glowTex = radialTexture([
-    [0, "rgba(255,255,255,1)"],
-    [0.25, "rgba(255,255,255,0.45)"],
-    [1, "rgba(255,255,255,0)"],
-  ]);
-  disposables.push(glowTex);
-  const glowMat = track(
-    new MeshBasicMaterial({ map: glowTex, color: new Color("#4cc4ff").multiplyScalar(0.95), blending: AdditiveBlending, transparent: true, depthWrite: false }),
-    1,
-  );
+  const personH = bounds.height * 0.145;
+  const backlight = createBacklight({
+    px,
+    pz,
+    floorY: F,
+    height: bounds.height,
+    personH,
+    apertureZ: bounds.minZ - 0.8,
+    reducedMotion: opts.reducedMotion,
+  });
+  disposables.push(backlight);
+  backlight.fadeables.forEach((material) => fadeables.push({ material, base: 1 }));
+  group.add(backlight.group);
   const glowGeo = new PlaneGeometry(1, 1);
   disposables.push(glowGeo);
-  const glow = new Mesh(glowGeo, glowMat);
-  glow.scale.set(bounds.height * 0.9, bounds.height * 0.75, 1);
-  glow.position.set(px + 0.55, F + bounds.height * 0.2, pz - 1.2);
-  glow.renderOrder = 2;
-  group.add(glow);
-
-  // Halo próximo, atrás da figura na altura do corpo: dá o recorte de silhueta da referência.
-  const nearGlowMat = track(
-    new MeshBasicMaterial({ map: glowTex, color: new Color("#8fdcff").multiplyScalar(0.75), blending: AdditiveBlending, transparent: true, depthWrite: false }),
-    1,
-  );
-  const nearGlow = new Mesh(glowGeo, nearGlowMat);
-  nearGlow.scale.set(bounds.height * 0.32, bounds.height * 0.38, 1);
-  nearGlow.position.set(px + 0.05, F + bounds.height * 0.1, pz - 0.45);
-  nearGlow.renderOrder = 2;
-  group.add(nearGlow);
-
-  // Feixes: poucos, largos e muito suaves — luz atmosférica, não barras.
-  const beamTex = verticalFadeTexture();
-  disposables.push(beamTex);
-  [
-    [0.5, 0.22, 0.75],
-    [0.95, 0.14, 0.9],
-    [1.35, 0.26, 0.6],
-  ].forEach(([dx, w, h]) => {
-    const m = track(
-      new MeshBasicMaterial({ map: beamTex, color: new Color("#b8eeff").multiplyScalar(0.045), blending: AdditiveBlending, transparent: true, depthWrite: false }),
-      1,
-    );
-    const beam = new Mesh(glowGeo, m);
-    beam.scale.set(w!, bounds.height * h!, 1);
-    beam.position.set(px + dx! * 0.7, F + (bounds.height * h!) / 2, pz - 1.0);
-    beam.renderOrder = 2;
-    group.add(beam);
-  });
-
-  // Poça de luz no piso, atrás da figura: integra luz de fundo, chão e silhueta.
-  const poolMat = track(
-    new MeshBasicMaterial({ map: glowTex, color: new Color("#6cc8ff").multiplyScalar(0.85), blending: AdditiveBlending, transparent: true, depthWrite: false }),
-    1,
-  );
-  const pool = new Mesh(glowGeo, poolMat);
-  pool.rotation.x = -Math.PI / 2;
-  pool.scale.set(bounds.height * 0.62, bounds.height * 0.26, 1);
-  pool.position.set(px + 0.12, F + 0.003, pz - 0.15);
-  pool.renderOrder = 2;
-  group.add(pool);
 
   // --- Figura humana com esqueleto (≈14,5% da altura da escultura, como na referência) ---
-  const personH = bounds.height * 0.145;
   const rig = createFigureRig();
   disposables.push(rig.geometry, rig.material);
   rig.root.scale.setScalar(personH);
@@ -254,6 +190,7 @@ export function createSculptureSet(opts: SetOptions, reflectionSource: { geometr
     },
     update(dt, weight, paused) {
       figureMotion.update(dt, weight, paused);
+      backlight.update(dt, paused);
     },
     probe() {
       const w = (n: "footL" | "footR" | "head" | "hips") => rig.bones[n].getWorldPosition(new Vector3()).toArray().map((v) => Math.round(v * 1e5) / 1e5);
