@@ -11,9 +11,9 @@
 |---|---|
 | **Objetivo principal** | Concluir a landing page institucional da FIORBE (`/` e `/produtos/motor-fiscal`) no nível de qualidade definido em `CLAUDE.md`. |
 | **Etapa atual** | Hero Experience — protótipo isolado em `E:\dev\fiorbe\prototypes\hero-3d` (antecede as etapas 02–05 do plano). Etapa 01 (Design System) em revisão em paralelo. |
-| **Componentes em desenvolvimento** | `RIB-001` — Escultura viva (onda em volta completa + cruzamentos corrigidos — v2) ([ficha](tarefas/RIB-001.md)) · `FIG-001` — Figura humana (v1, aguardando revisão) ([ficha](tarefas/FIG-001.md)) |
-| **Tarefa ativa** | `RIB-02`/`RIB-03` v2 — aguardando revisão visual do usuário |
-| **Próximo objetivo** | Revisão do usuário da v2 (vídeo `captures\onda-volta-debug.webm`). Depois: calibrar velocidade/intensidade com o feedback e medir GPU com a máquina ociosa; só então fios soltos (RIB-03 B) ou hover (RIB-04). |
+| **Componentes em desenvolvimento** | `RIB-001` — Escultura viva (v3: fita única contínua e autoentrelaçada) ([ficha](tarefas/RIB-001.md)) · `FIG-001` — Figura humana (v1, aguardando revisão) ([ficha](tarefas/FIG-001.md)) |
+| **Tarefa ativa** | `RIB-001` v3 — forma contínua aguardando revisão visual do usuário |
+| **Próximo objetivo** | Revisão da forma v3 (`captures\comparacao-forma.png`, vídeo `captures\onda-continua.webm`). Se a direção for aprovada: aumentar a fidelidade à referência (torção autoral por ponto com referencial de transporte paralelo, mais passagens e densidade, bordas visíveis). Se não: laboratório A/B (fita única × tronco com ramificações), avaliando Blender. Desfiar desligado até a forma ser aprovada. |
 | **Branch / último checkpoint** | `exp/hero-fidelidade` · `763b72a` (figura com esqueleto). `main` está em `d498026`. Sem remoto. Nenhum merge/push autorizado. |
 | **Servidor local** | `npm run dev` em `E:\dev\fiorbe\prototypes\hero-3d` → http://localhost:3100 (`?debug` mostra fps/qualidade) |
 
@@ -31,7 +31,8 @@
 - Laboratório visual da Etapa 01 (canvas, rodadas 1 e 2) — paleta, tipografia, lettering, direções.
 - Hero: composição/interface da referência, escultura de fitas autorais, cenário (chão, reflexo, trilhas, luz), interação (cursor/arraste limitados), transição de scroll (protótipo técnico).
 - Figura humana v1 (esqueleto, idle em camadas, IK nos pés, integração de luz).
-- `RIB-001` v2: onda percorre a fita inteira (volta completa) e só então transfere no cruzamento; torção + flexão limitadas pela folga local; cruzamento A×B sem interpenetração; desfiar em fios por faixa com bordas suavizadas (flag `?fios=0`). Debug `?ondadebug`. DPR 1,25 em GPU integrada.
+- `RIB-001` v3: escultura refeita como UMA fita contínua fechada (8 trechos, por cima/por baixo alternados, 0 interseções); duas ondas circulam continuamente, sem troca de peça; desfiar desligado (`?fios=1` liga); `?clay` mostra só a forma.
+- (Histórico) `RIB-001` v2: onda percorre a fita inteira (volta completa) e só então transfere no cruzamento; torção + flexão limitadas pela folga local; cruzamento A×B sem interpenetração; desfiar em fios por faixa com bordas suavizadas (flag `?fios=0`). Debug `?ondadebug`. DPR 1,25 em GPU integrada.
 
 ### Pendências e bloqueios
 - **Documento `FIORBE_Sistema_de_Execucao_e_Plano_Figura.md` não foi recebido** nesta sessão — informar o caminho para incorporar o mini-plano à ficha `FIG-001`.
@@ -99,6 +100,7 @@ Componentes ganham ficha em `tarefas/` quando entram em desenvolvimento. Correç
 | 22/10/2026 | HERO-001..005 | Rodada de fidelidade à referência (8 ciclos comparativos) na branch `exp/hero-fidelidade`; commit `517b62f` | Visual pendente |
 | 22/10/2026 | FIG-001 | Figura v1: esqueleto, idle em camadas, IK, integração de luz; commit `763b72a` | Visual pendente |
 | 22/10/2026 | Gestão | Painel central, hierarquia de componentes, fichas em `tarefas/`, skill `/fiorbe-status` | Pedido do usuário |
+| 22/10/2026 | RIB-001 | v3: fita única contínua autoentrelaçada (substitui as 6 fitas), ondas contínuas, desfiar desligado, modo argila; comparação com referência e versão anterior; commit `2f50dc4` | Visual pendente |
 | 22/10/2026 | RIB-001 | v2: volta completa + transferência no cruzamento, cruzamentos A×B/A×C/E corrigidos (0 interseções), desfiar por fios com cobertura suave, vídeo e quadros | Visual pendente |
 | 22/10/2026 | RIB-001 | Onda v1 + desfiar v1 (flag) + DPR 1,25 em GPU integrada; servidores encerrados pelo sistema por falta de memória antes do vídeo | Visual pendente |
 | 22/10/2026 | RIB-001 | Plano da escultura viva: auditoria, baseline de desempenho (tiers × DPR × larguras), pesquisa, especificação matemática, arquitetura e RIB-01..06. Sem código | Plano aguardando aprovação |
