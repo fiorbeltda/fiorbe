@@ -17,6 +17,6 @@ const b = await chromium.launch({ headless: true, args: ["--disable-gpu"] });
 const p = await b.newPage({ viewport: { width: 1284, height: 820 } });
 await p.setContent(html);
 await p.waitForTimeout(400);
-await p.screenshot({ path: cap(`${out}.png`) });
+await p.screenshot({ path: cap(`${out}.png`) }).catch(async () => { await p.waitForTimeout(800); await p.screenshot({ path: cap(`${out}.png`) }); });
 await b.close();
 console.log(cap(`${out}.png`));

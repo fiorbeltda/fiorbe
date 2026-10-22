@@ -22,6 +22,7 @@ import {
 import { createSculptureGeometry } from "./sculpture/ribbonGeometry";
 import { createMonumentGeometry, DEFAULT_FORM, FLOOR_LOCAL, FORMS, isFormName, MAIN_BAND, PERSON_LOCAL } from "./sculpture/monument";
 import { createGestureDebug } from "./sculpture/gestureDebug";
+import { buildFromBlender } from "./sculpture/blenderSculpture";
 import { createSculptureSet } from "./scene/set";
 import { createSculptureMaterial, createSculptureUniforms } from "./sculpture/material";
 import { createFiberNoise } from "./sculpture/textures";
@@ -43,6 +44,19 @@ export interface EngineOptions {
   onReady: () => void;
   onContextLost: () => void;
   onStats?: (stats: EngineStats) => void;
+  /** Malha da escultura vinda do Blender (ver preloadSculpture); ausente = geometria procedural. */
+  sculpture?: BufferGeometry | null;
+}
+
+/**
+ * ?forma=blender (escultura modelada no Blender) ou ?forma=blender-teste (prova de
+ * integração): carrega o GLB antes de criar o motor. Qualquer outra forma: null.
+ */
+export async function preloadSculpture(): Promise<BufferGeometry | null> {
+  const forma = new URLSearchParams(window.location.search).get("forma");
+  if (forma !== "blender" && forma !== "blender-teste") return null;
+  const { loadBlenderGeometry } = await import("./sculpture/blenderSculpture");
+  return loadBlenderGeometry(forma === "blender" ? "/models/escultura.glb" : "/models/teste.glb");
 }
 
 export interface EngineStats {
@@ -107,7 +121,8 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
   // ?forma=v32 | a | b — variantes da escultura preservadas para comparação.
   const formParam = params.get("forma");
   const form = isFormName(formParam) ? formParam : DEFAULT_FORM;
-  const monument = useKnot ? null : createMonumentGeometry(profile.geometry, form);
+  const blender = opts.sculpture ? buildFromBlender(opts.sculpture) : null;
+  const monument = useKnot ? null : (blender ?? createMonumentGeometry(profile.geometry, form));
   const geometry = monument ? monument.geometry : createSculptureGeometry(profile.geometry);
   // RIB-02/03: onda viajante (?onda=0 desliga); desfiar experimental só com ?fios=1 (em pausa artística).
   const fiber = createFiberNoise();
@@ -142,7 +157,7 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
   const waveDebug = waves && monument && params.has("ondadebug") ? createWaveDebug(waves, monument.curves[MAIN_BAND]!, mesh) : null;
   let holdWaves = false;
   const gestureDebug =
-    monument && params.has("gestos")
+    monument && !blender && params.has("gestos")
       ? createGestureDebug(monument.curves[MAIN_BAND]!, FORMS[form].ribbons[MAIN_BAND]!.points.length, FORMS[form].gestures, mesh)
       : null;
 
@@ -167,7 +182,9 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
   const compact = window.innerWidth < 1024;
   const reflections = profile.reflections && !useKnot && !compact;
   const reflectionGeometry =
-    reflections
+    reflections && blender
+      ? blender.geometry
+      : reflections
       ? createMonumentGeometry({ segments: Math.round(profile.geometry.segments / 2), across: Math.max(4, Math.round(profile.geometry.across / 2)) }, form).geometry
       : null;
   if (clay && reflectionGeometry) paintClay(reflectionGeometry);
@@ -425,7 +442,7 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
       canvas.removeEventListener("webglcontextlost", onLost);
       interaction.dispose();
       geometry.dispose();
-      reflectionGeometry?.dispose();
+      if (reflectionGeometry !== geometry) reflectionGeometry?.dispose();
       set.dispose();
       material.dispose();
       fiber.dispose();

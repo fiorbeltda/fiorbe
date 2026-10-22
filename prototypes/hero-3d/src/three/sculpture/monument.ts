@@ -160,7 +160,7 @@ export const isFormName = (v: string | null): v is FormName => v === "v32" || v 
 
 const STOPS = ["#06184f", "#0b3aa8", "#1668d8", "#22aed2", "#13968a", "#082a86"].map((h) => new Color(h));
 
-function paletteAt(x: number, out: Color): Color {
+export function paletteAt(x: number, out: Color): Color {
   const f = ((x % 1) + 1) % 1;
   const s = f * STOPS.length;
   const i = Math.floor(s);
