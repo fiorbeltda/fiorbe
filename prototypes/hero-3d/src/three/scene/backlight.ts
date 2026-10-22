@@ -1,20 +1,18 @@
-import { Color, CustomBlending, Group, Mesh, OneFactor, PlaneGeometry, ShaderMaterial, ZeroFactor } from "three";
+import { Color, CustomBlending, Group, Mesh, OneFactor, PlaneGeometry, ShaderMaterial, Vector3, ZeroFactor, type Camera } from "three";
 
 /**
- * Luz de fundo atrás da figura (referência: abertura luminosa ao fundo do
- * palco). Três camadas aditivas, todas procedurais (sem texturas):
+ * Arquitetura de luz atrás da escultura (referência: parede luminosa ao
+ * fundo do palco). Tudo procedural e aditivo:
  *
- * 1. Abertura — plano vertical ATRÁS da escultura: núcleo suave de luz fria,
- *    halo atmosférico amplo, feixes verticais discretos e o brilho rasante da
- *    linha do horizonte. Como fica atrás, as fitas se recortam contra ela em
- *    vez de serem lavadas por ela.
- * 2. Contraluz da figura — elipse estreita logo atrás da pessoa: separa a
- *    silhueta sem iluminar a escultura.
- * 3. Derramamento no chão — luz que vem da abertura em direção à câmera,
- *    com a sombra da figura projetada para a frente.
- *
- * Opacidade única (fade do scroll) e movimento mínimo dos feixes (parado com
- * reduced motion).
+ * 1. Parede de luz — plano grande ATRÁS da escultura, do centro até a
+ *    direita: fundo em gradação azul profunda, núcleo amplo de luz fria,
+ *    colunas/planos verticais suaves de larguras e intensidades diferentes,
+ *    névoa atmosférica e o brilho rasante onde o chão encontra a parede.
+ *    Como fica atrás, a luz aparece pelos vazios entre as fitas.
+ * 2. Contraluz da figura — elipse estreita logo atrás da pessoa.
+ * 3. Chão — luz derramada pela parede e o reflexo das colunas no piso
+ *    molhado, traçado na direção da câmera (fica vertical na tela, como
+ *    num espelho), com a sombra da figura.
  */
 export interface BacklightOptions {
   /** Base da figura (espaço local). */
@@ -24,16 +22,41 @@ export interface BacklightOptions {
   /** Altura da escultura e da figura. */
   height: number;
   personH: number;
-  /** Profundidade da abertura (atrás da escultura). */
-  apertureZ: number;
+  /** Profundidade da parede (atrás da escultura). */
+  wallZ: number;
+  /** Centro horizontal da parede (espaço local). */
+  wallX: number;
+  camera: Camera | null;
   reducedMotion: boolean;
 }
+
+/** Núcleo + colunas da parede: [centro x, largura, intensidade, altura relativa]. Núcleo = índice 0. */
+const COLUMNS: Array<[number, number, number, number]> = [
+  [0.55, 1.5, 1.0, 0.95],
+  [-2.7, 0.38, 0.22, 0.62],
+  [-1.6, 0.62, 0.32, 0.8],
+  [-0.55, 0.26, 0.28, 0.72],
+  [1.85, 0.52, 0.36, 0.9],
+  [2.75, 0.3, 0.26, 0.74],
+  [3.45, 0.72, 0.18, 0.6],
+];
+const COLS_GLSL = `const int NCOL = ${COLUMNS.length};
+const vec4 COLS[NCOL] = vec4[NCOL](${COLUMNS.map((c) => `vec4(${c.map((v) => v.toFixed(3)).join(", ")})`).join(", ")});`;
 
 const COMMON = /* glsl */ `
 uniform float uOpacity;
 uniform float uTime;
 varying vec2 vUv;
 float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
+${COLS_GLSL}
+// Coluna de bordas macias (caixa suavizada) que se apaga para cima.
+float column(float x, float y, float H, vec4 c) {
+  float hw = c.y * 0.5;
+  float edge = max(0.05, c.y * 0.18);
+  float body = smoothstep(hw + edge, hw - edge, abs(x - c.x));
+  float top = H * c.w;
+  return body * pow(clamp(1.0 - y / top, 0.0, 1.0), 1.35);
+}
 `;
 
 const VERT = /* glsl */ `
@@ -44,8 +67,14 @@ void main() {
 }
 `;
 
-// Abertura: coordenadas em unidades (x centrado, y a partir do chão).
-const APERTURE_FRAG = /* glsl */ `
+const FINISH = /* glsl */ `
+  col += (hash(gl_FragCoord.xy) - 0.5) / 255.0;
+  gl_FragColor = vec4(max(col, 0.0) * uOpacity, 1.0);
+  #include <tonemapping_fragment>
+  #include <colorspace_fragment>
+`;
+
+const WALL_FRAG = /* glsl */ `
 ${COMMON}
 uniform vec2 uSize;
 uniform vec3 uCore;
@@ -54,101 +83,83 @@ uniform vec3 uDeep;
 void main() {
   float x = (vUv.x - 0.5) * uSize.x;
   float y = vUv.y * uSize.y;
-  float h = y / uSize.y;
-  // Núcleo: fenda vertical de bordas macias, mais intensa junto ao chão.
-  float slit = exp(-pow(x / 0.32, 2.0));
-  float rise = pow(clamp(1.0 - h, 0.0, 1.0), 2.2);
-  float core = slit * rise;
-  float hot = exp(-pow(x / 0.16, 2.0)) * exp(-pow((y - 0.45) / 0.9, 2.0));
-  // Halo atmosférico amplo, centrado um pouco acima do chão.
-  float halo = exp(-pow(x / 1.25, 2.0) - pow((y - 0.9) / 1.7, 2.0));
-  float deep = exp(-pow(x / 2.6, 2.0) - pow((y - 1.4) / 2.6, 2.0));
-  // Feixes: poucos, finos, de intensidades diferentes; somem para cima.
-  float beams = 0.0;
-  for (int i = 0; i < 6; i++) {
-    float fi = float(i);
-    float c = (hash(vec2(fi, 3.1)) - 0.5) * 1.9;
-    float w = mix(0.02, 0.06, hash(vec2(fi, 7.7)));
-    float a = mix(0.35, 1.0, hash(vec2(fi, 1.3)));
-    float breathe = 0.85 + 0.15 * sin(uTime * 0.21 + fi * 1.9);
-    float top = mix(0.55, 0.95, hash(vec2(fi, 5.2)));
-    beams += a * breathe * exp(-pow((x - c) / w, 2.0)) * pow(clamp(1.0 - h / top, 0.0, 1.0), 1.3);
+  float H = uSize.y;
+  float h = y / H;
+  // Área da parede: larga, assimétrica (mais para a direita), sobe com gradação.
+  float wall = smoothstep(-4.6, -2.8, x) * (1.0 - smoothstep(3.6, 5.2, x)) * pow(clamp(1.0 - h, 0.0, 1.0), 0.9);
+  // Núcleo amplo e colunas.
+  float core = column(x, y, H, COLS[0]);
+  float hot = exp(-pow((x - COLS[0].x) / 0.55, 2.0)) * exp(-pow(y / (0.28 * H), 2.0));
+  float cols = 0.0;
+  for (int i = 1; i < NCOL; i++) {
+    float breathe = 0.9 + 0.1 * sin(uTime * 0.17 + float(i) * 2.1);
+    cols += COLS[i].z * breathe * column(x, y, H, COLS[i]);
   }
-  // Brilho rasante onde o chão encontra o fundo.
-  float horizon = exp(-pow(y / 0.07, 2.0)) * exp(-pow(x / 1.6, 2.0));
-  vec3 col = uCore * (core * 0.55 + hot * 0.5) + uHalo * (halo * 0.22 + horizon * 0.45) + uDeep * deep * 0.1 + uCore * beams * 0.05;
-  // Sem bordas: tudo chega a zero antes dos limites do plano.
-  col *= (1.0 - smoothstep(0.32, 0.5, abs(vUv.x - 0.5))) * (1.0 - smoothstep(0.72, 1.0, vUv.y));
-  col += (hash(gl_FragCoord.xy) - 0.5) / 255.0;
-  gl_FragColor = vec4(max(col, 0.0) * uOpacity, 1.0);
-  #include <tonemapping_fragment>
-  #include <colorspace_fragment>
+  // Névoa atmosférica: volume amplo que envolve tudo.
+  float haze = exp(-pow((x - 0.4) / 3.2, 2.0) - pow((y - 0.25 * H) / (0.55 * H), 2.0));
+  // Brilho rasante no encontro com o chão.
+  float horizon = exp(-pow(y / 0.06, 2.0)) * smoothstep(-4.0, -2.0, x) * (1.0 - smoothstep(3.4, 5.0, x));
+  vec3 col = uDeep * wall * 0.12
+           + uHalo * (haze * 0.13 + cols * 0.62 + horizon * 0.5)
+           + uCore * (core * 0.36 + hot * 0.26 + cols * 0.16);
+  col *= (1.0 - smoothstep(0.38, 0.5, abs(vUv.x - 0.5))) * (1.0 - smoothstep(0.55, 0.85, vUv.y));
+${FINISH}
 }
 `;
 
-// Contraluz: elipse estreita e alta atrás da pessoa.
 const RIM_FRAG = /* glsl */ `
 ${COMMON}
 uniform vec3 uCore;
 void main() {
   vec2 p = vUv - vec2(0.5, 0.42);
   float e = exp(-pow(p.x / 0.2, 2.0) - pow(p.y / 0.34, 2.0));
-  vec3 col = uCore * e * 0.55;
-  col += (hash(gl_FragCoord.xy) - 0.5) / 255.0;
-  gl_FragColor = vec4(col * uOpacity, 1.0);
-  #include <tonemapping_fragment>
-  #include <colorspace_fragment>
+  vec3 col = uCore * e * 0.42;
+${FINISH}
 }
 `;
 
-// Chão: coordenadas (x, z) em unidades; origem na base da abertura.
+// Chão: q = (x relativo ao centro da parede, t = distância à frente da parede).
 const FLOOR_FRAG = /* glsl */ `
 ${COMMON}
 uniform vec2 uSize;
 uniform vec2 uFeet;
+uniform vec2 uCam;
 uniform float uPersonH;
 uniform vec3 uHalo;
 uniform vec3 uCore;
 void main() {
   vec2 q = vec2((vUv.x - 0.5) * uSize.x, (1.0 - vUv.y) * uSize.y);
-  // Eixo da luz: da base da abertura, passando pelos pés da figura, até a câmera.
-  vec2 dir = normalize(uFeet + vec2(0.0, 0.001));
-  float t = max(dot(q, dir), 0.0);
-  float side = dot(q, vec2(-dir.y, dir.x));
-  // Leque que avança em direção à câmera e se abre.
-  float spread = 0.45 + t * 0.2;
-  float fan = exp(-pow(side / spread, 2.0)) * exp(-t * 0.27) * smoothstep(0.0, 0.25, t);
-  float base = exp(-pow(q.x / 1.1, 2.0) - pow(q.y / 0.35, 2.0));
-  // (o plano é largo: o eixo da luz atravessa o chão em diagonal até a câmera)
-  // Sombra da figura: faixa estreita dos pés para a frente, no meio da luz.
-  vec2 d = q - uFeet;
-  float along = dot(d, dir);
-  float perp = dot(d, vec2(-dir.y, dir.x));
-  float shadow = smoothstep(-0.02, 0.06, along) * exp(-pow(perp / (uPersonH * 0.16 + along * 0.05), 2.0)) * exp(-along / (uPersonH * 2.4));
-  // Reflexo do núcleo no piso: faixa estreita e alongada.
-  float streak = exp(-pow(side / (0.2 + t * 0.03), 2.0)) * exp(-t * 0.3);
-  float light = (fan * 0.95 + base * 0.6) * (1.0 - 0.85 * shadow);
-  vec3 col = mix(uHalo, uCore, 0.35) * light + uCore * streak * 0.9 * (1.0 - 0.9 * shadow);
-  col *= (1.0 - smoothstep(0.3, 0.5, abs(vUv.x - 0.5))) * smoothstep(0.0, 0.15, vUv.y);
-  col += (hash(gl_FragCoord.xy) - 0.5) / 255.0;
-  gl_FragColor = vec4(col * uOpacity, 1.0);
-  #include <tonemapping_fragment>
-  #include <colorspace_fragment>
+  float t = max(q.y, 0.0);
+  // Lençol de luz derramado pela parede inteira.
+  float sheet = smoothstep(-4.2, -2.4, q.x - t * 0.1) * (1.0 - smoothstep(3.2, 4.8, q.x + t * 0.1)) * exp(-t * 0.42) * smoothstep(0.0, 0.2, t);
+  // Reflexos das colunas: linhas da base de cada coluna até o pé da câmera (verticais na tela).
+  float refl = 0.0;
+  for (int i = 0; i < NCOL; i++) {
+    vec2 a = vec2(COLS[i].x, 0.0);
+    vec2 ab = uCam - a;
+    float s = clamp(dot(q - a, ab) / dot(ab, ab), 0.0, 1.0);
+    float d = length(q - (a + ab * s));
+    float w = COLS[i].y * 0.35 + s * 0.6;
+    refl += (i == 0 ? 1.0 : COLS[i].z) * exp(-pow(d / w, 2.0)) * exp(-s * 3.2);
+  }
+  // Sombra da figura, projetada a partir do núcleo.
+  vec2 dir = normalize(uFeet - vec2(COLS[0].x, 0.0));
+  vec2 dq = q - uFeet;
+  float along = dot(dq, dir);
+  float perp = dot(dq, vec2(-dir.y, dir.x));
+  float shadow = smoothstep(-0.02, 0.06, along) * exp(-pow(perp / (uPersonH * 0.18 + along * 0.06), 2.0)) * exp(-along / (uPersonH * 2.6));
+  vec3 col = (uHalo * sheet * 0.3 + mix(uHalo, uCore, 0.5) * refl * 0.42) * (1.0 - 0.8 * shadow);
+  col *= (1.0 - smoothstep(0.32, 0.5, abs(vUv.x - 0.5))) * smoothstep(0.0, 0.15, vUv.y);
+${FINISH}
 }
 `;
-
-/**
- * Deslocamento lateral da abertura: compensa a paralaxe da profundidade para
- * que o núcleo apareça logo atrás da figura na câmera principal.
- */
-const APERTURE_SHIFT = 1.5;
 
 export function createBacklight(o: BacklightOptions) {
   const group = new Group();
   const geo = new PlaneGeometry(1, 1);
-  const core = new Color("#d8f4ff");
-  const halo = new Color("#2f9be8");
-  const deep = new Color("#0d3f9a");
+  const core = new Color("#cfeeff");
+  const halo = new Color("#2a8fe6");
+  const deep = new Color("#0b3a96");
   const mats: ShaderMaterial[] = [];
   const make = (frag: string, uniforms: Record<string, { value: unknown }>) => {
     const m = new ShaderMaterial({
@@ -168,14 +179,14 @@ export function createBacklight(o: BacklightOptions) {
     return m;
   };
 
-  // 1 — Abertura atrás da escultura.
-  const aw = 7.5;
-  const ah = o.height * 1.35;
-  const aperture = new Mesh(geo, make(APERTURE_FRAG, { uSize: { value: [aw, ah] }, uCore: { value: core }, uHalo: { value: halo }, uDeep: { value: deep } }));
-  aperture.scale.set(aw, ah, 1);
-  aperture.position.set(o.px + APERTURE_SHIFT, o.floorY + ah / 2, o.apertureZ);
-  aperture.renderOrder = -1;
-  group.add(aperture);
+  // 1 — Parede de luz atrás da escultura.
+  const ww = 12;
+  const wh = o.height * 1.6;
+  const wall = new Mesh(geo, make(WALL_FRAG, { uSize: { value: [ww, wh] }, uCore: { value: core }, uHalo: { value: halo }, uDeep: { value: deep } }));
+  wall.scale.set(ww, wh, 1);
+  wall.position.set(o.wallX, o.floorY + wh / 2, o.wallZ);
+  wall.renderOrder = -1;
+  group.add(wall);
 
   // 2 — Contraluz junto à figura.
   const rim = new Mesh(geo, make(RIM_FRAG, { uCore: { value: core } }));
@@ -184,14 +195,16 @@ export function createBacklight(o: BacklightOptions) {
   rim.renderOrder = 2;
   group.add(rim);
 
-  // 3 — Derramamento no chão, da abertura até à frente da figura.
-  const fw = 16;
-  const fd = o.pz - o.apertureZ + 12;
+  // 3 — Chão: da parede até perto da câmera.
+  const fw = 18;
+  const fd = o.pz - o.wallZ + 12;
+  const cam = { value: [0, 30] as number[] };
   const floor = new Mesh(
     geo,
     make(FLOOR_FRAG, {
       uSize: { value: [fw, fd] },
-      uFeet: { value: [-APERTURE_SHIFT, o.pz - o.apertureZ] },
+      uFeet: { value: [o.px - o.wallX, o.pz - o.wallZ] },
+      uCam: cam,
       uPersonH: { value: o.personH },
       uHalo: { value: halo },
       uCore: { value: core },
@@ -199,10 +212,11 @@ export function createBacklight(o: BacklightOptions) {
   );
   floor.rotation.x = -Math.PI / 2;
   floor.scale.set(fw, fd, 1);
-  floor.position.set(o.px + APERTURE_SHIFT, o.floorY + 0.004, o.apertureZ + fd / 2);
+  floor.position.set(o.wallX, o.floorY + 0.004, o.wallZ + fd / 2);
   floor.renderOrder = 2;
   group.add(floor);
 
+  const camLocal = new Vector3();
   let time = 0;
   return {
     group,
@@ -216,6 +230,13 @@ export function createBacklight(o: BacklightOptions) {
       },
     })),
     update(dt: number, paused: boolean) {
+      // Pé da câmera no espaço do chão (os reflexos apontam para ela).
+      if (o.camera) {
+        group.updateWorldMatrix(true, false);
+        group.worldToLocal(camLocal.copy(o.camera.position));
+        cam.value[0] = camLocal.x - o.wallX;
+        cam.value[1] = camLocal.z - o.wallZ;
+      }
       if (paused || o.reducedMotion) return;
       time += dt;
       for (const m of mats) m.uniforms.uTime!.value = time;

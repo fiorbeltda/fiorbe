@@ -13,6 +13,7 @@ import {
   SkinnedMesh,
   SRGBColorSpace,
   Vector3,
+  type Camera,
   type Material,
 } from "three";
 import { createFigureRig } from "../figure/figureRig";
@@ -32,6 +33,8 @@ export interface SetOptions {
   /** Posição da figura no espaço local; null = posição derivada dos limites. */
   person: Vector3 | null;
   reducedMotion: boolean;
+  /** Câmera (os reflexos das colunas no piso apontam para ela). */
+  camera?: Camera;
 }
 
 export interface SculptureSet {
@@ -109,7 +112,7 @@ export function createSculptureSet(opts: SetOptions, reflectionSource: { geometr
   floor.renderOrder = 1;
   group.add(floor);
 
-  // --- Luz de fundo atrás da figura: abertura ao fundo, contraluz e luz no chão ---
+  // --- Arquitetura de luz atrás da escultura, contraluz da figura e luz no chão ---
   const px = opts.person?.x ?? bounds.maxX * 0.93;
   const pz = opts.person?.z ?? bounds.maxZ * 1.05;
   const personH = bounds.height * 0.145;
@@ -119,7 +122,10 @@ export function createSculptureSet(opts: SetOptions, reflectionSource: { geometr
     floorY: F,
     height: bounds.height,
     personH,
-    apertureZ: bounds.minZ - 0.8,
+    wallZ: bounds.minZ - 0.8,
+    // Centro da parede: do meio da escultura para a direita (compensa a paralaxe da profundidade).
+    wallX: (bounds.minX + bounds.maxX) / 2 + (bounds.maxX - bounds.minX) * 0.22,
+    camera: opts.camera ?? null,
     reducedMotion: opts.reducedMotion,
   });
   disposables.push(backlight);

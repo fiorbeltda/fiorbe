@@ -167,6 +167,7 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
       reflections,
       person: useKnot ? null : PERSON_LOCAL,
       reducedMotion,
+      camera,
     },
     reflectionGeometry ? { geometry: reflectionGeometry, material } : null,
   );
