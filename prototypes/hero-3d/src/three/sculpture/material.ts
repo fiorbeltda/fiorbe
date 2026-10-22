@@ -83,8 +83,8 @@ attribute vec3 aRib;
 attribute vec3 aTan;
 attribute float aHalf;
 attribute float aClear;
-attribute float aBend;
-varying float vBend;
+attribute vec3 aN;
+varying vec3 vGrooveDir;
 uniform float uTwistA;
 #define WAVE_SLOTS ${WAVE_SLOTS}
 uniform float uWaveC[${WAVE_SLOTS}];
@@ -116,7 +116,6 @@ float fpK = clamp(uFlow * 1.75 - (1.0 - aRib.x) * 0.75, 0.0, 1.0);
 fpK = fpK * fpK * (3.0 - 2.0 * fpK);
 vRib = aRib;
 vFlowK = fpK;
-vBend = aBend;
 #include <beginnormal_vertex>
 
 // --- Onda viajante em comprimento de arco (RIB-02) ---
@@ -150,16 +149,22 @@ for (int k = 0; k < WAVE_SLOTS; k++) {
   float df = d + 0.6;
   wvFr = max(wvFr, on * exp(-df * df / (2.0 * 0.85 * 0.85)) * wvGround);
 }
-vec3 wvN = normalize(objectNormal);
+// Referencial da FITA (não do vértice): a lâmina tem face de cima, de baixo
+// e bordas — todas se movem juntas ao longo da normal da fita.
+vec3 wvN = dot(aN, aN) > 0.25 ? normalize(aN) : normalize(objectNormal);
 vec3 wvW = normalize(cross(wvN, aTan));
 float wvEdge = aRib.y * aHalf;
-vec3 wvOff = normal * wvDisp + wvN * (wvEdge * sin(wvTh)) + wvW * (wvEdge * (cos(wvTh) - 1.0));
+vec3 wvOff = wvN * wvDisp + wvN * (wvEdge * sin(wvTh)) + wvW * (wvEdge * (cos(wvTh) - 1.0));
 // Nunca atravessar outra passagem: no máximo 45% da folga local.
 float wvKeep = min(1.0, 0.45 * aClear / max(length(wvOff), 1e-5));
 wvOff *= wvKeep;
-objectNormal = wvN * cos(wvTh * wvKeep) - wvW * sin(wvTh * wvKeep);
-// Normal corrigida pela derivada ao longo do arco (a luz acompanha a forma).
-objectNormal = normalize(objectNormal - wvKeep * wvSlopeRaw * aTan);
+// A torção gira TODAS as normais do perfil em torno da tangente (Rodrigues).
+float wvA = wvTh * wvKeep;
+objectNormal = objectNormal * cos(wvA) + cross(aTan, objectNormal) * sin(wvA) + aTan * dot(aTan, objectNormal) * (1.0 - cos(wvA));
+// Flexão: inclina pela derivada ao longo do arco (sinal acompanha a face).
+objectNormal = normalize(objectNormal - wvKeep * wvSlopeRaw * aTan * dot(objectNormal, wvN));
+// Direção através da largura (já torcida) para as estrias analíticas.
+vGrooveDir = normalMatrix * (wvW * cos(wvA) + wvN * sin(wvA));
 vFray = wvFr;
 // Coordenada de fibra com número inteiro de repetições por volta: sem costura em u=1→0.
 vFiberU = aRib.x * max(1.0, floor(wvL * 0.16 + 0.5));
@@ -174,10 +179,10 @@ const BEGIN_VERTEX = /* glsl */ `
 vec3 transformed = vec3(position);
 transformed += wvOff;
 float fpWave = sin(aRib.x * 18.8496 + uTime * 0.55 + aRib.z * 1.7) * sin(aRib.y * 1.5708 + uTime * 0.31 + aRib.x * 6.2832);
-transformed += normal * fpWave * uIdleAmp;
+transformed += wvN * fpWave * uIdleAmp;
 vec3 fpToPointer = position - uPointer;
 float fpFall = exp(-dot(fpToPointer, fpToPointer) * 2.2);
-transformed += normal * sign(dot(normal, fpToPointer) + 1e-4) * fpFall * uPointerAmt * 0.11;
+transformed += wvN * sign(dot(wvN, fpToPointer) + 1e-4) * fpFall * uPointerAmt * 0.11;
 `;
 
 const PROJECT_VERTEX = /* glsl */ `
@@ -195,13 +200,14 @@ gl_Position = projectionMatrix * mvPosition;
 
 const FRAGMENT_HEAD = /* glsl */ `
 #define FIBERS ${FIBER_ROWS}.0
+#define GROOVE_DEPTH 0.0011
 uniform vec3 uRim;
 uniform float uFray;
 uniform sampler2D uFiber;
 uniform vec3 uFrayEdge;
 varying vec3 vRib;
 varying float vFlowK;
-varying float vBend;
+varying vec3 vGrooveDir;
 varying float vFiberU;
 varying float vFray;
 `;
@@ -242,18 +248,29 @@ if (uFray > 0.5 && vFray > 0.004) {
 `;
 
 /**
- * Relevo das estrias atenuado nos ângulos rasantes e onde fica fino demais: de frente as ranhuras
- * aparecem inteiras; quando a lâmina gira até mostrar a borda, as derivadas
- * do relevo explodem e viravam "pentes" escuros serrilhados.
+ * Estrias analíticas (substituem o bump por textura). As ranhuras correm ao
+ * longo da fita e variam só através da largura: h(x) = Σ Aᵢ·sin(2π fᵢ x + φᵢ).
+ * A normal inclina por dh/dx na direção da largura. Cada componente é
+ * limitada pela frequência que o pixel consegue representar (fwidth): o que
+ * ficaria menor que ~2 px some suavemente em vez de serrilhar. Era o bump por
+ * derivadas de tela sobre a textura de 36 ranhuras — sem limite de banda —
+ * que gerava os "pentes" escuros nas curvas fechadas.
  */
 const NORMAL_MAPS = /* glsl */ `
-#ifdef USE_BUMPMAP
-  float fpGraze = smoothstep(0.12, 0.45, abs(dot(normal, normalize(vViewPosition))));
-  // ...e quando as ranhuras ficam mais finas que ~2 px na tela (parte interna das curvas).
-  fpGraze *= 1.0 - smoothstep(0.009, 0.018, fwidth(vBumpMapUv.y)); // 36 ranhuras na largura: período 0,028
-  fpGraze *= 1.0 - smoothstep(0.25, 0.55, vBend); // curvas fechadas
-  normal = perturbNormalArb( - vViewPosition, normal, dHdxy_fwd() * fpGraze, faceDirection );
-#endif
+{
+  float grX = vRib.y * 0.5 + 0.5;
+  float grW = max(fwidth(grX), 1e-5);
+  float grD = 0.0;
+  // (frequência, amplitude, fase)
+  vec3 grT[3] = vec3[3](vec3(36.0, 0.55, 0.0), vec3(9.0, 0.25, 1.3), vec3(71.0, 0.12, 2.1));
+  for (int i = 0; i < 3; i++) {
+    float f = grT[i].x;
+    float keep = 1.0 - smoothstep(0.18, 0.42, f * grW);
+    grD += grT[i].y * keep * 6.2831853 * f * cos(6.2831853 * f * grX + grT[i].z);
+  }
+  vec3 grDir = normalize(vGrooveDir - normal * dot(vGrooveDir, normal));
+  normal = normalize(normal - grDir * grD * GROOVE_DEPTH);
+}
 `;
 
 const FRAGMENT_OUT = /* glsl */ `
@@ -266,7 +283,7 @@ diffuseColor.a *= fyCov;
 #include <opaque_fragment>
 `;
 
-export function createSculptureMaterial(uniforms: SculptureUniforms, grooves: Texture): MeshPhysicalMaterial {
+export function createSculptureMaterial(uniforms: SculptureUniforms): MeshPhysicalMaterial {
   const material = new MeshPhysicalMaterial({
     color: 0xffffff,
     vertexColors: true,
@@ -277,8 +294,6 @@ export function createSculptureMaterial(uniforms: SculptureUniforms, grooves: Te
     clearcoat: 0.2,
     clearcoatRoughness: 0.3,
     anisotropy: 0.6,
-    bumpMap: grooves,
-    bumpScale: 0.45,
     envMapIntensity: 1.45,
     side: DoubleSide,
     // Bordas do desfiar suavizadas pelo MSAA (alfa = cobertura; resto da fita = 1).
@@ -297,6 +312,6 @@ export function createSculptureMaterial(uniforms: SculptureUniforms, grooves: Te
       .replace("#include <normal_fragment_maps>", NORMAL_MAPS)
       .replace("#include <opaque_fragment>", FRAGMENT_OUT);
   };
-  material.customProgramCacheKey = () => "fiorbe-ribbon-v6";
+  material.customProgramCacheKey = () => "fiorbe-ribbon-v7";
   return material;
 }

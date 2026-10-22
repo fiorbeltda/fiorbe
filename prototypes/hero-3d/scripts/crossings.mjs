@@ -1,12 +1,14 @@
 // Diagnóstico de cruzamentos: interseções reais entre superfícies de fitas
 // diferentes (aresta × triângulo) e folga mínima entre elas.
-// Uso: node --import ./scripts/_ts.mjs scripts/crossings.mjs [folga=0.22]
+// Uso: [FORMA=a|b|v32] node --import ./scripts/_ts.mjs scripts/crossings.mjs [folga=0.22]
 import { Vector3 } from "three";
-import { createMonumentGeometry, MONUMENT } from "../src/three/sculpture/monument.ts";
+import { createMonumentGeometry } from "../src/three/sculpture/monument.ts";
 
 const CLEAR = Number(process.argv[2] ?? 0.22);
 const ACROSS = 12;
-const { geometry, lengths } = createMonumentGeometry({ segments: 720, across: ACROSS });
+const FORM = process.env.FORMA ?? "a";
+const { geometry, lengths, cols: COLS } = createMonumentGeometry({ segments: 720, across: ACROSS }, FORM);
+console.log("forma", FORM);
 const pos = geometry.getAttribute("position").array;
 const rib = geometry.getAttribute("aRib").array;
 const idx = geometry.getIndex().array;
@@ -53,7 +55,7 @@ function segTri(o, end, t) {
 }
 
 const hits = new Map(); // "a-b" -> [{ua, ub, p}]
-const cols = ACROSS + 1;
+const cols = COLS;
 // Início de cada fita (vértices contíguos por fita) e afastamento mínimo ao longo do arco para contar autointerseção.
 const starts = [];
 for (let i = 0; i < nV; i++) if (i === 0 || band(i) !== band(i - 1)) starts[band(i)] = i;
@@ -140,4 +142,3 @@ for (const [pair, v] of near) {
   const [x, y] = pair.split("-").map(Number);
   console.log(`  ${N[x]}×${N[y]}: mín ${v.d.toFixed(3)} em u${N[x]}=${v.ua.toFixed(3)} u${N[y]}=${v.ub.toFixed(3)}  ${toRef(v.p)}`);
 }
-void MONUMENT;

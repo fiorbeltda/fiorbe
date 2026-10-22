@@ -38,7 +38,8 @@ export function HeroStage({ className }: { className?: string }) {
         return;
       }
       try {
-        const { createHeroEngine } = await import("@/three/engine");
+        const { createHeroEngine, preloadSculpture } = await import("@/three/engine");
+        const sculpture = await preloadSculpture();
         if (cancelled) return;
         engineRef.current = createHeroEngine({
           canvas,
@@ -48,6 +49,7 @@ export function HeroStage({ className }: { className?: string }) {
           onReady: () => setStatus("live"),
           onContextLost: () => setStatus("fallback"),
           onStats: setStats,
+          sculpture,
         });
       } catch (error) {
         console.warn("[FIORBE] WebGL indisponível, mantendo o poster.", error);

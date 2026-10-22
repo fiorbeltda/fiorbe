@@ -3,7 +3,7 @@
 import { chromium } from "playwright-core";
 import { readFile } from "node:fs/promises";
 const [file, outPng, stepS = "3"] = process.argv.slice(2);
-const b = await chromium.launch({ headless: true });
+const b = await chromium.launch({ headless: true, args: ["--disable-gpu"] });
 const p = await b.newPage({ viewport: { width: 1600, height: 900 } });
 const data = (await readFile(file)).toString("base64");
 await p.setContent(`<body style="margin:0;background:#000"><video id=v muted src="data:video/webm;base64,${data}"></video><div id=g style="display:grid;grid-template-columns:repeat(3,1fr);gap:3px"></div></body>`);

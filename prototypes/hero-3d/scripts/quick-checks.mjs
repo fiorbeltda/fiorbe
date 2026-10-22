@@ -5,12 +5,12 @@ import { fileURLToPath } from "node:url";
 const out = (f) => fileURLToPath(new URL(`../captures/${f}`, import.meta.url));
 const b = await chromium.launch({ headless: true, args: ["--use-angle=d3d11", "--enable-gpu", "--ignore-gpu-blocklist"] });
 const errors = [];
-const open = async (vp, q = "debug", extra = {}) => {
+const open = async (vp, q = "debug&forma=" + (process.env.FORMA ?? "c"), extra = {}) => {
   const ctx = await b.newContext({ viewport: vp, ...extra });
   const p = await ctx.newPage();
   p.on("pageerror", (e) => errors.push(e.message));
   p.on("console", (m) => m.type() === "error" && !/hydrat/i.test(m.text()) && errors.push(m.text().slice(0, 200)));
-  await p.goto(`http://localhost:3100/?${q}`, { waitUntil: "networkidle" });
+  await p.goto(`http://localhost:3100/?${q}`, { waitUntil: "networkidle", timeout: 90000 });
   await p.waitForSelector('canvas[data-status="live"]', { timeout: 30000 }).catch(() => {});
   await p.waitForTimeout(1500);
   return { p, ctx };
