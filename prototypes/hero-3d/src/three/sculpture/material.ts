@@ -83,6 +83,8 @@ attribute vec3 aRib;
 attribute vec3 aTan;
 attribute float aHalf;
 attribute float aClear;
+attribute float aBend;
+varying float vBend;
 uniform float uTwistA;
 #define WAVE_SLOTS ${WAVE_SLOTS}
 uniform float uWaveC[${WAVE_SLOTS}];
@@ -114,6 +116,7 @@ float fpK = clamp(uFlow * 1.75 - (1.0 - aRib.x) * 0.75, 0.0, 1.0);
 fpK = fpK * fpK * (3.0 - 2.0 * fpK);
 vRib = aRib;
 vFlowK = fpK;
+vBend = aBend;
 #include <beginnormal_vertex>
 
 // --- Onda viajante em comprimento de arco (RIB-02) ---
@@ -198,6 +201,7 @@ uniform sampler2D uFiber;
 uniform vec3 uFrayEdge;
 varying vec3 vRib;
 varying float vFlowK;
+varying float vBend;
 varying float vFiberU;
 varying float vFray;
 `;
@@ -235,6 +239,21 @@ if (uFray > 0.5 && vFray > 0.004) {
   fyEdge = (1.0 - smoothstep(0.0, 0.06, fyN - fyThr)) * smoothstep(0.05, 0.2, fyThr) * fyC1;
 }
 #include <clipping_planes_fragment>
+`;
+
+/**
+ * Relevo das estrias atenuado nos ângulos rasantes e onde fica fino demais: de frente as ranhuras
+ * aparecem inteiras; quando a lâmina gira até mostrar a borda, as derivadas
+ * do relevo explodem e viravam "pentes" escuros serrilhados.
+ */
+const NORMAL_MAPS = /* glsl */ `
+#ifdef USE_BUMPMAP
+  float fpGraze = smoothstep(0.12, 0.45, abs(dot(normal, normalize(vViewPosition))));
+  // ...e quando as ranhuras ficam mais finas que ~2 px na tela (parte interna das curvas).
+  fpGraze *= 1.0 - smoothstep(0.009, 0.018, fwidth(vBumpMapUv.y)); // 36 ranhuras na largura: período 0,028
+  fpGraze *= 1.0 - smoothstep(0.25, 0.55, vBend); // curvas fechadas
+  normal = perturbNormalArb( - vViewPosition, normal, dHdxy_fwd() * fpGraze, faceDirection );
+#endif
 `;
 
 const FRAGMENT_OUT = /* glsl */ `
@@ -275,8 +294,9 @@ export function createSculptureMaterial(uniforms: SculptureUniforms, grooves: Te
       .replace("#include <project_vertex>", PROJECT_VERTEX);
     shader.fragmentShader = FRAGMENT_HEAD + shader.fragmentShader
       .replace("#include <clipping_planes_fragment>", FRAGMENT_FRAY)
+      .replace("#include <normal_fragment_maps>", NORMAL_MAPS)
       .replace("#include <opaque_fragment>", FRAGMENT_OUT);
   };
-  material.customProgramCacheKey = () => "fiorbe-ribbon-v5";
+  material.customProgramCacheKey = () => "fiorbe-ribbon-v6";
   return material;
 }

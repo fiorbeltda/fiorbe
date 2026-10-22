@@ -11,9 +11,9 @@
 |---|---|
 | **Objetivo principal** | Concluir a landing page institucional da FIORBE (`/` e `/produtos/motor-fiscal`) no nível de qualidade definido em `CLAUDE.md`. |
 | **Etapa atual** | Hero Experience — protótipo isolado em `E:\dev\fiorbe\prototypes\hero-3d` (antecede as etapas 02–05 do plano). Etapa 01 (Design System) em revisão em paralelo. |
-| **Componentes em desenvolvimento** | `RIB-001` — Escultura viva (v3: fita única contínua e autoentrelaçada) ([ficha](tarefas/RIB-001.md)) · `FIG-001` — Figura humana (v1, aguardando revisão) ([ficha](tarefas/FIG-001.md)) |
-| **Tarefa ativa** | `RIB-001` v3 — forma contínua aguardando revisão visual do usuário |
-| **Próximo objetivo** | Revisão da forma v3 (`captures\comparacao-forma.png`, vídeo `captures\onda-continua.webm`). Se a direção for aprovada: aumentar a fidelidade à referência (torção autoral por ponto com referencial de transporte paralelo, mais passagens e densidade, bordas visíveis). Se não: laboratório A/B (fita única × tronco com ramificações), avaliando Blender. Desfiar desligado até a forma ser aprovada. |
+| **Componentes em desenvolvimento** | `RIB-001` — Escultura viva (v3.1: fita única com torção autoral — lâmina) ([ficha](tarefas/RIB-001.md)) · `FIG-001` — Figura humana (v1, aguardando revisão) ([ficha](tarefas/FIG-001.md)) |
+| **Tarefa ativa** | `RIB-001` v3.1 — torção autoral, aguardando revisão visual do usuário |
+| **Próximo objetivo** | Revisão da v3.1 (`captures\refino-v3-vs-r3.png`, `captures\refino-v3-vs-r3-b.png`, vídeo `captures\onda-r3.webm`). Depois, conforme o retorno: ajuste fino da torção por trecho, espessura visível nas bordas de lâmina e, se a composição pedir, uma passagem adicional no quadrante esquerdo. Desfiar continua desligado. |
 | **Branch / último checkpoint** | `exp/hero-fidelidade` · `763b72a` (figura com esqueleto). `main` está em `d498026`. Sem remoto. Nenhum merge/push autorizado. |
 | **Servidor local** | `npm run dev` em `E:\dev\fiorbe\prototypes\hero-3d` → http://localhost:3100 (`?debug` mostra fps/qualidade) |
 
@@ -101,6 +101,7 @@ Componentes ganham ficha em `tarefas/` quando entram em desenvolvimento. Correç
 | 22/10/2026 | HERO-001..005 | Rodada de fidelidade à referência (8 ciclos comparativos) na branch `exp/hero-fidelidade`; commit `517b62f` | Visual pendente |
 | 22/10/2026 | FIG-001 | Figura v1: esqueleto, idle em camadas, IK, integração de luz; commit `763b72a` | Visual pendente |
 | 22/10/2026 | Gestão | Painel central, hierarquia de componentes, fichas em `tarefas/`, skill `/fiorbe-status` | Pedido do usuário |
+| 22/10/2026 | RIB-001 | v3.1: torção autoral por ponto sobre referencial de transporte paralelo com correção de fechamento (emenda exata), giro anti-dobra nas curvas fechadas, relevo das estrias atenuado onde serrilhava; 0 interseções; comparação `captures\refino-v3-vs-r3.png` | Visual pendente |
 | 22/10/2026 | HERO (cenário) | Luz de fundo refeita (`src\three\scene\backlight.ts`): abertura luminosa atrás da escultura (núcleo, halo, feixes discretos, brilho do horizonte), contraluz estreita da figura e luz derramada no piso com sombra da figura; substitui o halo que lavava a fita. Comparação `captures\luz-comparacao.png`. Custo ≈ igual (≈15,8 ms) | Visual pendente |
 | 22/10/2026 | RIB-001 | v3: fita única contínua autoentrelaçada (substitui as 6 fitas), ondas contínuas, desfiar desligado, modo argila; comparação com referência e versão anterior; commit `2f50dc4` | Visual pendente |
 | 22/10/2026 | RIB-001 | v2: volta completa + transferência no cruzamento, cruzamentos A×B/A×C/E corrigidos (0 interseções), desfiar por fios com cobertura suave, vídeo e quadros | Visual pendente |
