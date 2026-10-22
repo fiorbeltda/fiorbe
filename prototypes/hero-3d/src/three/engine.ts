@@ -1,7 +1,9 @@
 import {
   ACESFilmicToneMapping,
   AgXToneMapping,
+  BackSide,
   Box3,
+  FrontSide,
   type BufferGeometry,
   DirectionalLight,
   NeutralToneMapping,
@@ -18,10 +20,11 @@ import {
   WebGLRenderer,
 } from "three";
 import { createSculptureGeometry } from "./sculpture/ribbonGeometry";
-import { createMonumentGeometry, FLOOR_LOCAL, MAIN_BAND, PERSON_LOCAL } from "./sculpture/monument";
+import { createMonumentGeometry, DEFAULT_FORM, FLOOR_LOCAL, FORMS, isFormName, MAIN_BAND, PERSON_LOCAL } from "./sculpture/monument";
+import { createGestureDebug } from "./sculpture/gestureDebug";
 import { createSculptureSet } from "./scene/set";
 import { createSculptureMaterial, createSculptureUniforms } from "./sculpture/material";
-import { createFiberNoise, createGrooveTexture } from "./sculpture/textures";
+import { createFiberNoise } from "./sculpture/textures";
 import { WaveDirector } from "./motion/waveDirector";
 import { createWaveDebug } from "./motion/waveDebug";
 import { createStudioEnvironment } from "./scene/environment";
@@ -101,8 +104,10 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
   const params = new URLSearchParams(window.location.search);
   const useKnot = params.get("geo") === "knot";
   const uniforms = createSculptureUniforms();
-  const grooves = createGrooveTexture();
-  const monument = useKnot ? null : createMonumentGeometry(profile.geometry);
+  // ?forma=v32 | a | b — variantes da escultura preservadas para comparação.
+  const formParam = params.get("forma");
+  const form = isFormName(formParam) ? formParam : DEFAULT_FORM;
+  const monument = useKnot ? null : createMonumentGeometry(profile.geometry, form);
   const geometry = monument ? monument.geometry : createSculptureGeometry(profile.geometry);
   // RIB-02/03: onda viajante (?onda=0 desliga); desfiar experimental só com ?fios=1 (em pausa artística).
   const fiber = createFiberNoise();
@@ -114,7 +119,9 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
       : null;
   if (monument) uniforms.uLen.value = monument.lengths.slice();
   uniforms.uFloorY.value = FLOOR_LOCAL;
-  const material = createSculptureMaterial(uniforms, grooves);
+  const material = createSculptureMaterial(uniforms);
+  // Lâmina com espessura é um sólido fechado: só as faces externas (metade do preenchimento).
+  if (monument && monument.profile !== "sheet") material.side = params.get("lado") === "tras" ? BackSide : FrontSide;
   // ?clay: material neutro para julgar só a forma (sem cor, metal nem brilho de borda).
   const clay = params.has("clay");
   if (clay) {
@@ -134,6 +141,10 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
   mesh.frustumCulled = false;
   const waveDebug = waves && monument && params.has("ondadebug") ? createWaveDebug(waves, monument.curves[MAIN_BAND]!, mesh) : null;
   let holdWaves = false;
+  const gestureDebug =
+    monument && params.has("gestos")
+      ? createGestureDebug(monument.curves[MAIN_BAND]!, FORMS[form].ribbons[MAIN_BAND]!.points.length, FORMS[form].gestures, mesh)
+      : null;
 
   // Hierarquia de donos únicos: scroll > interação > ambiente > malha.
   const scrollRig = new Group();
@@ -157,7 +168,7 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
   const reflections = profile.reflections && !useKnot && !compact;
   const reflectionGeometry =
     reflections
-      ? createMonumentGeometry({ segments: Math.round(profile.geometry.segments / 2), across: Math.max(4, Math.round(profile.geometry.across / 2)) }).geometry
+      ? createMonumentGeometry({ segments: Math.round(profile.geometry.segments / 2), across: Math.max(4, Math.round(profile.geometry.across / 2)) }, form).geometry
       : null;
   if (clay && reflectionGeometry) paintClay(reflectionGeometry);
   const set = createSculptureSet(
@@ -417,9 +428,9 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
       reflectionGeometry?.dispose();
       set.dispose();
       material.dispose();
-      grooves.dispose();
       fiber.dispose();
       waveDebug?.dispose();
+      gestureDebug?.dispose();
       env.dispose();
       renderer.dispose();
       root.style.removeProperty("--hero-out");

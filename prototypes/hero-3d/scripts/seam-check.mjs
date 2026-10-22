@@ -1,8 +1,11 @@
 // Continuidade da fita: emenda u=1→0 (posição, normal, textura) e maior giro entre anéis vizinhos.
-// Uso: node --import ./scripts/_ts.mjs scripts/seam-check.mjs
+// Uso: [FORMA=a|b|v32] node --import ./scripts/_ts.mjs scripts/seam-check.mjs
 import { createMonumentGeometry } from "../src/three/sculpture/monument.ts";
-const ACROSS = 12, cols = ACROSS + 1;
-const { geometry, lengths } = createMonumentGeometry({ segments: 720, across: ACROSS });
+const ACROSS = 12;
+const FORM = process.env.FORMA ?? "a";
+const { geometry, lengths, cols: COLS } = createMonumentGeometry({ segments: 720, across: ACROSS }, FORM);
+console.log("forma", FORM);
+const cols = COLS;
 const pos = geometry.getAttribute("position").array, nor = geometry.getAttribute("normal").array, uv = geometry.getAttribute("uv").array, rib = geometry.getAttribute("aRib").array;
 const n = pos.length / 3;
 let start = 0;

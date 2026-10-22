@@ -11,9 +11,9 @@
 |---|---|
 | **Objetivo principal** | Concluir a landing page institucional da FIORBE (`/` e `/produtos/motor-fiscal`) no nível de qualidade definido em `CLAUDE.md`. |
 | **Etapa atual** | Hero Experience — protótipo isolado em `E:\dev\fiorbe\prototypes\hero-3d` (antecede as etapas 02–05 do plano). Etapa 01 (Design System) em revisão em paralelo. |
-| **Componentes em desenvolvimento** | `RIB-001` — Escultura viva (v3.2: fita única mais larga, torções em leque, entrelaçamento mais profundo) ([ficha](tarefas/RIB-001.md)) · `FIG-001` — Figura humana (v1, aguardando revisão) ([ficha](tarefas/FIG-001.md)) |
-| **Tarefa ativa** | `RIB-001` v3.2 — geometria, aguardando revisão visual do usuário |
-| **Próximo objetivo** | Revisão da v3.2 (`captures\escultura-anterior-vs-r4.png`, `captures\ref-vs-r4.png`). Maior distância restante da referência: a grande varredura ascendente (baixo-esquerda → alto-direita) e o redemoinho central — próximo passo é desenhar essa passagem no percurso, ou abrir o laboratório em Blender se a modelagem em código estagnar. Luz: só refinamentos registrados, sem intensidade nova. |
+| **Componentes em desenvolvimento** | `RIB-001` — Escultura viva (v4 lab: formas v32/A/B/C; padrão C = lâmina com espessura) ([ficha](tarefas/RIB-001.md)) · `FIG-001` — Figura humana (v1, aguardando revisão) ([ficha](tarefas/FIG-001.md)) |
+| **Tarefa ativa** | `RIB-001` laboratório de forma (v4) — aguardando revisão visual do usuário |
+| **Próximo objetivo** | Decisão do usuário sobre o caminho da forma: a modelagem procedural chegou a materialidade (lâmina com espessura, normais corretas, sem pente) mas não à composição da referência (densidade de passagens em leque, redemoinho). Recomendação: laboratório em Blender (curvas + Curve to Mesh/Geometry Nodes → GLB + espinha exportada para a onda), sujeito a aprovação de instalação. Comparações `captures\final-v32-vs-c.png`, `captures\ref-vs-c3.png`. |
 | **Branch / último checkpoint** | `exp/hero-fidelidade` · ver Log (último enviado ao GitHub: `2b4ed80`). `main` está em `d498026`. Remoto: `origin` = https://github.com/fiorbeltda/fiorbe (privado), as duas branches enviadas em 22/10/2026 com autorização. Merge em `main` continua exigindo autorização. |
 | **Servidor local** | `npm run dev` em `E:\dev\fiorbe\prototypes\hero-3d` → http://localhost:3100 (`?debug` mostra fps/qualidade) |
 
@@ -102,6 +102,7 @@ Componentes ganham ficha em `tarefas/` quando entram em desenvolvimento. Correç
 | 22/10/2026 | HERO-001..005 | Rodada de fidelidade à referência (8 ciclos comparativos) na branch `exp/hero-fidelidade`; commit `517b62f` | Visual pendente |
 | 22/10/2026 | FIG-001 | Figura v1: esqueleto, idle em camadas, IK, integração de luz; commit `763b72a` | Visual pendente |
 | 22/10/2026 | Gestão | Painel central, hierarquia de componentes, fichas em `tarefas/`, skill `/fiorbe-status` | Pedido do usuário |
+| 22/10/2026 | RIB-001 | v4 laboratório: formas `?forma=v32|a|b|c` preservadas; perfil com espessura (lâmina fechada com borda arredondada) e só faces externas; estrias analíticas com limite de banda no lugar do bump; causa do pente isolada (fita quase dobrando nas curvas fechadas → normais oscilando, amplificadas pela anisotropia); A (percurso novo do mapa) e B (laminado) descartadas, C adotada como padrão; `?gestos` mostra os grandes gestos; 0 interseções em todas; ≈18,4 ms (v32 17,6) | Visual pendente |
 | 22/10/2026 | RIB-001 | v3.2: fitas mais largas, torções em leque nas varreduras, profundidade dos cruzamentos ×1,3; testada e descartada uma segunda volta aninhada (duplicava as passagens e poluía a forma); 0 interseções; ≈18 ms (+1 ms, fitas maiores). Comparações `captures\escultura-anterior-vs-r4.png`, `captures\ref-vs-r4.png` | Visual pendente |
 | 22/10/2026 | Repositório | Enviados `7ab9b74` e `2b4ed80` para `exp/hero-fidelidade` (autorizado; repositório privado, sem segredos; `main` intocada) | Autorizado pelo usuário |
 | 22/10/2026 | HERO (cenário) | Luz aprovada como base experimental; refinamentos registrados em Pendências | Aprovação parcial (base) |

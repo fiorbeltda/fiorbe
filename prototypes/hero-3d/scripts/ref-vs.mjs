@@ -13,7 +13,7 @@ const html = `<body style="margin:0;background:#000;display:grid;grid-template-c
 <figure style="margin:0;position:relative">${refTile}<figcaption style="position:absolute;left:6px;top:6px;background:#000c;padding:2px 6px">referência</figcaption></figure>
 <figure style="margin:0;position:relative"><img src="${clay}" style="width:640px;height:406px;display:block"><figcaption style="position:absolute;left:6px;top:6px;background:#000c;padding:2px 6px">${prefix} · argila</figcaption></figure>
 <figure style="margin:0;position:relative;grid-column:span 2;width:640px;justify-self:center">${refTile}<img src="${clay}" style="position:absolute;inset:0;width:640px;height:406px;opacity:.5;mix-blend-mode:screen"><figcaption style="position:absolute;left:6px;top:6px;background:#000c;padding:2px 6px">sobreposição</figcaption></figure></body>`;
-const b = await chromium.launch({ headless: true });
+const b = await chromium.launch({ headless: true, args: ["--disable-gpu"] });
 const p = await b.newPage({ viewport: { width: 1284, height: 820 } });
 await p.setContent(html);
 await p.waitForTimeout(400);

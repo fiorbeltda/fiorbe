@@ -16,7 +16,7 @@ const errors = [];
 for (const [name, q] of views) {
   const p = await b.newPage({ viewport: { width: 1672, height: 941 } });
   p.on("pageerror", (e) => errors.push(e.message));
-  await p.goto(`http://localhost:3100/?debug&onda=0&${q}`, { waitUntil: "networkidle" });
+  await p.goto(`http://localhost:3100/?debug&onda=0&forma=${process.env.FORMA ?? "a"}&${q}`, { waitUntil: "networkidle" });
   await p.waitForSelector('canvas[data-status="live"]', { timeout: 60000 });
   await p.waitForTimeout(1500);
   const buf = await p.screenshot({ type: "jpeg", quality: 88, clip: { x: 600, y: 60, width: 1072, height: 680 } });
