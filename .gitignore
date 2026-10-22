@@ -1,0 +1,19 @@
+# dependências e build (stack a definir na aprovação da etapa 00)
+node_modules/
+.next/
+out/
+dist/
+coverage/
+playwright-report/
+test-results/
+
+# ambiente
+.env*
+!.env.example
+
+# sistema / editor
+.DS_Store
+Thumbs.db
+*.log
+.vscode/*
+!.vscode/extensions.json

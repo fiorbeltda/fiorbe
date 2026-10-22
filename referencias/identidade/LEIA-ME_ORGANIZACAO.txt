@@ -1,0 +1,92 @@
+FIORBE — PACOTE DE REFERÊNCIAS VISUAIS
+========================================
+
+Este conjunto reúne as imagens existentes da FIORBE identificadas nesta conversa.
+A primeira pasta contém as referências mais importantes aprovadas pelos fundadores,
+incluindo a prancha principal com o símbolo de fitas azul e teal.
+
+PASTAS
+01_REFERENCIA_PRINCIPAL_APROVADA — melhores referências da identidade escolhida.
+02_ESCULTURAS_E_LINGUAGEM_CONCEITUAL — forma fluida / fita 3D sem distrações.
+03_PAINÉIS_E_IDENTIDADE_VISUAL — estudos gerais de branding, cores e aplicações.
+04_LOGOTIPOS_E_ESTUDOS — arquivos de imagem dos logotipos anteriores.
+05_COMPARATIVOS_COM_FIORBE — painéis antigos que incluem FIORBE e OREVUM.
+06_FONTE_CLAUDE_DESIGN_OPCIONAL — versões .dc.html editáveis do projeto V4.
+
+ATENÇÃO
+- Estas imagens são referências e conceitos. Não comprovam registro, titularidade
+  ou exclusividade de marca.
+- O símbolo tridimensional cinematográfico não deve ser confundido com um logo
+  vetorial aprovado; finalização técnica continua necessária.
+- Os valores, dados e elementos de mockups são ilustrativos.
+- Alguns painéis incluem a OREVUM somente para permitir comparações históricas.
+
+LISTA DE IMAGENS
+
+01_REFERENCIA_PRINCIPAL_APROVADA/01_FIORBE_escolhida_prancha_fitas_3D.png
+  Painel do conceito F fluido que os fundadores escolheram; inclui versões e aplicações.
+
+01_REFERENCIA_PRINCIPAL_APROVADA/02_FIORBE_sistema_visual_azul_neon.png
+  Prancha conceitual mais recente com filosofia, paleta, aplicações e logo.
+
+01_REFERENCIA_PRINCIPAL_APROVADA/03_FIORBE_identidade_hero_e_variacoes.png
+  Visual premium: logotipo F e formas fluidas em azul e teal, variações e redução.
+
+01_REFERENCIA_PRINCIPAL_APROVADA/04_FIORBE_conceito_horizontal_e_comparacoes.png
+  Estudo de marca horizontal com fita tridimensional e aplicações.
+
+02_ESCULTURAS_E_LINGUAGEM_CONCEITUAL/01_escultura_3D_fita_FIORBE_sem_texto.png
+  Imagem de referência da forma 3D fluida sem logotipo.
+
+02_ESCULTURAS_E_LINGUAGEM_CONCEITUAL/02_escultura_3D_FIORBE_em_cartao.png
+  Versão da forma fluida no cartão da comparação com Orevum.
+
+02_ESCULTURAS_E_LINGUAGEM_CONCEITUAL/03_conceito_fita_FIORBE_prancha.png
+  Prancha original com versões e aplicações da fita.
+
+03_PAINÉIS_E_IDENTIDADE_VISUAL/01_FIORBE_referencia_visual_original.png
+  Painel de branding original escolhido como uma das referências iniciais.
+
+04_LOGOTIPOS_E_ESTUDOS/01_logo_FIORBE_V2_horizontal_fundo_branco.png
+  Logo vetorial renderizado da segunda versão, composição horizontal.
+
+04_LOGOTIPOS_E_ESTUDOS/02_logo_FIORBE_V2_fundo_escuro.png
+  Logo da V2 em fundo escuro (variação de estudo).
+
+04_LOGOTIPOS_E_ESTUDOS/03_logo_FIORBE_V4_F1_fluido.png
+  Estudo F1 de símbolo curvo e wordmark.
+
+04_LOGOTIPOS_E_ESTUDOS/04_logo_FIORBE_V4_F2_geometrico.png
+  Estudo F2 de monograma geométrico e wordmark.
+
+04_LOGOTIPOS_E_ESTUDOS/05_logo_FIORBE_V4_F3_abstrato.png
+  Estudo F3 abstrato e wordmark.
+
+05_COMPARATIVOS_COM_FIORBE/01_comparacao_marcas_visual_sem_textos.png
+  Galeria horizontal com opções de Fiorbe e Orevum, agrupadas por marca.
+
+05_COMPARATIVOS_COM_FIORBE/02_todos_os_logos_variante_horizontal.png
+  Matriz comparativa de doze candidatos das duas marcas.
+
+05_COMPARATIVOS_COM_FIORBE/03_ranking_completo_das_marcas.png
+  Ranking visual dos conceitos que incluem Fiorbe.
+
+05_COMPARATIVOS_COM_FIORBE/04_ranking_com_marcas_sem_sobreposicao.png
+  Comparação e ranking em outra versão de prancha.
+
+05_COMPARATIVOS_COM_FIORBE/05_ranking_inicial_FIORBE_vs_OREVUM.png
+  Ranking anterior com alternativas.
+
+05_COMPARATIVOS_COM_FIORBE/06_comparacao_aplicacoes_ambas_marcas.png
+  Comparativo de expressão tridimensional das duas marcas.
+
+05_COMPARATIVOS_COM_FIORBE/07_grade_fundos_pb_wordmark_32px.png
+  Grade técnica com versões claras, escuras, P&B e redução de lockup.
+
+05_COMPARATIVOS_COM_FIORBE/08_comparativo_versao_com_todas_propostas.png
+  Outra versão do comparativo em cards com Fiorbe.
+
+CÓPIAS IGUAIS REMOVIDAS
+ - 03_PAINÉIS_E_IDENTIDADE_VISUAL/02_FIORBE_prancha_editorial_alternativa.png = 03_PAINÉIS_E_IDENTIDADE_VISUAL/01_FIORBE_referencia_visual_original.png
+ - 03_PAINÉIS_E_IDENTIDADE_VISUAL/03_FIORBE_apresentacao_hero_logotipo.png = 01_REFERENCIA_PRINCIPAL_APROVADA/03_FIORBE_identidade_hero_e_variacoes.png
+ - 03_PAINÉIS_E_IDENTIDADE_VISUAL/04_FIORBE_identidade_organizada_Brandboard.png = 01_REFERENCIA_PRINCIPAL_APROVADA/02_FIORBE_sistema_visual_azul_neon.png
