@@ -32,7 +32,7 @@ export interface BacklightOptions {
 
 /** Núcleo + colunas da parede: [centro x, largura, intensidade, altura relativa]. Núcleo = índice 0. */
 const COLUMNS: Array<[number, number, number, number]> = [
-  [0.55, 1.5, 1.0, 0.95],
+  [0.55, 1.7, 1.0, 1.0],
   [-2.7, 0.38, 0.22, 0.62],
   [-1.6, 0.62, 0.32, 0.8],
   [-0.55, 0.26, 0.28, 0.72],
@@ -80,8 +80,10 @@ uniform vec2 uSize;
 uniform vec3 uCore;
 uniform vec3 uHalo;
 uniform vec3 uDeep;
+uniform float uGain;
+uniform float uShift;
 void main() {
-  float x = (vUv.x - 0.5) * uSize.x;
+  float x = (vUv.x - 0.5) * uSize.x + uShift;
   float y = vUv.y * uSize.y;
   float H = uSize.y;
   float h = y / H;
@@ -99,9 +101,10 @@ void main() {
   float haze = exp(-pow((x - 0.4) / 3.2, 2.0) - pow((y - 0.25 * H) / (0.55 * H), 2.0));
   // Brilho rasante no encontro com o chão.
   float horizon = exp(-pow(y / 0.06, 2.0)) * smoothstep(-4.0, -2.0, x) * (1.0 - smoothstep(3.4, 5.0, x));
-  vec3 col = uDeep * wall * 0.12
-           + uHalo * (haze * 0.13 + cols * 0.62 + horizon * 0.5)
-           + uCore * (core * 0.36 + hot * 0.26 + cols * 0.16);
+  vec3 col = uDeep * wall * 0.14
+           + uHalo * (haze * 0.2 + cols * 0.95 + horizon * 0.6)
+           + uCore * (core * 0.58 + hot * 0.28 + cols * 0.24);
+  col *= uGain;
   col *= (1.0 - smoothstep(0.38, 0.5, abs(vUv.x - 0.5))) * (1.0 - smoothstep(0.55, 0.85, vUv.y));
 ${FINISH}
 }
@@ -179,10 +182,24 @@ export function createBacklight(o: BacklightOptions) {
     return m;
   };
 
-  // 1 — Parede de luz atrás da escultura.
+  // 1 — Parede de luz atrás da escultura + uma segunda, mais ao fundo e
+  //     deslocada: camadas de arquitetura que dão profundidade ao espaço.
   const ww = 12;
   const wh = o.height * 1.6;
-  const wall = new Mesh(geo, make(WALL_FRAG, { uSize: { value: [ww, wh] }, uCore: { value: core }, uHalo: { value: halo }, uDeep: { value: deep } }));
+  const wallUniforms = (gain: number, shift: number) => ({
+    uSize: { value: [ww, wh] },
+    uCore: { value: core },
+    uHalo: { value: halo },
+    uDeep: { value: deep },
+    uGain: { value: gain },
+    uShift: { value: shift },
+  });
+  const far = new Mesh(geo, make(WALL_FRAG, wallUniforms(0.45, 1.3)));
+  far.scale.set(ww * 1.5, wh * 1.35, 1);
+  far.position.set(o.wallX + 0.6, o.floorY + (wh * 1.35) / 2, o.wallZ - 3.2);
+  far.renderOrder = -2;
+  group.add(far);
+  const wall = new Mesh(geo, make(WALL_FRAG, wallUniforms(1, 0)));
   wall.scale.set(ww, wh, 1);
   wall.position.set(o.wallX, o.floorY + wh / 2, o.wallZ);
   wall.renderOrder = -1;
