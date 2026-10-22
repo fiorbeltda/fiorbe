@@ -1,6 +1,5 @@
-// Volta completa da onda em quadros determinísticos (ondas congeladas e
-// avançadas por passo): 0/25/50/75/100% da volta, transferência e a fita
-// seguinte; mais o mesmo instante com e sem desfiar.
+// Volta completa da onda pela fita contínua em quadros determinísticos
+// (ondas congeladas e posicionadas): 0/25/50/75/100% da volta.
 // Uso: node scripts/wave-lap.mjs <nome> [query]
 import { chromium } from "playwright-core";
 import { fileURLToPath } from "node:url";
@@ -23,28 +22,12 @@ const shot = async (label) => {
   const buf = await p.screenshot({ type: "jpeg", quality: 86, clip });
   shots.push({ src: `data:image/jpeg;base64,${buf.toString("base64")}`, label });
 };
-// Até existir uma onda.
-for (let i = 0; i < 100 && (await snap()).length === 0; i++) await step(0.1);
-let s = await snap();
-const band = s[0].band;
-const fmt = (w) => w.map((x) => `${"ABCDEF"[x.band]} u=${x.u} volta=${Math.round(x.lap * 100)}% amp=${x.amp}`).join(" | ");
-for (const target of [0.02, 0.25, 0.5, 0.75, 1.0]) {
-  while ((s = await snap())[0]?.band === band && s[0].lap < target) await step(0.05);
-  await shot(`volta ${Math.round(target * 100)}% — ${fmt(s)}`);
-  if (target === 0.5) {
-    await p.evaluate(() => window.__fiorbe.setFray(false));
-    await shot(`mesmo instante SEM desfiar (?fios=0) — ${fmt(s)}`);
-    await p.evaluate(() => window.__fiorbe.setFray(true));
-  }
+const fmt = (w) => w.map((x) => `crista ${x.slot + 1} u=${x.u}`).join(" · ");
+for (const target of [0, 0.25, 0.5, 0.75, 1.0]) {
+  await p.evaluate((f) => window.__fiorbe.seekLap(f), target % 1);
+  await shot(`volta ${Math.round(target * 100)}% — ${fmt(await snap())}`);
 }
-// Transferência: primeiro instante com duas ondas.
-while ((s = await snap()).length < 2 && s[0]?.band === band) await step(0.05);
-await shot(`transferência — ${fmt(s)}`);
-await step(0.8);
-await shot(`transferência +0.8s — ${fmt(await snap())}`);
-await step(3);
-await shot(`fita seguinte +3.8s — ${fmt(await snap())}`);
-const log = await p.evaluate(() => window.__fiorbe.waveLog());
+void step;
 const html = `<body style="margin:0;background:#000;display:grid;grid-template-columns:repeat(2,1fr);gap:4px;font:13px monospace;color:#fff">${shots
   .map((x) => `<figure style="margin:0;position:relative"><img src="${x.src}" style="width:100%;display:block"><figcaption style="position:absolute;left:6px;top:6px;background:#000c;padding:2px 6px;max-width:95%">${x.label}</figcaption></figure>`)
   .join("")}</body>`;
@@ -54,5 +37,4 @@ await sheet.waitForTimeout(300);
 await sheet.screenshot({ path: out(`${name}.png`), fullPage: true });
 await b.close();
 console.log(out(`${name}.png`));
-console.log(log.log.join("\n"));
 console.log(errors.length ? "ERROS: " + errors.join(" | ") : "sem erros");

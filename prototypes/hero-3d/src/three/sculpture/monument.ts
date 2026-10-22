@@ -3,22 +3,32 @@ import type { RibbonQuality } from "./ribbonGeometry";
 import { computeClearance } from "./ribbonSpace";
 
 /**
- * Escultura monumental com fitas AUTORAIS: cada fita é uma curva fechada
- * desenhada a partir das proporções medidas na referência (1672×941).
- * Coordenadas de controle em pixels da referência + profundidade z; a
- * conversão para o espaço local mantém a proporção da imagem.
+ * Escultura monumental: UMA fita contínua e fechada que percorre toda a
+ * silhueta da referência (1672×941) e se entrelaça consigo mesma — um único
+ * organismo, não um conjunto de bandas. Coordenadas de controle em pixels da
+ * referência + profundidade z + largura relativa por ponto.
  *
- * A largura da fita é orientada para o observador (faces largas visíveis,
- * como na referência) e girada por uma torção suave ao longo do percurso.
- * Nos cruzamentos, as fitas têm profundidades diferentes de propósito.
+ * Percurso (por cima/por baixo alternados nos cruzamentos):
+ *  1. arco superior, da ponta esquerda ao topo;
+ *  2. diagonal do topo ao pé central — à frente da varredura média;
+ *  3. do pé central para a esquerda, subindo por trás;
+ *  4. varredura média para a direita — por trás da diagonal;
+ *  5. sobe pela borda direita e volta pelo alto, ao fundo;
+ *  6. laço interno, atrás de tudo;
+ *  7. desce pela borda direita até o pé direito;
+ *  8. varredura baixa frontal até a ponta esquerda — à frente da diagonal — e fecha.
+ *
+ * O fio fino de luz que contorna a silhueta continua à parte (não é fita).
  */
 export interface MonumentRibbon {
-  /** [xRef, yRef, z] — pixels da referência e profundidade em unidades locais. */
-  points: Array<[number, number, number]>;
+  /** [xRef, yRef, z, largura relativa]. */
+  points: Array<[number, number, number, number]>;
   width: number;
   /** Torção base e amplitude (rad) em torno da tangente. */
   twist: [number, number];
   colorPhase: number;
+  /** Quantas vezes a paleta percorre a fita. */
+  colorCycles: number;
 }
 
 /** Chão da referência (y≈660 px) e fator px→unidade local. */
@@ -26,67 +36,44 @@ const REF_FLOOR_PX = 660;
 const REF_CENTER_X = 1145;
 const PX = 0.00707;
 export const FLOOR_LOCAL = -1.5;
+/** Fita que recebe a onda. */
+export const MAIN_BAND = 0;
 
 export const MONUMENT: readonly MonumentRibbon[] = [
-  // A — grande arco esquerdo: nasce na ponta esquerda, sobe ao topo, desce pelo centro até o pé.
   {
     points: [
-      [655, 452, 0.2], [760, 300, 0.1], [900, 175, -0.1], [1060, 112, -0.05], [1220, 150, 0.0],
-      [1265, 300, 0.2], [1200, 450, 0.7], [1080, 590, 0.9], [1015, 657, 0.8], [900, 600, 0.6], [760, 520, 0.4],
+      // 1 — arco superior: da ponta esquerda ao topo
+      [650, 478, 0.75, 0.85], [672, 405, 0.5, 0.95], [745, 315, 0.3, 1.0], [880, 190, 0.0, 1.1], [1060, 115, -0.1, 1.15], [1220, 140, -0.05, 1.1],
+      // 2 — diagonal do topo ao pé central (passa À FRENTE da varredura média)
+      [1250, 250, 0.25, 1.05], [1200, 400, 0.45, 1.0], [1100, 540, 0.75, 1.0], [1015, 652, 0.85, 0.95],
+      // 3 — do pé central para a esquerda, subindo por trás
+      [880, 612, 0.5, 0.85], [760, 540, 0.15, 0.8], [690, 470, -0.35, 0.75],
+      // 4 — varredura média para a direita (POR TRÁS da diagonal)
+      [860, 360, -0.3, 0.75], [1110, 312, -0.4, 0.8], [1380, 292, -0.25, 0.8], [1570, 336, 0.0, 0.8], [1640, 320, -0.08, 0.9],
+      // 5 — sobe pela borda direita e volta pelo alto, ao fundo
+      [1590, 200, -0.4, 1.05], [1430, 145, -0.6, 1.05], [1270, 180, -0.8, 0.9],
+      // 6 — laço interno, atrás de tudo
+      [1150, 300, -0.9, 0.7], [1185, 460, -0.95, 0.65], [1380, 535, -0.9, 0.65], [1540, 470, -0.7, 0.75],
+      // 7 — desce pela borda direita até o pé direito
+      [1650, 455, -0.35, 0.9], [1600, 585, 0.05, 0.9], [1470, 650, 0.45, 0.8],
+      // 8 — varredura baixa frontal até a ponta esquerda (À FRENTE da diagonal)
+      [1330, 622, 1.2, 0.6], [1160, 566, 1.5, 0.55], [970, 525, 1.6, 0.55], [800, 560, 1.35, 0.55], [700, 525, 1.0, 0.65],
     ],
-    width: 1.1,
-    twist: [0.1, 0.28],
+    width: 1,
+    twist: [0.08, 0.38],
     colorPhase: 0.05,
+    colorCycles: 6,
   },
-  // B — grande laço direito: do topo central à borda direita, desce ao pé direito.
+  // Fio fino que contorna a silhueta (as linhas de luz da referência).
   {
     points: [
-      [1160, 260, -0.35], [1330, 150, -0.55], [1520, 205, -0.3], [1635, 380, 0.1], [1610, 545, 0.4],
-      [1460, 655, 0.6], [1330, 640, 0.5], [1250, 520, 0.2], [1190, 390, -0.25],
-    ],
-    width: 1.15,
-    twist: [-0.12, 0.26],
-    colorPhase: 0.32,
-  },
-  // C — varredura horizontal no meio, cruzando da esquerda para a direita pela frente.
-  {
-    points: [
-      [690, 470, 0.9], [880, 345, 1.1], [1120, 305, 1.25], [1380, 290, 1.15], [1590, 335, 0.9],
-      [1560, 445, 0.7], [1360, 420, 1.05], [1110, 455, 1.2], [880, 545, 1.0],
-    ],
-    width: 0.72,
-    twist: [0.2, 0.3],
-    colorPhase: 0.55,
-  },
-  // D — laço interno ciano, mais ao fundo, à direita do centro.
-  {
-    points: [
-      [1060, 360, -0.9], [1190, 235, -1.0], [1400, 245, -0.9], [1510, 380, -0.6], [1430, 515, -0.4],
-      [1260, 560, -0.5], [1120, 480, -0.8],
-    ],
-    width: 0.62,
-    twist: [0.35, 0.25],
-    colorPhase: 0.72,
-  },
-  // E — varredura baixa frontal, rasante ao chão.
-  {
-    points: [
-      [760, 585, 1.5], [960, 470, 1.6], [1170, 515, 1.7], [1330, 600, 1.6], [1520, 645, 1.55],
-      [1360, 657, 1.95], [1110, 640, 1.85], [900, 630, 1.7],
-    ],
-    width: 0.52,
-    twist: [-0.2, 0.3],
-    colorPhase: 0.9,
-  },
-  // F — fio fino que contorna a silhueta (as linhas de luz da referência).
-  {
-    points: [
-      [645, 455, -1.2], [770, 225, -1.3], [1000, 98, -1.4], [1350, 105, -1.4], [1610, 215, -1.2],
-      [1660, 420, -1.0], [1590, 600, -0.9], [1300, 640, -1.0], [920, 610, -1.1], [700, 560, -1.2],
+      [645, 455, -1.2, 1], [770, 225, -1.3, 1], [1000, 98, -1.4, 1], [1350, 105, -1.4, 1], [1610, 215, -1.2, 1],
+      [1660, 420, -1.0, 1], [1590, 600, -0.9, 1], [1300, 640, -1.0, 1], [920, 610, -1.1, 1], [700, 560, -1.2, 1],
     ],
     width: 0.022,
     twist: [0, 0],
     colorPhase: 0.6,
+    colorCycles: 1.6,
   },
 ];
 
@@ -101,24 +88,36 @@ function paletteAt(x: number, out: Color): Color {
   return out.copy(STOPS[i % STOPS.length]!).lerp(STOPS[(i + 1) % STOPS.length]!, e);
 }
 
-const toLocal = ([x, y, z]: [number, number, number]) =>
-  new Vector3((x - REF_CENTER_X) * PX, FLOOR_LOCAL + (REF_FLOOR_PX - y) * PX, z);
+const toLocal = ([x, y, z]: readonly number[]) => new Vector3((x! - REF_CENTER_X) * PX, FLOOR_LOCAL + (REF_FLOOR_PX - y!) * PX, z!);
+
+/** Largura relativa interpolada (suave, fechada) no parâmetro t da curva. */
+function widthAt(points: MonumentRibbon["points"], t: number): number {
+  const n = points.length;
+  const f = (((t % 1) + 1) % 1) * n;
+  const i = Math.floor(f);
+  const k = f - i;
+  const e = k * k * (3 - 2 * k);
+  return points[i % n]![3] + (points[(i + 1) % n]![3] - points[i % n]![3]) * e;
+}
 
 export interface MonumentBuild {
   geometry: BufferGeometry;
   bands: number;
   /** Comprimento de arco de cada fita (unidades locais). */
   lengths: number[];
-  /** Curvas-espinha (para pontos de contato entre fitas). */
+  /** Curvas-espinha. */
   curves: CatmullRomCurve3[];
 }
 
+/** `segments` = anéis a cada 12 unidades de comprimento (a densidade não muda com o tamanho da fita). */
 export function createMonumentGeometry(quality: RibbonQuality): MonumentBuild {
-  const { segments, across } = quality;
-  const rings = segments + 1;
+  const { across } = quality;
   const cols = across + 1;
-  const perBand = rings * cols;
-  const total = perBand * MONUMENT.length;
+  const curves = MONUMENT.map((r) => new CatmullRomCurve3(r.points.map(toLocal), true, "centripetal"));
+  const lengths = curves.map((c) => c.getLength());
+  const segs = lengths.map((L) => Math.max(64, Math.round((quality.segments * L) / 12)));
+  const ringsOf = segs.map((s) => s + 1);
+  const total = ringsOf.reduce((a, r) => a + r * cols, 0);
 
   const positions = new Float32Array(total * 3);
   const normals = new Float32Array(total * 3);
@@ -127,9 +126,7 @@ export function createMonumentGeometry(quality: RibbonQuality): MonumentBuild {
   const rib = new Float32Array(total * 3);
   const tangents = new Float32Array(total * 3);
   const halves = new Float32Array(total);
-  const lengths: number[] = [];
-  const curves: CatmullRomCurve3[] = [];
-  const indices = new Uint32Array(segments * across * 6 * MONUMENT.length);
+  const indices = new Uint32Array(segs.reduce((a, s) => a + s, 0) * across * 6);
 
   const P = new Vector3();
   const T = new Vector3();
@@ -143,12 +140,12 @@ export function createMonumentGeometry(quality: RibbonQuality): MonumentBuild {
   const TAU = Math.PI * 2;
 
   let ii = 0;
+  let base = 0;
   MONUMENT.forEach((r, band) => {
-    const curve = new CatmullRomCurve3(r.points.map(toLocal), true, "centripetal");
-    const length = curve.getLength();
-    lengths.push(length);
-    curves.push(curve);
-    const base = band * perBand;
+    const curve = curves[band]!;
+    const length = lengths[band]!;
+    const segments = segs[band]!;
+    const rings = ringsOf[band]!;
 
     for (let i = 0; i < rings; i++) {
       const u = i / segments;
@@ -159,13 +156,13 @@ export function createMonumentGeometry(quality: RibbonQuality): MonumentBuild {
       if (W.lengthSq() < 1e-4) W.crossVectors(T, UP);
       W.normalize();
       B.crossVectors(T, W).normalize();
-      const theta = r.twist[0] + r.twist[1] * Math.sin(u * TAU * 2 + band * 1.7);
+      const theta = r.twist[0] + r.twist[1] * Math.sin(u * TAU * 7 + band * 1.7);
       W.multiplyScalar(Math.cos(theta)).addScaledVector(B, Math.sin(theta));
       N.crossVectors(T, W).normalize();
 
-      const swell = 0.6 + 0.4 * (0.5 + 0.5 * Math.sin(u * TAU * 3 + band));
+      const rel = widthAt(r.points, curve.getUtoTmapping(u % 1, 0));
       const nearFloor = Math.min(1, Math.max(0.4, (P.y - FLOOR_LOCAL) / 0.5));
-      const half = (r.width * swell * nearFloor) / 2;
+      const half = (r.width * rel * nearFloor) / 2;
 
       for (let j = 0; j < cols; j++) {
         const v = -1 + (2 * j) / across;
@@ -180,7 +177,7 @@ export function createMonumentGeometry(quality: RibbonQuality): MonumentBuild {
         normals[idx * 3 + 2] = nrm.z;
         uvs[idx * 2] = u * length * 9;
         uvs[idx * 2 + 1] = (v + 1) / 2;
-        paletteAt(u * 1.6 + r.colorPhase, col);
+        paletteAt(u * r.colorCycles + r.colorPhase, col);
         colors[idx * 3] = col.r;
         colors[idx * 3 + 1] = col.g;
         colors[idx * 3 + 2] = col.b;
@@ -205,6 +202,7 @@ export function createMonumentGeometry(quality: RibbonQuality): MonumentBuild {
         indices[ii++] = p + 1;
       }
     }
+    base += rings * cols;
   });
 
   const geometry = new BufferGeometry();
@@ -215,7 +213,7 @@ export function createMonumentGeometry(quality: RibbonQuality): MonumentBuild {
   geometry.setAttribute("aRib", new BufferAttribute(rib, 3));
   geometry.setAttribute("aTan", new BufferAttribute(tangents, 3));
   geometry.setAttribute("aHalf", new BufferAttribute(halves, 1));
-  geometry.setAttribute("aClear", new BufferAttribute(computeClearance(positions, rib, rings, cols, MONUMENT.length), 1));
+  geometry.setAttribute("aClear", new BufferAttribute(computeClearance(positions, rib, ringsOf, cols, lengths), 1));
   geometry.setIndex(new BufferAttribute(indices, 1));
   geometry.computeBoundingBox();
   geometry.computeBoundingSphere();

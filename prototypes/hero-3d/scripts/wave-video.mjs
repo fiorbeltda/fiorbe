@@ -19,7 +19,7 @@ while (Date.now() - t0 < Number(secs) * 1000) {
   await p.waitForTimeout(2000);
   fpsSamples.push(await p.evaluate(() => new Promise((r) => { let n = 0; const s = performance.now(); const f = () => { n++; if (performance.now() - s < 500) requestAnimationFrame(f); else r(Math.round(n * 2)); }; requestAnimationFrame(f); })));
 }
-const log = await p.evaluate(() => window.__fiorbe?.waveLog?.() ?? null);
+const log = await p.evaluate(() => ({ log: [JSON.stringify(window.__fiorbe?.waves?.() ?? [])] }));
 const video = p.video();
 await ctx.close();
 const target = fileURLToPath(new URL(`../captures/${name}.webm`, import.meta.url));

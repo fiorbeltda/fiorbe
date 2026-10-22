@@ -2,6 +2,7 @@ import {
   ACESFilmicToneMapping,
   AgXToneMapping,
   Box3,
+  type BufferGeometry,
   DirectionalLight,
   NeutralToneMapping,
   Group,
@@ -17,11 +18,10 @@ import {
   WebGLRenderer,
 } from "three";
 import { createSculptureGeometry } from "./sculpture/ribbonGeometry";
-import { createMonumentGeometry, FLOOR_LOCAL, PERSON_LOCAL } from "./sculpture/monument";
+import { createMonumentGeometry, FLOOR_LOCAL, MAIN_BAND, PERSON_LOCAL } from "./sculpture/monument";
 import { createSculptureSet } from "./scene/set";
 import { createSculptureMaterial, createSculptureUniforms } from "./sculpture/material";
 import { createFiberNoise, createGrooveTexture } from "./sculpture/textures";
-import { computeContacts } from "./sculpture/ribbonSpace";
 import { WaveDirector } from "./motion/waveDirector";
 import { createWaveDebug } from "./motion/waveDebug";
 import { createStudioEnvironment } from "./scene/environment";
@@ -104,24 +104,35 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
   const grooves = createGrooveTexture();
   const monument = useKnot ? null : createMonumentGeometry(profile.geometry);
   const geometry = monument ? monument.geometry : createSculptureGeometry(profile.geometry);
-  // RIB-02/03: onda viajante (?onda=0 desliga) e desfiar experimental (?fios=0 desliga).
+  // RIB-02/03: onda viajante (?onda=0 desliga); desfiar experimental só com ?fios=1 (em pausa artística).
   const fiber = createFiberNoise();
   uniforms.uFiber.value = fiber;
-  uniforms.uFray.value = params.get("fios") === "0" ? 0 : 1;
+  uniforms.uFray.value = params.get("fios") === "1" ? 1 : 0;
   const waves =
     monument && params.get("onda") !== "0"
-      ? new WaveDirector(monument.lengths, computeContacts(monument.curves, 1.6), uniforms)
+      ? new WaveDirector(monument.lengths, MAIN_BAND, uniforms)
       : null;
   if (monument) uniforms.uLen.value = monument.lengths.slice();
   uniforms.uFloorY.value = FLOOR_LOCAL;
   const material = createSculptureMaterial(uniforms, grooves);
+  // ?clay: material neutro para julgar só a forma (sem cor, metal nem brilho de borda).
+  const clay = params.has("clay");
+  if (clay) {
+    material.metalness = 0.05;
+    material.roughness = 0.62;
+    material.clearcoat = 0;
+    material.anisotropy = 0;
+    material.envMapIntensity = 0.9;
+    uniforms.uRim.value.setRGB(0, 0, 0);
+    paintClay(geometry);
+  }
   const mesh = new Mesh(geometry, material);
   const rest = useKnot ? REST_KNOT : REST_MONUMENT;
   const pose = params.get("pose")?.split(",").map(Number);
   if (pose && pose.length === 3 && pose.every(Number.isFinite)) mesh.rotation.set(pose[0]!, pose[1]!, pose[2]!);
   else mesh.rotation.set(rest.x, rest.y, rest.z);
   mesh.frustumCulled = false;
-  const waveDebug = waves && monument && params.has("ondadebug") ? createWaveDebug(waves, monument.curves, mesh) : null;
+  const waveDebug = waves && monument && params.has("ondadebug") ? createWaveDebug(waves, monument.curves[MAIN_BAND]!, mesh) : null;
   let holdWaves = false;
 
   // Hierarquia de donos únicos: scroll > interação > ambiente > malha.
@@ -148,6 +159,7 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
     reflections
       ? createMonumentGeometry({ segments: Math.round(profile.geometry.segments / 2), across: Math.max(4, Math.round(profile.geometry.across / 2)) }).geometry
       : null;
+  if (clay && reflectionGeometry) paintClay(reflectionGeometry);
   const set = createSculptureSet(
     {
       floorY: floorLocal,
@@ -351,7 +363,9 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
       stepWaves(seconds: number) {
         waves?.advance(seconds);
       },
-      waveLog: () => ({ order: waves?.order ?? [], log: waves?.log ?? [] }),
+      seekLap(fraction: number) {
+        waves?.seekLap(fraction);
+      },
       setFray(on: boolean) {
         uniforms.uFray.value = on ? 1 : 0;
       },
@@ -411,4 +425,12 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
       root.style.removeProperty("--flow-handoff");
     },
   };
+}
+
+/** Cor única de argila em todos os vértices (só para avaliação da forma). */
+function paintClay(geometry: BufferGeometry): void {
+  const color = geometry.getAttribute("color");
+  if (!color) return;
+  for (let i = 0; i < color.count; i++) color.setXYZ(i, 0.62, 0.64, 0.67);
+  color.needsUpdate = true;
 }

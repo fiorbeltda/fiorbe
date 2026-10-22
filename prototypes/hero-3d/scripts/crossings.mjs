@@ -5,9 +5,8 @@ import { Vector3 } from "three";
 import { createMonumentGeometry, MONUMENT } from "../src/three/sculpture/monument.ts";
 
 const CLEAR = Number(process.argv[2] ?? 0.22);
-const SEG = 720;
 const ACROSS = 12;
-const { geometry, lengths } = createMonumentGeometry({ segments: SEG, across: ACROSS });
+const { geometry, lengths } = createMonumentGeometry({ segments: 720, across: ACROSS });
 const pos = geometry.getAttribute("position").array;
 const rib = geometry.getAttribute("aRib").array;
 const idx = geometry.getIndex().array;
@@ -55,14 +54,20 @@ function segTri(o, end, t) {
 
 const hits = new Map(); // "a-b" -> [{ua, ub, p}]
 const cols = ACROSS + 1;
-const perBand = (SEG + 1) * cols;
+// Início de cada fita (vértices contíguos por fita) e afastamento mínimo ao longo do arco para contar autointerseção.
+const starts = [];
+for (let i = 0; i < nV; i++) if (i === 0 || band(i) !== band(i - 1)) starts[band(i)] = i;
+const ringsOfBand = (bb) => ((bb + 1 < starts.length ? starts[bb + 1] : nV) - starts[bb]) / cols;
+const ARC_SKIP = 0.9;
+const HAIR = starts.length - 1;
+const farOnArc = (i, j) => { const du = Math.abs(rib[i * 3] - rib[j * 3]); return Math.min(du, 1 - du) * lengths[band(i)] >= ARC_SKIP; };
 const o = new Vector3(), en = new Vector3();
 for (let i = 0; i < nV; i++) {
   const ba = band(i);
-  const local = i - ba * perBand;
+  const local = i - starts[ba];
   const ring = Math.floor(local / cols), col = local % cols;
   const nbrs = [];
-  if (ring < SEG) nbrs.push(i + cols);
+  if (ring < ringsOfBand(ba) - 1) nbrs.push(i + cols);
   if (col < ACROSS) nbrs.push(i + 1);
   for (const j of nbrs) {
     V(i, o); V(j, en);
@@ -73,7 +78,7 @@ for (let i = 0; i < nV; i++) {
         seen.add(t);
         const vb = idx[t * 3];
         const bb = band(vb);
-        if (bb === ba && Math.abs(((rib[i * 3] - rib[vb * 3] + 1.5) % 1) - 0.5) < 0.05) continue;
+        if (bb === ba && !farOnArc(i, vb)) continue;
         if (!segTri(o, en, t)) continue;
         const pair = ba < bb ? `${ba}-${bb}` : `${bb}-${ba}`;
         if (!hits.has(pair)) hits.set(pair, []);
@@ -94,7 +99,7 @@ for (let i = 0; i < nV; i++) {
 const near = new Map();
 const R = Math.ceil(CLEAR / CELL);
 for (let i = 0; i < nV; i++) {
-  if (band(i) === 5) continue;
+  if (band(i) === HAIR) continue;
   V(i, o);
   const cx = Math.floor(o.x / CELL), cy = Math.floor(o.y / CELL), cz = Math.floor(o.z / CELL);
   for (let x = cx - R; x <= cx + R; x++)
@@ -102,8 +107,8 @@ for (let i = 0; i < nV; i++) {
       for (let z = cz - R; z <= cz + R; z++)
         for (const j of vgrid.get(`${x},${y},${z}`) ?? []) {
           const bj = band(j);
-          if (bj < band(i) || bj === 5) continue;
-          if (bj === band(i) && Math.abs(((rib[i * 3] - rib[j * 3] + 1.5) % 1) - 0.5) < 0.08) continue;
+          if (bj < band(i) || bj === HAIR) continue;
+          if (bj === band(i) && !farOnArc(i, j)) continue;
           V(j, en);
           const dd = o.distanceTo(en);
           if (dd >= CLEAR) continue;

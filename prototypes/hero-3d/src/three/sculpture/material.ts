@@ -1,7 +1,9 @@
 import { Color, DoubleSide, MeshPhysicalMaterial, Vector3, type Texture } from "three";
 
-/** Número de fitas da escultura (tamanho dos arrays de uniformes da onda). */
+/** Máximo de fitas da escultura (tamanho do array de comprimentos). */
 export const WAVE_BANDS = 6;
+/** Ondas simultâneas (slots). */
+export const WAVE_SLOTS = 3;
 /** Fios através da largura (linhas da textura de fibras). */
 export const FIBER_ROWS = 28;
 
@@ -27,12 +29,11 @@ export interface SculptureUniforms {
   uFlowHalf: { value: number };
   uRim: { value: Color };
   // --- RIB-02: onda viajante (dono: WaveDirector) ---
-  /** Centro da onda em cada fita (unidades de arco). */
+  /** Por slot de onda: crista (unidades de arco), amplitude 0..1, fase e fita. */
   uWaveC: { value: number[] };
-  /** Amplitude 0..1 da onda em cada fita (0 = sem onda). */
   uWaveAmp: { value: number[] };
-  /** Fase da portadora em cada fita (ω·τ). */
   uWavePh: { value: number[] };
+  uWaveBand: { value: number[] };
   /** Comprimento de arco de cada fita. */
   uLen: { value: number[] };
   /** Altura do chão no espaço local (pernas não flutuam). */
@@ -60,9 +61,10 @@ export function createSculptureUniforms(): SculptureUniforms {
     uFlowGap: { value: 0.03 },
     uFlowHalf: { value: 0.004 },
     uRim: { value: new Color("#5fd6f0") },
-    uWaveC: { value: new Array(WAVE_BANDS).fill(0) },
-    uWaveAmp: { value: new Array(WAVE_BANDS).fill(0) },
-    uWavePh: { value: new Array(WAVE_BANDS).fill(0) },
+    uWaveC: { value: new Array(WAVE_SLOTS).fill(0) },
+    uWaveAmp: { value: new Array(WAVE_SLOTS).fill(0) },
+    uWavePh: { value: new Array(WAVE_SLOTS).fill(0) },
+    uWaveBand: { value: new Array(WAVE_SLOTS).fill(-1) },
     uLen: { value: new Array(WAVE_BANDS).fill(1) },
     uFloorY: { value: -100 },
     uWaveA: { value: 0.13 },
@@ -82,9 +84,11 @@ attribute vec3 aTan;
 attribute float aHalf;
 attribute float aClear;
 uniform float uTwistA;
-uniform float uWaveC[${WAVE_BANDS}];
-uniform float uWaveAmp[${WAVE_BANDS}];
-uniform float uWavePh[${WAVE_BANDS}];
+#define WAVE_SLOTS ${WAVE_SLOTS}
+uniform float uWaveC[${WAVE_SLOTS}];
+uniform float uWaveAmp[${WAVE_SLOTS}];
+uniform float uWavePh[${WAVE_SLOTS}];
+uniform float uWaveBand[${WAVE_SLOTS}];
 uniform float uLen[${WAVE_BANDS}];
 uniform float uFloorY;
 uniform float uWaveA;
@@ -113,41 +117,47 @@ vFlowK = fpK;
 #include <beginnormal_vertex>
 
 // --- Onda viajante em comprimento de arco (RIB-02) ---
-// δ = distância periódica ao centro; envelope gaussiano assimétrico (frente
+// Várias ondas (slots) podem correr na mesma fita contínua. Para cada uma:
+// δ = distância periódica à crista; envelope gaussiano assimétrico (frente
 // curta, cauda longa) com janela que zera exatamente fora de 3σ → retorno
-// perfeito. Portadora com cristas deslizando dentro do envelope.
+// perfeito. Flexão ao longo da normal + torção em quadratura em torno da
+// espinha (a faixa de reflexo rola pela superfície).
 int wvB = int(aRib.z + 0.5);
 float wvL = max(uLen[wvB], 1e-3);
 float wvS = aRib.x * wvL;
-float wvD = wvS - uWaveC[wvB];
-wvD -= wvL * floor(wvD / wvL + 0.5);
-float wvSig = wvD > 0.0 ? SIG_F : SIG_T;
-float wvEnv = exp(-wvD * wvD / (2.0 * wvSig * wvSig)) * (1.0 - smoothstep(2.4 * wvSig, 3.0 * wvSig, abs(wvD)));
-float wvCar = sin(WAVE_K * wvD - uWavePh[wvB]);
-float wvCos = cos(WAVE_K * wvD - uWavePh[wvB]);
 float wvCross = 1.0 - 0.35 * aRib.y * aRib.y;
 float wvGround = smoothstep(0.0, 0.6, position.y - uFloorY);
-float wvAmp = uWaveA * uWaveAmp[wvB] * wvCross * wvGround;
-float wvDisp = wvAmp * wvEnv * wvCar;
-// Torção: a fita gira em torno da própria espinha na passagem (em quadratura
-// com a flexão) — a faixa de reflexo rola pela superfície.
-float wvTh = uTwistA * uWaveAmp[wvB] * wvGround * wvEnv * wvCos;
+float wvDisp = 0.0;
+float wvTh = 0.0;
+float wvSlopeRaw = 0.0;
+float wvFr = 0.0;
+for (int k = 0; k < WAVE_SLOTS; k++) {
+  float on = uWaveAmp[k] * (1.0 - step(0.5, abs(uWaveBand[k] - aRib.z)));
+  if (on <= 0.0) continue;
+  float d = wvS - uWaveC[k];
+  d -= wvL * floor(d / wvL + 0.5);
+  float sig = d > 0.0 ? SIG_F : SIG_T;
+  float env = exp(-d * d / (2.0 * sig * sig)) * (1.0 - smoothstep(2.4 * sig, 3.0 * sig, abs(d)));
+  float car = sin(WAVE_K * d - uWavePh[k]);
+  float cs = cos(WAVE_K * d - uWavePh[k]);
+  float a = uWaveA * on * wvCross * wvGround;
+  wvDisp += a * env * car;
+  wvTh += uTwistA * on * wvGround * env * cs;
+  wvSlopeRaw += a * (-d / (sig * sig) * env * car + env * WAVE_K * cs);
+  float df = d + 0.6;
+  wvFr = max(wvFr, on * exp(-df * df / (2.0 * 0.85 * 0.85)) * wvGround);
+}
 vec3 wvN = normalize(objectNormal);
 vec3 wvW = normalize(cross(wvN, aTan));
 float wvEdge = aRib.y * aHalf;
 vec3 wvOff = normal * wvDisp + wvN * (wvEdge * sin(wvTh)) + wvW * (wvEdge * (cos(wvTh) - 1.0));
-// Nunca atravessar a vizinha: cada fita usa no máximo 45% da folga local.
-float wvLen = length(wvOff);
-wvOff *= min(1.0, 0.45 * aClear / max(wvLen, 1e-5));
-float wvKeep = min(1.0, 0.45 * aClear / max(wvLen, 1e-5));
+// Nunca atravessar outra passagem: no máximo 45% da folga local.
+float wvKeep = min(1.0, 0.45 * aClear / max(length(wvOff), 1e-5));
+wvOff *= wvKeep;
 objectNormal = wvN * cos(wvTh * wvKeep) - wvW * sin(wvTh * wvKeep);
 // Normal corrigida pela derivada ao longo do arco (a luz acompanha a forma).
-float wvDEnv = -wvD / (wvSig * wvSig) * wvEnv;
-float wvSlope = wvKeep * wvAmp * (wvDEnv * wvCar + wvEnv * WAVE_K * wvCos);
-objectNormal = normalize(objectNormal - wvSlope * aTan);
-// Campo de desfiar: centrado logo atrás da crista, acompanha a onda inteira.
-float wvDf = wvD + 0.6;
-vFray = uWaveAmp[wvB] * exp(-wvDf * wvDf / (2.0 * 0.85 * 0.85)) * wvGround * step(float(wvB), 4.5);
+objectNormal = normalize(objectNormal - wvKeep * wvSlopeRaw * aTan);
+vFray = wvFr;
 // Coordenada de fibra com número inteiro de repetições por volta: sem costura em u=1→0.
 vFiberU = aRib.x * max(1.0, floor(wvL * 0.16 + 0.5));
 `;
@@ -267,6 +277,6 @@ export function createSculptureMaterial(uniforms: SculptureUniforms, grooves: Te
       .replace("#include <clipping_planes_fragment>", FRAGMENT_FRAY)
       .replace("#include <opaque_fragment>", FRAGMENT_OUT);
   };
-  material.customProgramCacheKey = () => "fiorbe-ribbon-v4";
+  material.customProgramCacheKey = () => "fiorbe-ribbon-v5";
   return material;
 }
