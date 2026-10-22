@@ -46,7 +46,7 @@
 |---|---|---|---|---|
 | 00 | Auditoria | **Aprovada** (22/10/2026) | `066625d` | Só documentação, configuração git e referências |
 | 01 | Design System | Camada A em revisão (rodada 2) · Camada B não iniciada | — | Canvas no Claude Design; decisões abaixo |
-| — | Protótipo hero 3D | Em revisão | não commitado | `prototypes/hero-3d` · `npm run dev` → http://localhost:3100 |
+| — | Protótipo hero 3D | Rodada de fidelidade em revisão | `d498026` (main) + branch `exp/hero-fidelidade` | `E:\dev\fiorbe\prototypes\hero-3d` · `npm run dev` → http://localhost:3100 |
 | 02 | Header | Não iniciado | — | — |
 | 03 | Hero estático | Não iniciado | — | — |
 | 04 | Fitas 3D | Não iniciado | — | — |
@@ -70,7 +70,8 @@
 | Lettering / wordmark | L1 traço geométrico V4 × L2 caixa alta Exo 2 × L3 neutro (B4). Recomendação: **L3 provisório** até o vetor master; L1 como candidato a desenvolver | 01-A, decisão do usuário |
 | Tipografia de interface | Geist × Inter × Manrope (B1–B3). Recomendação: **Manrope** como família única | 01-A, decisão do usuário |
 | Direção artística | Quiet Premium × Precision × Fluid Editorial × **Fluid Precision** (C1–C4, 1440 e 390). Recomendação atual: **Fluid Precision** | 01-A, decisão do usuário |
-| Navegação | Plano mestre: Visão · Motor Fiscal · Abordagem · Fundadores. Pedido do hero 3D: Produtos · Sobre · Contato. **Divergência** a decidir | 02 |
+| Navegação | **Decidido para o hero (22/10/2026):** Produtos · Sobre · Contato; CTA do header "Conversar" até haver demonstração confirmada | Usuário |
+| Composição do hero | Rodada de fidelidade à imagem `referencias\hero\referencia-hero-v1.png` em andamento; Fluid Precision segue candidata ao design system | Revisão visual do usuário |
 | Copy do hero | Proposta nova do usuário ("Tecnologia que transforma complexidade em clareza.") × propostas do kit | 03 |
 | Sub do hero | IDENTIDADE × PLANO_MESTRE (AUDITORIA_00 §3.1) | 03 |
 | Manifesto | duas headlines (§3.2) | 06 |

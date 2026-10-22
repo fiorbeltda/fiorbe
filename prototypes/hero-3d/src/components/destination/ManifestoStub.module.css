@@ -33,6 +33,9 @@
 .rule span:nth-child(3) {
   opacity: 0.55;
 }
+.rule span:nth-child(n + 4) {
+  opacity: 0.35;
+}
 
 .label {
   grid-column: 1 / span 2;

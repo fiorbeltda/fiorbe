@@ -100,7 +100,7 @@ varying float vFlowK;
 const FRAGMENT_OUT = /* glsl */ `
 float fpEdge = smoothstep(0.86, 1.0, abs(vRib.y));
 float fpFres = pow(1.0 - clamp(abs(dot(normal, normalize(vViewPosition))), 0.0, 1.0), 3.0);
-outgoingLight += uRim * (fpFres * 0.22 + fpEdge * 0.18);
+outgoingLight += uRim * (fpFres * 0.06 + fpEdge * 0.14);
 outgoingLight = mix(outgoingLight, vColor.rgb * 1.35, vFlowK * 0.75);
 #include <opaque_fragment>
 `;
@@ -109,14 +109,16 @@ export function createSculptureMaterial(uniforms: SculptureUniforms, grooves: Te
   const material = new MeshPhysicalMaterial({
     color: 0xffffff,
     vertexColors: true,
-    metalness: 0.92,
-    roughness: 0.24,
-    clearcoat: 0.6,
-    clearcoatRoughness: 0.16,
-    anisotropy: 0.7,
+    // Metal acetinado: anisotropia alonga os realces ao longo da fita; pouco
+    // clearcoat (excesso dele era o que deixava a superfície "vítrea").
+    metalness: 1,
+    roughness: 0.2,
+    clearcoat: 0.2,
+    clearcoatRoughness: 0.3,
+    anisotropy: 0.6,
     bumpMap: grooves,
-    bumpScale: 0.3,
-    envMapIntensity: 1.3,
+    bumpScale: 0.45,
+    envMapIntensity: 1.45,
     side: DoubleSide,
   });
 

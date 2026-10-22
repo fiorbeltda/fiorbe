@@ -12,6 +12,9 @@ export function ManifestoStub() {
           <span />
           <span />
           <span />
+          <span />
+          <span />
+          <span />
         </div>
         <p className={styles.label}>A ideia · seção provisória</p>
         <h2 id="manifesto-title" className={styles.title}>

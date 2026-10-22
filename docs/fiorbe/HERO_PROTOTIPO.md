@@ -1,4 +1,28 @@
-# Protótipo do hero interativo — H1 a H7 (22/10/2026)
+# Protótipo do hero interativo
+
+## Rodada de fidelidade artística (22/10/2026) — branch `exp/hero-fidelidade`
+
+Objetivo do usuário: aproximar a abertura da imagem `E:\dev\fiorbe\referencias\hero\referencia-hero-v1.png` (1672×941), inclusive nos detalhes, sem perder interatividade. Baseline registrada antes das mudanças (`captures\cmp-baseline.png`); comparações em `captures\compare-ciclo1..8.png` e `compare-final.png` (referência | antes | depois, mesmo enquadramento), geradas por `scripts\compare.mjs`.
+
+**Geometria.** As 3 camadas laminadas sobre uma espinha não produziam fitas independentes. Testadas: (1) cascas elipsoidais aninhadas — sem interseções, mas viraram "gaiola" fechada; (2) **curvas autorais** (escolhida): 6 fitas fechadas desenhadas a partir das proporções medidas na referência (`sculpture/monument.ts`), com profundidade escolhida nos cruzamentos, largura voltada ao observador, torção suave e pernas acomodadas no chão. GLB externo foi descartado nesta sessão (não há modelo nem ferramenta de modelagem disponível). A geometria anterior continua em `?geo=knot`.
+
+**Material e luz.** Metal 1.0, rugosidade 0.2, anisotropia 0.6, clearcoat 0.2 (o excesso era a causa do aspecto vítreo), estrias com passo visível (36 por largura), paleta mais marinho, estúdio de reflexos com faixas estreitas em vez de softboxes largas, luzes diretas reduzidas (geravam realces que cobriam a face inteira), filete de borda reduzido.
+
+**Cenário.** `scene/set.ts`: chão escuro semitransparente; reflexo = a própria escultura espelhada sob o chão com geometria pela metade (sem render-to-texture), desligado no tier baixo e em telas < 1024 px; figura humana desenhada em canvas (≈15% da altura da escultura) com filete de contraluz e reflexo; halo e feixes verticais suaves junto à figura. Câmera na altura dos olhos com *lens shift* (horizonte 7,5% acima da base do palco).
+
+**Trilhas.** Com a câmera na altura dos olhos, o piso 3D comprime toda a trilha em ~25 px. Como o piso é estático no repouso, as trilhas viraram SVG aditivo nas coordenadas da referência (`Hero.tsx`) — mesmo resultado, menor custo.
+
+**Interface.** Wordmark provisório, Produtos/Sobre/Contato, CTA "Conversar", eyebrow, título com gradiente sutil, descrição, CTAs, badge e faixa inferior com 3 informações honestas (sem as alegações da referência).
+
+**Interação.** Arraste limitado a ±20° de giro horizontal e ±4° de inclinação (limite elástico + a inércia não atravessa o limite); cursor ±1,5° X / ±7° Y. Scroll reversível mantido; o cenário some no início da rolagem.
+
+**Medições (Intel UHD 630, D3D11, DPR 1, tier alto, Playwright headless):** GPU por quadro 1440: 17,8 ms · 1280: 15,5 · 768: 12,2 · 390: 8,2 · 360: 9,0 (antes: 9,9 ms a 1440). 12 draw calls, ~130 mil triângulos. FPS observado a 1440: 58–60. 0 erros de console; sem overflow; pausa alterna; reduced motion e sem JS corretos. Não medido: celulares reais, DPR 2–3, Safari/Firefox.
+
+**Diferenças que permanecem em relação à imagem:** fitas ainda mais "macias" e menos afiadas; realces brancos finos menos intensos; faltam as linhas-contorno luminosas finas ao redor da silhueta; centro mais denso que o da referência; reflexo do chão mais nítido e menos "molhado"; não há símbolo ao lado do wordmark (logo não aprovado); feixes de luz ainda um pouco literais; pontas "desfiadas" durante o desenrolar do scroll; custo de GPU quase no limite de 60 fps nesta máquina.
+
+---
+
+## Primeira versão — H1 a H7 (22/10/2026)
 
 Protótipo **isolado** em `prototypes/hero-3d/`. Não altera a futura estrutura da Camada B, não aprova paleta, fonte, lettering nem textos.
 

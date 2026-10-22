@@ -2,9 +2,17 @@ import type { Object3D } from "three";
 import { createSpring, stepSpring, type Spring } from "./spring";
 
 const DEG = Math.PI / 180;
-const FOLLOW_X = 4 * DEG;
-const FOLLOW_Y = 8 * DEG;
-const PITCH_LIMIT = 28 * DEG;
+
+/** Limites de exploração; a escultura apoiada no chão pede inclinação mínima. */
+export interface InteractionLimits {
+  followXDeg: number;
+  followYDeg: number;
+  pitchLimitDeg: number;
+  /** Giro horizontal máximo no arraste; Infinity = livre. */
+  yawLimitDeg?: number;
+}
+
+const DEFAULT_LIMITS: InteractionLimits = { followXDeg: 4, followYDeg: 8, pitchLimitDeg: 28 };
 const MAX_ANGULAR_VELOCITY = 7;
 const TOUCH_SLOP = 8;
 
@@ -41,7 +49,19 @@ export class InteractionController {
   private enabled = true;
   private readonly cleanup: Array<() => void> = [];
 
-  constructor(private readonly stage: HTMLElement) {
+  private readonly followXMax: number;
+  private readonly followYMax: number;
+  private readonly pitchLimit: number;
+  private readonly yawLimit: number;
+
+  constructor(
+    private readonly stage: HTMLElement,
+    limits: InteractionLimits = DEFAULT_LIMITS,
+  ) {
+    this.followXMax = limits.followXDeg * DEG;
+    this.followYMax = limits.followYDeg * DEG;
+    this.pitchLimit = limits.pitchLimitDeg * DEG;
+    this.yawLimit = (limits.yawLimitDeg ?? Infinity) * DEG;
     const on = <K extends keyof WindowEventMap>(target: Window | HTMLElement, type: K, fn: (e: WindowEventMap[K]) => void) => {
       target.addEventListener(type, fn as EventListener, { passive: true });
       this.cleanup.push(() => target.removeEventListener(type, fn as EventListener));
@@ -89,9 +109,13 @@ export class InteractionController {
     const dt = Math.max(now - this.lastT, 1 / 240);
     const dYaw = (e.clientX - this.lastX) * 0.0062;
     const dPitch = (e.clientY - this.lastY) * 0.0042;
-    this.yaw.value += dYaw;
-    this.pitch.value = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, this.pitch.value + dPitch));
-    this.yaw.velocity = 0.65 * this.yaw.velocity + 0.35 * clampVel(dYaw / dt);
+    // Limite elástico: perto do limite o arraste rende cada vez menos.
+    const room = Number.isFinite(this.yawLimit) ? Math.max(0, 1 - Math.abs(this.yaw.value + dYaw) / this.yawLimit) : 1;
+    const yawBefore = this.yaw.value;
+    this.yaw.value += dYaw * (Math.sign(dYaw) === Math.sign(this.yaw.value) ? room : 1);
+    const yawApplied = this.yaw.value - yawBefore;
+    this.pitch.value = Math.max(-this.pitchLimit, Math.min(this.pitchLimit, this.pitch.value + dPitch));
+    this.yaw.velocity = 0.65 * this.yaw.velocity + 0.35 * clampVel(yawApplied / dt);
     this.pitch.velocity = 0.65 * this.pitch.velocity + 0.35 * clampVel(dPitch / dt);
     this.lastX = e.clientX;
     this.lastY = e.clientY;
@@ -151,8 +175,8 @@ export class InteractionController {
   /** weight: 0..1 — o scroll reduz a influência da interação. */
   update(dt: number, rig: Object3D, weight: number): void {
     const follow = this.enabled ? weight : 0;
-    this.followX.target = -this.ny * FOLLOW_X * follow;
-    this.followY.target = this.nx * FOLLOW_Y * follow;
+    this.followX.target = -this.ny * this.followXMax * follow;
+    this.followY.target = this.nx * this.followYMax * follow;
     stepSpring(this.followX, dt);
     stepSpring(this.followY, dt);
 
@@ -161,6 +185,11 @@ export class InteractionController {
       this.pitch.target = 0;
       stepSpring(this.yaw, dt);
       stepSpring(this.pitch, dt);
+      // A inércia não atravessa o limite: encosta nele e perde a velocidade.
+      if (Math.abs(this.yaw.value) > this.yawLimit) {
+        this.yaw.value = Math.sign(this.yaw.value) * this.yawLimit;
+        this.yaw.velocity = 0;
+      }
     }
 
     this.presence.target = this.enabled && (this.hovering || this.dragging) ? weight : 0;

@@ -14,7 +14,7 @@ export function createGrooveTexture(size = 256): DataTexture {
   };
   const rows = new Float32Array(size);
   for (let y = 0; y < size; y++) {
-    const fine = Math.sin((y / size) * Math.PI * 2 * 38) * 0.5 + 0.5;
+    const fine = Math.sin((y / size) * Math.PI * 2 * 36) * 0.5 + 0.5;
     const medium = Math.sin((y / size) * Math.PI * 2 * 9 + 1.3) * 0.5 + 0.5;
     rows[y] = 0.55 * fine + 0.25 * medium + 0.2 * rand();
   }

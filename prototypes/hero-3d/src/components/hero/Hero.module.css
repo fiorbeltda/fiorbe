@@ -1,207 +1,381 @@
+/*
+ * Composição da referência (1672×941) traduzida em proporções:
+ * texto a 8,25% da esquerda; escultura de 38% a 98% da largura, base a ~72%
+ * da altura; faixa informativa entre 82% e 95%.
+ */
 .hero {
+  --hero-gutter: clamp(20px, 8.25vw, 160px);
   position: relative;
-  min-height: 100svh;
-  padding: 0 var(--gutter);
-  display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  grid-template-rows: auto 1fr;
-  column-gap: var(--space-6);
+  height: 100svh;
+  min-height: 760px;
+  max-height: 1100px;
 }
 
 .header {
-  grid-column: 1 / -1;
-  position: relative;
+  position: absolute;
   z-index: var(--z-header);
-  height: 72px;
+  inset: 0 var(--hero-gutter) auto;
+  height: clamp(72px, 11vh, 104px);
   display: flex;
   align-items: center;
-  justify-content: space-between;
 }
 
 .wordmark {
-  font-size: 14px;
+  font-size: clamp(18px, 1.6vw, 26px);
   font-weight: 600;
-  letter-spacing: 0.24em;
+  letter-spacing: 0.16em;
   text-decoration: none;
 }
 
 .nav {
   display: flex;
-  gap: var(--space-8);
-  font-size: 14px;
-  font-weight: 500;
+  gap: clamp(28px, 2.8vw, 48px);
+  margin-left: clamp(40px, 5.2vw, 96px);
+  font-size: clamp(14px, 1.02vw, 17px);
 }
 
 .nav a {
-  color: var(--color-text-2);
+  color: #d5deea;
   text-decoration: none;
   padding: var(--space-2) 2px;
   transition: color var(--motion-fast) var(--ease-out);
 }
 
 .nav a:hover {
-  color: var(--color-text);
+  color: #fff;
 }
 
-/* O palco reserva o espaço da escultura: nada se move quando o 3D chega. */
-.stage {
-  grid-column: 7 / -1;
-  grid-row: 2;
-  align-self: center;
-  height: min(76svh, 760px);
-  margin-right: calc(var(--gutter) * -0.5);
+.headerCta {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  height: clamp(44px, 3.1vw, 52px);
+  padding: 0 clamp(20px, 1.8vw, 30px);
+  border-radius: 999px;
+  border: 1.5px solid rgb(64 140 255 / 0.75);
+  box-shadow:
+    0 0 18px rgb(47 107 255 / 0.25),
+    inset 0 0 12px rgb(47 107 255 / 0.12);
+  color: #eef3fa;
+  font-size: clamp(14px, 1.02vw, 17px);
+  font-weight: 500;
+  text-decoration: none;
+  transition: border-color var(--motion-fast) var(--ease-out), box-shadow var(--motion-base) var(--ease-out);
+}
+
+.headerCta:hover {
+  border-color: rgb(110 180 255);
+  box-shadow: 0 0 26px rgb(47 107 255 / 0.4), inset 0 0 14px rgb(47 107 255 / 0.18);
+}
+
+.headerCta svg,
+.primary svg {
+  transition: transform var(--motion-base) var(--ease-out);
+}
+
+.headerCta:hover svg,
+.primary:hover svg {
+  transform: translateX(3px);
 }
 
 .copy {
-  grid-column: 1 / span 6;
-  grid-row: 2;
-  align-self: center;
-  position: relative;
+  position: absolute;
   z-index: var(--z-content);
+  left: var(--hero-gutter);
+  top: 15.5%;
+  width: min(44vw, 820px);
   display: flex;
   flex-direction: column;
-  gap: var(--space-6);
-  padding-bottom: var(--space-12);
   opacity: calc(1 - var(--hero-out, 0) * 1.6);
   transform: translate3d(0, calc(var(--hero-out, 0) * -48px), 0);
   will-change: opacity, transform;
 }
 
+.eyebrow {
+  margin: 0 0 clamp(18px, 2.4vh, 28px);
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  font-size: clamp(11px, 0.8vw, 13px);
+  font-weight: 600;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: #3d8dff;
+}
+
+.eyebrow::before {
+  content: "";
+  width: 40px;
+  height: 1.5px;
+  background: #3d8dff;
+}
+
 .title {
   margin: 0;
-  font-size: clamp(42px, 5.1vw, 76px);
-  line-height: 0.98;
-  font-weight: 500;
-  letter-spacing: -0.045em;
-  text-wrap: balance;
+  font-size: clamp(44px, 3.85vw, 76px);
+  line-height: 1.03;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  max-width: min(30vw, 580px);
+  /* Gradiente sutil da referência: branco no alto, azul-claro no fim. */
+  background: linear-gradient(180deg, #ffffff 0%, #ffffff 26%, #d6e7ff 46%, #a5cdff 72%, #7cb4ff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
 .lede {
-  margin: 0;
-  max-width: 34ch;
-  font-size: clamp(16px, 1.3vw, 19px);
-  line-height: 1.55;
-  color: var(--color-text-2);
+  margin: clamp(16px, 2.4vh, 26px) 0 0;
+  max-width: min(30vw, 560px);
+  font-size: clamp(16px, 1.26vw, 22px);
+  line-height: 1.45;
+  color: #c3cfdd;
 }
 
 .actions {
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-3);
-  margin-top: var(--space-2);
+  flex-wrap: nowrap;
+  gap: clamp(12px, 1.1vw, 18px);
+  margin-top: clamp(22px, 3.6vh, 36px);
 }
 
 .primary,
 .secondary {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  min-height: 48px;
-  padding: 0 20px;
-  border-radius: var(--radius-control);
-  font-size: 15px;
+  justify-content: center;
+  gap: 12px;
+  height: clamp(50px, 3.5vw, 60px);
+  padding: 0 clamp(24px, 2.2vw, 36px);
+  font-size: clamp(15px, 1.08vw, 18px);
   font-weight: 600;
   text-decoration: none;
-  transition:
-    background-color var(--motion-fast) var(--ease-out),
-    border-color var(--motion-fast) var(--ease-out);
+  transition: background var(--motion-fast) var(--ease-out), border-color var(--motion-fast) var(--ease-out), box-shadow var(--motion-base) var(--ease-out);
 }
 
 .primary {
-  background: var(--color-text);
-  color: var(--color-ink);
-  box-shadow: inset 0 -1px 0 rgb(6 12 24 / 0.18);
-}
-
-.primary svg {
-  transition: transform var(--motion-base) var(--ease-out);
+  border-radius: 18px;
+  color: #fff;
+  background: linear-gradient(180deg, #2d7bff 0%, #1458f0 100%);
+  box-shadow:
+    0 0 0 1px rgb(110 170 255 / 0.35) inset,
+    0 10px 30px -8px rgb(30 100 255 / 0.65);
 }
 
 .primary:hover {
-  background: #fff;
-}
-
-.primary:hover svg {
-  transform: translateX(3px);
+  background: linear-gradient(180deg, #4189ff 0%, #1c62f5 100%);
+  box-shadow:
+    0 0 0 1px rgb(140 190 255 / 0.5) inset,
+    0 12px 36px -8px rgb(30 100 255 / 0.8);
 }
 
 .secondary {
-  border: 1px solid var(--color-line-strong);
-  color: var(--color-text);
-  box-shadow: inset 0 1px 0 rgb(238 243 250 / 0.06);
-  background: rgb(6 12 24 / 0.35);
+  border-radius: 999px;
+  color: #eef3fa;
+  border: 1.5px solid rgb(200 215 235 / 0.5);
+  background: rgb(6 12 24 / 0.3);
 }
 
 .secondary:hover {
-  border-color: #3b4f73;
+  border-color: rgb(220 232 250 / 0.85);
 }
 
 .status {
-  margin: 0;
+  align-self: flex-start;
+  margin: clamp(18px, 2.6vh, 26px) 0 0;
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--color-text-2);
+  gap: 12px;
+  padding: 8px 18px;
+  border-radius: 999px;
+  border: 1px solid rgb(160 185 215 / 0.28);
+  background: rgb(8 16 30 / 0.45);
+  font-size: clamp(13px, 0.86vw, 15px);
+  color: #c3cfdd;
 }
 
 .dot {
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
-  background: var(--color-tide);
-  box-shadow: 0 0 0 4px rgb(43 191 168 / 0.14);
+  background: #2bd4a0;
+  box-shadow: 0 0 8px rgb(43 212 160 / 0.8);
 }
 
-/* Tablet: empilha como no mobile — a escultura nunca fica atrás do texto. */
+.trails {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: var(--z-content);
+  pointer-events: none;
+  mix-blend-mode: screen;
+  opacity: calc(1 - var(--hero-out, 0) * 4);
+}
+
+.trails path {
+  vector-effect: non-scaling-stroke;
+}
+
+.trailHalo {
+  opacity: 0.18;
+  filter: blur(6px);
+}
+
+/* O palco reserva o espaço da escultura: nada se move quando o 3D chega. */
+.stage {
+  position: absolute;
+  left: 38%;
+  right: 2%;
+  top: 10%;
+  height: 62%;
+}
+
+.band {
+  position: absolute;
+  z-index: var(--z-content);
+  left: var(--hero-gutter);
+  right: var(--hero-gutter);
+  bottom: 4.6%;
+  height: clamp(104px, 13vh, 124px);
+  margin: 0;
+  padding: 0 clamp(24px, 4vw, 70px);
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: center;
+  border-radius: 16px;
+  border: 1px solid rgb(110 140 190 / 0.22);
+  background: rgb(8 16 32 / 0.42);
+  backdrop-filter: blur(6px);
+  opacity: calc(1 - var(--hero-out, 0) * 2);
+}
+
+.band li {
+  display: flex;
+  align-items: flex-start;
+  gap: clamp(14px, 1.3vw, 22px);
+  padding: 0 clamp(16px, 2.6vw, 44px);
+  font-size: clamp(13px, 0.9vw, 15px);
+  line-height: 1.45;
+  color: #a9b6c8;
+}
+
+.band li + li {
+  border-left: 1px solid rgb(110 140 190 / 0.22);
+}
+
+.band li > span:last-child {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.band strong {
+  font-size: clamp(14px, 1.02vw, 17px);
+  font-weight: 600;
+  color: #eef3fa;
+}
+
+.icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: clamp(44px, 3.2vw, 54px);
+  height: clamp(44px, 3.2vw, 54px);
+  border-radius: 50%;
+  border: 1px solid rgb(110 140 200 / 0.3);
+  background: radial-gradient(circle at 50% 35%, rgb(60 90 180 / 0.35), rgb(10 18 36 / 0.6));
+  color: #8fb0ff;
+}
+
+/* Tablet e mobile: fluxo empilhado — a escultura nunca fica atrás do texto. */
 @media (max-width: 1023px) {
   .hero {
-    grid-template-rows: auto auto auto;
+    height: auto;
+    max-height: none;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 0 var(--hero-gutter) var(--space-12);
+  }
+  .header {
+    position: relative;
+    inset: auto;
+    height: 64px;
+    flex-wrap: nowrap;
+  }
+  .nav {
+    margin-left: auto;
+    gap: var(--space-4);
+    font-size: 14px;
+  }
+  .headerCta,
+  .trails {
+    display: none;
   }
   .stage {
-    grid-column: 1 / -1;
-    grid-row: 2;
+    position: relative;
+    order: 1;
+    left: auto;
+    right: auto;
+    top: auto;
     height: 46svh;
     min-height: 300px;
-    margin: 0 calc(var(--gutter) * -1);
+    margin: 0 calc(var(--hero-gutter) * -1);
   }
   .copy {
-    grid-column: 1 / span 10;
-    grid-row: 3;
-    padding-bottom: var(--space-16);
+    position: relative;
+    order: 2;
+    left: auto;
+    top: auto;
+    width: auto;
+    max-width: 640px;
+  }
+  .title,
+  .lede {
+    max-width: none;
+  }
+  .band {
+    position: relative;
+    order: 3;
+    left: auto;
+    right: auto;
+    bottom: auto;
+    height: auto;
+    margin-top: var(--space-12);
+    padding: var(--space-6);
+    grid-template-columns: 1fr;
+    row-gap: var(--space-6);
+  }
+  .band li {
+    padding: 0;
+  }
+  .band li + li {
+    border-left: 0;
+    border-top: 1px solid rgb(110 140 190 / 0.22);
+    padding-top: var(--space-6);
   }
 }
 
-/* Mobile: a escultura vem primeiro e sangra a tela; o texto vem depois. */
 @media (max-width: 767px) {
-  .hero {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    grid-template-rows: auto auto auto;
-    column-gap: var(--space-4);
-  }
-  .header {
-    height: 56px;
+  .wordmark {
+    font-size: 16px;
   }
   .nav {
-    gap: var(--space-4);
     font-size: 13px;
+    gap: 14px;
   }
-  .stage {
-    grid-column: 1 / -1;
-    grid-row: 2;
-    height: 42svh;
-    min-height: 280px;
-    margin: 0 calc(var(--gutter) * -1);
-  }
-  .copy {
-    grid-column: 1 / -1;
-    grid-row: 3;
-    padding-bottom: var(--space-16);
+  .actions {
+    flex-wrap: wrap;
   }
   .actions a {
     flex: 1 1 100%;
-    justify-content: center;
+  }
+  .stage {
+    height: 42svh;
+    min-height: 280px;
   }
 }
 
@@ -209,5 +383,8 @@
   .copy {
     opacity: 1;
     transform: none;
+  }
+  .band {
+    opacity: 1;
   }
 }
