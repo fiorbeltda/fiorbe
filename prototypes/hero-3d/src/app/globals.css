@@ -15,10 +15,11 @@ html {
 body {
   margin: 0;
   min-height: 100vh;
+  /* Profundidade ambiente da referência: névoa azul atrás da escultura, base mais escura. */
   background:
-    radial-gradient(60% 50% at 72% 30%, rgb(47 107 255 / 0.1), transparent 70%),
-    radial-gradient(40% 40% at 85% 55%, rgb(43 191 168 / 0.06), transparent 70%),
-    var(--color-ink);
+    radial-gradient(48% 55% at 70% 32%, rgb(30 80 190 / 0.22), transparent 70%),
+    radial-gradient(30% 40% at 92% 62%, rgb(40 150 255 / 0.12), transparent 70%),
+    linear-gradient(180deg, #050b18 0%, #030712 70%, #02050c 100%);
   background-attachment: fixed;
   color: var(--color-text);
   font-family: var(--font-sans);

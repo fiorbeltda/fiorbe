@@ -8,12 +8,14 @@ export interface QualityProfile {
   maxDpr: number;
   minDpr: number;
   antialias: boolean;
+  /** Reflexo da escultura no chão (um draw extra com geometria reduzida). */
+  reflections: boolean;
 }
 
 const PROFILES: Record<Tier, Omit<QualityProfile, "tier">> = {
-  high: { geometry: { segments: 900, across: 14 }, maxDpr: 2, minDpr: 1, antialias: true },
-  mid: { geometry: { segments: 620, across: 10 }, maxDpr: 1.5, minDpr: 1, antialias: true },
-  low: { geometry: { segments: 380, across: 6 }, maxDpr: 1.25, minDpr: 0.85, antialias: false },
+  high: { geometry: { segments: 720, across: 12 }, maxDpr: 2, minDpr: 1, antialias: true, reflections: true },
+  mid: { geometry: { segments: 520, across: 9 }, maxDpr: 1.5, minDpr: 1, antialias: true, reflections: true },
+  low: { geometry: { segments: 320, across: 6 }, maxDpr: 1.25, minDpr: 0.85, antialias: false, reflections: false },
 };
 
 /** Estimativa inicial conservadora; a qualidade adaptativa corrige em seguida. */
@@ -28,8 +30,28 @@ export function detectTier(): Tier {
   return "high";
 }
 
+/**
+ * GPU integrada (Intel UHD/Iris, Apple sem M-Pro, Mali/Adreno de entrada):
+ * a cena é limitada por preenchimento — medido na UHD 630: DPR 1 ≈ 18 ms,
+ * DPR 2 ≈ 40 ms por quadro. Nessas GPUs o DPR fica limitado a 1,25.
+ */
+function isIntegratedGpu(): boolean {
+  try {
+    const gl = document.createElement("canvas").getContext("webgl2");
+    const ext = gl?.getExtension("WEBGL_debug_renderer_info");
+    const name = ext ? String(gl!.getParameter(ext.UNMASKED_RENDERER_WEBGL)) : "";
+    gl?.getExtension("WEBGL_lose_context")?.loseContext();
+    return /intel|uhd|iris|mali|adreno [1-6]/i.test(name);
+  } catch {
+    return false;
+  }
+}
+
 export function profileFor(tier: Tier): QualityProfile {
-  return { tier, ...PROFILES[tier] };
+  const base = PROFILES[tier];
+  const forcedDpr = new URLSearchParams(window.location.search).has("fulldpr");
+  const maxDpr = !forcedDpr && isIntegratedGpu() ? Math.min(base.maxDpr, 1.25) : base.maxDpr;
+  return { tier, ...base, maxDpr };
 }
 
 /**

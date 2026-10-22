@@ -1,4 +1,52 @@
-# Protótipo do hero interativo — H1 a H7 (22/10/2026)
+# Protótipo do hero interativo
+
+> Registro **técnico** das rodadas (decisões, arquitetura, medições). Status e aprovações ficam no painel de `docs/fiorbe/ESTADO.md`; plano de cada componente em `docs/fiorbe/tarefas/`.
+
+## Rodada 4 — figura humana (22/10/2026) — branch `exp/hero-fidelidade`
+
+**Pesquisa e decisão.** Opção de asset com licença limpa encontrada: Quaternius Universal Animation Library (CC0, glTF, 120+ animações). Descartada para esta cena porque o personagem é um manequim nu e liso — exatamente a leitura que o usuário quer evitar — e vesti-lo exigiria modelagem em Blender (indisponível nesta sessão). Os personagens dos exemplos do three.js (Soldier, Michelle) têm origem Mixamo e licença não confirmada. Escolha: **figura construída em código com esqueleto real** (`src/three/figure/figureRig.ts`): 20 ossos, `SkinnedMesh` com pesos misturados nas articulações, silhueta de terno (ombros estruturados, paletó com barra, calça reta, sapatos), ~7,6 cabeças de proporção. Nenhum download. A arquitetura aceita trocar por um GLB rigado (mocap) depois sem mudar o resto.
+
+**Animação** (`src/three/figure/figureMotion.ts`), tudo com dt real:
+1. Pose-base em contrapposto (peso na perna direita, cabeça levemente erguida para a escultura) — `AnimationAction` normal.
+2. Respiração — clip **aditivo** (`makeClipAdditive` + `AdditiveAnimationBlendMode`): peito abre, ombros sobem um fio; inspira mais curta que expira.
+3. Transferência de peso — clip **aditivo**: quadril desloca milímetros, tronco compensa.
+   Período e peso dos dois derivam por ruído suave (respiração 4,2–5,4 s; peso 11–17 s, às vezes quase parado) → sem loop mecânico.
+4. Olhar — molas criticamente amortecidas na cabeça/pescoço, alvos pequenos sorteados a cada 5–12 s.
+5. Mãos — oscilação mínima defasada.
+6. **IK por CCD** (canela→coxa, 3 iterações) devolve cada pé ao ponto de apoio, registrado no espaço local da figura (scroll/parallax não "puxam" os pés); o pé mantém a orientação de apoio.
+Crossfade entre clips não foi usado: não há troca de estado, e a pesquisa apontou o problema de aditivo durante crossfade somar sobre a pose errada.
+
+**Integração.** Contraluz só na borda voltada para a luz (fresnel enviesado, sem contorno total); halo próximo atrás da figura; poça de luz no piso; sombra de contato; reflexo com o **mesmo esqueleto** (SkinnedMesh em modo `detached` com matriz de espelho) desenhado escuro sobre a poça; feixes reduzidos a 3, largos e com bordas suaves. Sem reação ao cursor (decisão: nenhuma reação é melhor que uma artificial).
+
+**Medições (Intel UHD 630, 1440×900, DPR 1):** GPU 18,1 ms/quadro (antes 17,7 ms; +0,4 ms); CPU do movimento da figura 0,075 ms/quadro; FPS observado 52–60. Idle em 16 s: pés variam ≤ 0,2% da altura da figura (subpixel), quadril 0,55%, cabeça 0,87%. Reduced motion e pausado: 0,000%. 0 erros de console, sem overflow nas 5 larguras, build ok. Poster passou a ser import estático com hash (o cache de imagens do Next servia o poster antigo).
+
+**Ainda não está no nível desejado:** proporções boas mas a malha é low-poly e lisa — não há dobras de tecido nem mãos com dedos (invisíveis nesta escala, mas perceptíveis em zoom); o movimento é procedural, não captura de movimento real; o fundo imediatamente atrás da figura ainda é menos luminoso que na referência; o reflexo não esmaece com a distância dos pés.
+
+---
+
+## Rodada de fidelidade artística (22/10/2026) — branch `exp/hero-fidelidade`
+
+Objetivo do usuário: aproximar a abertura da imagem `E:\dev\fiorbe\referencias\hero\referencia-hero-v1.png` (1672×941), inclusive nos detalhes, sem perder interatividade. Baseline registrada antes das mudanças (`captures\cmp-baseline.png`); comparações em `captures\compare-ciclo1..8.png` e `compare-final.png` (referência | antes | depois, mesmo enquadramento), geradas por `scripts\compare.mjs`.
+
+**Geometria.** As 3 camadas laminadas sobre uma espinha não produziam fitas independentes. Testadas: (1) cascas elipsoidais aninhadas — sem interseções, mas viraram "gaiola" fechada; (2) **curvas autorais** (escolhida): 6 fitas fechadas desenhadas a partir das proporções medidas na referência (`sculpture/monument.ts`), com profundidade escolhida nos cruzamentos, largura voltada ao observador, torção suave e pernas acomodadas no chão. GLB externo foi descartado nesta sessão (não há modelo nem ferramenta de modelagem disponível). A geometria anterior continua em `?geo=knot`.
+
+**Material e luz.** Metal 1.0, rugosidade 0.2, anisotropia 0.6, clearcoat 0.2 (o excesso era a causa do aspecto vítreo), estrias com passo visível (36 por largura), paleta mais marinho, estúdio de reflexos com faixas estreitas em vez de softboxes largas, luzes diretas reduzidas (geravam realces que cobriam a face inteira), filete de borda reduzido.
+
+**Cenário.** `scene/set.ts`: chão escuro semitransparente; reflexo = a própria escultura espelhada sob o chão com geometria pela metade (sem render-to-texture), desligado no tier baixo e em telas < 1024 px; figura humana desenhada em canvas (≈15% da altura da escultura) com filete de contraluz e reflexo; halo e feixes verticais suaves junto à figura. Câmera na altura dos olhos com *lens shift* (horizonte 7,5% acima da base do palco).
+
+**Trilhas.** Com a câmera na altura dos olhos, o piso 3D comprime toda a trilha em ~25 px. Como o piso é estático no repouso, as trilhas viraram SVG aditivo nas coordenadas da referência (`Hero.tsx`) — mesmo resultado, menor custo.
+
+**Interface.** Wordmark provisório, Produtos/Sobre/Contato, CTA "Conversar", eyebrow, título com gradiente sutil, descrição, CTAs, badge e faixa inferior com 3 informações honestas (sem as alegações da referência).
+
+**Interação.** Arraste limitado a ±20° de giro horizontal e ±4° de inclinação (limite elástico + a inércia não atravessa o limite); cursor ±1,5° X / ±7° Y. Scroll reversível mantido; o cenário some no início da rolagem.
+
+**Medições (Intel UHD 630, D3D11, DPR 1, tier alto, Playwright headless):** GPU por quadro 1440: 17,8 ms · 1280: 15,5 · 768: 12,2 · 390: 8,2 · 360: 9,0 (antes: 9,9 ms a 1440). 12 draw calls, ~130 mil triângulos. FPS observado a 1440: 58–60. 0 erros de console; sem overflow; pausa alterna; reduced motion e sem JS corretos. Não medido: celulares reais, DPR 2–3, Safari/Firefox.
+
+**Diferenças que permanecem em relação à imagem:** fitas ainda mais "macias" e menos afiadas; realces brancos finos menos intensos; faltam as linhas-contorno luminosas finas ao redor da silhueta; centro mais denso que o da referência; reflexo do chão mais nítido e menos "molhado"; não há símbolo ao lado do wordmark (logo não aprovado); feixes de luz ainda um pouco literais; pontas "desfiadas" durante o desenrolar do scroll; custo de GPU quase no limite de 60 fps nesta máquina.
+
+---
+
+## Primeira versão — H1 a H7 (22/10/2026)
 
 Protótipo **isolado** em `prototypes/hero-3d/`. Não altera a futura estrutura da Camada B, não aprova paleta, fonte, lettering nem textos.
 

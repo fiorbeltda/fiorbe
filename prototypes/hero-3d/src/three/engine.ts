@@ -1,6 +1,8 @@
 import {
   ACESFilmicToneMapping,
   AgXToneMapping,
+  Box3,
+  type BufferGeometry,
   DirectionalLight,
   NeutralToneMapping,
   Group,
@@ -16,8 +18,12 @@ import {
   WebGLRenderer,
 } from "three";
 import { createSculptureGeometry } from "./sculpture/ribbonGeometry";
+import { createMonumentGeometry, FLOOR_LOCAL, MAIN_BAND, PERSON_LOCAL } from "./sculpture/monument";
+import { createSculptureSet } from "./scene/set";
 import { createSculptureMaterial, createSculptureUniforms } from "./sculpture/material";
-import { createGrooveTexture } from "./sculpture/textures";
+import { createFiberNoise, createGrooveTexture } from "./sculpture/textures";
+import { WaveDirector } from "./motion/waveDirector";
+import { createWaveDebug } from "./motion/waveDebug";
 import { createStudioEnvironment } from "./scene/environment";
 import { updateIdle } from "./motion/idle";
 import { InteractionController } from "./motion/interaction";
@@ -50,8 +56,12 @@ export interface HeroEngine {
 
 const FOV = 30;
 const CAMERA_Z = 10;
-/** Pose de repouso: o ângulo que dá a silhueta mais rica ao nó. */
-const REST = { x: -0.42, y: 0.38, z: 0.12 };
+/** Pose de repouso do nó antigo (?geo=knot, só para comparação A/B). */
+const REST_KNOT = { x: -0.42, y: 0.38, z: 0.12 };
+/** Monumento: as curvas já são desenhadas no enquadramento da referência. */
+const REST_MONUMENT = { x: 0, y: 0, z: 0 };
+/** Horizonte (altura dos olhos de uma pessoa) acima da base do palco, em fração da altura do palco. */
+const HORIZON_ABOVE_BASE = 0.075;
 
 export function createHeroEngine(opts: EngineOptions): HeroEngine {
   const { canvas, stage, rule, reducedMotion } = opts;
@@ -69,30 +79,61 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
   // Neutral preserva o matiz dos azuis; ACES desvia realces para violeta.
   const tone = new URLSearchParams(window.location.search).get("tone");
   renderer.toneMapping = tone === "aces" ? ACESFilmicToneMapping : tone === "agx" ? AgXToneMapping : NeutralToneMapping;
-  renderer.toneMappingExposure = 1.0;
+  renderer.toneMappingExposure = 1.02;
   renderer.setClearColor(0x000000, 0);
 
   const scene = new Scene();
   const env = createStudioEnvironment(renderer);
   scene.environment = env.texture;
 
-  const key = new DirectionalLight(0xdcecff, 1.6);
-  key.position.set(3, 4, 5);
+  // Luz de recorte fria vinda de trás/direita, como a fonte junto à figura.
+  const key = new DirectionalLight(0xbfe4ff, 0.9);
+  key.position.set(5, 3, -2);
   scene.add(key);
+  // Luz superior frontal: realces ciano nas faces voltadas para cima.
+  const top = new DirectionalLight(0xd8f4ff, 0.45);
+  top.position.set(2, 6, 4);
+  scene.add(top);
 
   const camera = new PerspectiveCamera(FOV, 1, 0.1, 60);
   camera.position.set(0, 0, CAMERA_Z);
 
+  const params = new URLSearchParams(window.location.search);
+  const useKnot = params.get("geo") === "knot";
   const uniforms = createSculptureUniforms();
   const grooves = createGrooveTexture();
-  const geometry = createSculptureGeometry(profile.geometry);
+  const monument = useKnot ? null : createMonumentGeometry(profile.geometry);
+  const geometry = monument ? monument.geometry : createSculptureGeometry(profile.geometry);
+  // RIB-02/03: onda viajante (?onda=0 desliga); desfiar experimental só com ?fios=1 (em pausa artística).
+  const fiber = createFiberNoise();
+  uniforms.uFiber.value = fiber;
+  uniforms.uFray.value = params.get("fios") === "1" ? 1 : 0;
+  const waves =
+    monument && params.get("onda") !== "0"
+      ? new WaveDirector(monument.lengths, MAIN_BAND, uniforms)
+      : null;
+  if (monument) uniforms.uLen.value = monument.lengths.slice();
+  uniforms.uFloorY.value = FLOOR_LOCAL;
   const material = createSculptureMaterial(uniforms, grooves);
+  // ?clay: material neutro para julgar só a forma (sem cor, metal nem brilho de borda).
+  const clay = params.has("clay");
+  if (clay) {
+    material.metalness = 0.05;
+    material.roughness = 0.62;
+    material.clearcoat = 0;
+    material.anisotropy = 0;
+    material.envMapIntensity = 0.9;
+    uniforms.uRim.value.setRGB(0, 0, 0);
+    paintClay(geometry);
+  }
   const mesh = new Mesh(geometry, material);
-  const params = new URLSearchParams(window.location.search);
+  const rest = useKnot ? REST_KNOT : REST_MONUMENT;
   const pose = params.get("pose")?.split(",").map(Number);
   if (pose && pose.length === 3 && pose.every(Number.isFinite)) mesh.rotation.set(pose[0]!, pose[1]!, pose[2]!);
-  else mesh.rotation.set(REST.x, REST.y, REST.z);
+  else mesh.rotation.set(rest.x, rest.y, rest.z);
   mesh.frustumCulled = false;
+  const waveDebug = waves && monument && params.has("ondadebug") ? createWaveDebug(waves, monument.curves[MAIN_BAND]!, mesh) : null;
+  let holdWaves = false;
 
   // Hierarquia de donos únicos: scroll > interação > ambiente > malha.
   const scrollRig = new Group();
@@ -103,11 +144,41 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
   scrollRig.add(interactionRig);
   scene.add(scrollRig);
 
-  const box = geometry.boundingBox!;
+  // Caixa real já com a pose de repouso (espaço do scrollRig).
+  scene.updateMatrixWorld(true);
+  const box = new Box3().setFromObject(mesh);
   const sculptureW = box.max.x - box.min.x;
-  const sculptureH = box.max.y - box.min.y;
+  const sculptureCx = (box.min.x + box.max.x) / 2;
+  const floorLocal = useKnot ? box.min.y - 0.35 : FLOOR_LOCAL;
 
-  const interaction = new InteractionController(stage);
+  // Cenário (chão, trilhas, figura, luz de fundo) — irmão da escultura, não gira com o arraste.
+  // Em telas estreitas o chão fica sob o texto: sem reflexo ali.
+  const compact = window.innerWidth < 1024;
+  const reflections = profile.reflections && !useKnot && !compact;
+  const reflectionGeometry =
+    reflections
+      ? createMonumentGeometry({ segments: Math.round(profile.geometry.segments / 2), across: Math.max(4, Math.round(profile.geometry.across / 2)) }).geometry
+      : null;
+  if (clay && reflectionGeometry) paintClay(reflectionGeometry);
+  const set = createSculptureSet(
+    {
+      floorY: floorLocal,
+      bounds: { minX: box.min.x, maxX: box.max.x, minZ: box.min.z, maxZ: box.max.z, height: box.max.y - floorLocal },
+      reflections,
+      person: useKnot ? null : PERSON_LOCAL,
+      reducedMotion,
+      camera,
+    },
+    reflectionGeometry ? { geometry: reflectionGeometry, material } : null,
+  );
+  scrollRig.add(set.group);
+  if (set.reflection) scene.add(set.reflection);
+  if (set.figureReflection) scene.add(set.figureReflection);
+
+  const interaction = new InteractionController(
+    stage,
+    useKnot ? undefined : { followXDeg: 1.5, followYDeg: 7, pitchLimitDeg: 4, yawLimitDeg: 20 },
+  );
   interaction.setEnabled(!reducedMotion);
   const timeline = new ScrollTimeline(rule);
 
@@ -122,6 +193,10 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
   let worldPerPx = 1;
   // Retângulo do palco em coordenadas de documento (independe do scroll).
   const stageDoc = { cx: 0, cy: 0, w: 0, h: 0 };
+  /** Deslocamento do horizonte em px (lens shift); toda conversão tela→mundo usa o mesmo valor. */
+  let horizonShift = 0;
+  const worldX = (sx: number) => (sx - width / 2) * worldPerPx;
+  const worldY = (sy: number) => -(sy - height / 2 - horizonShift) * worldPerPx;
 
   function layout(): void {
     width = window.innerWidth;
@@ -183,27 +258,41 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
     const heroW = reducedMotion ? 0 : t.heroWeight;
     updateIdle(idleRig, uniforms, idleTime, paused || reducedMotion ? 0 : heroW);
     interaction.update(dt, interactionRig, heroW);
+    set.update(dt, heroW, paused);
+    waves?.update(dt, reducedMotion ? 0 : heroW, paused || reducedMotion || holdWaves);
+    waveDebug?.update(dt);
 
     // --- Recomposição pelo scroll (dono: scrollRig) ---
     const motion = reducedMotion ? 0 : 1;
     const scrollY = window.scrollY;
-    // A caixa é medida sem rotação; a pose de repouso a projeta menor, daí o fator > 1.
-    const fit = Math.min(stageDoc.w / sculptureW, stageDoc.h / sculptureH) * worldPerPx * 1.14;
     const k = t.recompose * motion;
-    // Parallax: a peça sobe mais devagar que a página, depois migra ao centro.
-    const baseY = stageDoc.cy - scrollY * (motion ? 0.42 : 1);
-    const screenX = stageDoc.cx + (width * 0.5 - stageDoc.cx) * k;
-    const screenY = baseY + (height * 0.3 - baseY) * k * 0.75;
-    scrollRig.position.set((screenX - width / 2) * worldPerPx, -(screenY - height / 2) * worldPerPx, 0);
-    scrollRig.scale.setScalar(fit * (1 - 0.42 * k));
+    // Parallax: o palco sobe mais devagar que a página.
+    const stageCy = stageDoc.cy - scrollY * (motion ? 0.42 : 1);
+    const stageBottom = stageCy + stageDoc.h / 2;
+    // Horizonte na altura dos olhos, pouco acima da base (lens shift, sem inclinar a câmera).
+    horizonShift = stageBottom - stageDoc.h * HORIZON_ABOVE_BASE - height / 2;
+    camera.setViewOffset(width, height, 0, -horizonShift, width, height);
+
+    const fit = Math.min(stageDoc.w / sculptureW, stageDoc.h / (box.max.y - floorLocal)) * worldPerPx;
+    const scale = fit * (1 - 0.42 * k);
+    // Estado 01: base da escultura apoiada na base do palco, centrada na horizontal.
+    const restX = worldX(stageDoc.cx) - sculptureCx * fit;
+    const restY = worldY(stageBottom) - floorLocal * fit;
+    // Estados 03–04: migra para o centro superior da tela.
+    const dx = (width * 0.5 - stageDoc.cx) * k * worldPerPx;
+    const dy = -(height * 0.3 - stageCy) * k * 0.75 * worldPerPx;
+    scrollRig.position.set(restX + dx, restY + dy, 0);
+    scrollRig.scale.setScalar(scale);
     scrollRig.rotation.set(0.38 * k, 1.1 * k, -0.12 * k);
+    // O cenário só faz sentido com a peça em repouso: sai logo no início da rolagem.
+    set.setOpacity(motion ? 1 - Math.min(1, k / 0.22) : 1);
 
     // --- Fluxos (estado 04/05): alvo em coordenadas de mundo ---
     const margin = Math.max(20, Math.min(96, width * 0.066));
     uniforms.uFlow.value = t.flow * motion;
     uniforms.uFlowLeft.value = (margin - width / 2) * worldPerPx;
     uniforms.uFlowRight.value = (width - margin - width / 2) * worldPerPx;
-    uniforms.uFlowY.value = -(t.ruleViewportY - height / 2) * worldPerPx;
+    uniforms.uFlowY.value = worldY(t.ruleViewportY);
     uniforms.uFlowGap.value = 7 * worldPerPx;
     uniforms.uFlowHalf.value = 0.9 * worldPerPx;
 
@@ -219,6 +308,7 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
       }
     }
     uniforms.uPointerAmt.value = interaction.presence.value * (reducedMotion ? 0 : 1);
+    set.syncReflection(mesh.matrixWorld, scrollRig.position.y + floorLocal * scale);
 
     renderer.render(scene, camera);
 
@@ -265,6 +355,27 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
   if (debug) {
     // Custo real de GPU por quadro, independente do rAF (que o navegador pode estrangular).
     (window as unknown as { __fiorbe?: unknown }).__fiorbe = {
+      figure: () => set.probe(),
+      waves: () => waves?.snapshot() ?? [],
+      /** Congela só as ondas e avança o tempo delas (capturas determinísticas). */
+      holdWaves(hold: boolean) {
+        holdWaves = hold;
+      },
+      stepWaves(seconds: number) {
+        waves?.advance(seconds);
+      },
+      seekLap(fraction: number) {
+        waves?.seekLap(fraction);
+      },
+      setFray(on: boolean) {
+        uniforms.uFray.value = on ? 1 : 0;
+      },
+      /** CPU por quadro do movimento da figura (mixer + molas + IK), em ms. */
+      figureCpu(iterations = 300) {
+        const t0 = performance.now();
+        for (let i = 0; i < iterations; i++) set.update(1 / 60, 1, false);
+        return Math.round(((performance.now() - t0) / iterations) * 1000) / 1000;
+      },
       bench(frames = 120) {
         // readPixels de 1 px força a GPU a concluir cada quadro (gl.finish não bloqueia no ANGLE).
         const gl = renderer.getContext();
@@ -303,12 +414,24 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
       canvas.removeEventListener("webglcontextlost", onLost);
       interaction.dispose();
       geometry.dispose();
+      reflectionGeometry?.dispose();
+      set.dispose();
       material.dispose();
       grooves.dispose();
+      fiber.dispose();
+      waveDebug?.dispose();
       env.dispose();
       renderer.dispose();
       root.style.removeProperty("--hero-out");
       root.style.removeProperty("--flow-handoff");
     },
   };
+}
+
+/** Cor única de argila em todos os vértices (só para avaliação da forma). */
+function paintClay(geometry: BufferGeometry): void {
+  const color = geometry.getAttribute("color");
+  if (!color) return;
+  for (let i = 0; i < color.count; i++) color.setXYZ(i, 0.62, 0.64, 0.67);
+  color.needsUpdate = true;
 }

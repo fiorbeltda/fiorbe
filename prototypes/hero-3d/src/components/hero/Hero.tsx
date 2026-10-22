@@ -2,8 +2,8 @@ import { HeroStage } from "./HeroStage";
 import styles from "./Hero.module.css";
 
 /**
- * Hero em HTML real (server component). A escultura é uma camada
- * progressiva por trás: tudo aqui é legível sem JS e sem WebGL.
+ * Hero em HTML real (server component), na composição da referência
+ * aprovada para este estudo. A escultura é uma camada progressiva por trás.
  * Textos são propostas editoriais ainda não aprovadas.
  */
 export function Hero() {
@@ -18,9 +18,14 @@ export function Hero() {
           <a href="#sobre">Sobre</a>
           <a href="#contato">Contato</a>
         </nav>
+        <a href="#contato" className={styles.headerCta}>
+          Conversar
+          <Arrow />
+        </a>
       </header>
 
       <div className={styles.copy}>
+        <p className={styles.eyebrow}>Tecnologia multiproduto</p>
         <h1 id="hero-title" className={styles.title}>
           Tecnologia que transforma complexidade em clareza.
         </h1>
@@ -30,9 +35,7 @@ export function Hero() {
         <div className={styles.actions}>
           <a href="#sobre" className={styles.primary}>
             Conhecer a FIORBE
-            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <path d="M2 7h10M8 3l4 4-4 4" />
-            </svg>
+            <Arrow />
           </a>
           <a href="#produtos" className={styles.secondary}>
             Ver o Motor Fiscal
@@ -40,12 +43,78 @@ export function Hero() {
         </div>
         <p className={styles.status}>
           <span className={styles.dot} aria-hidden="true" />
-          Motor Fiscal — Em desenvolvimento
+          Motor Fiscal • Em desenvolvimento
         </p>
       </div>
 
+      {/* Trilhas de luz no piso, nas coordenadas da referência. O piso é estático
+          no estado de repouso, então um SVG aditivo equivale ao 3D e custa menos. */}
+      <svg className={styles.trails} viewBox="0 0 1672 941" preserveAspectRatio="none" aria-hidden="true">
+        <defs>
+          <linearGradient id="trail-main" x1="1672" y1="915" x2="930" y2="700" gradientUnits="userSpaceOnUse">
+            <stop offset="0" stopColor="#bff3ff" />
+            <stop offset="0.55" stopColor="#4fb8ff" />
+            <stop offset="1" stopColor="#2a6bff" stopOpacity="0.2" />
+          </linearGradient>
+        </defs>
+        <g fill="none" strokeLinecap="round">
+          <path className={styles.trailHalo} d="M1690 925 C1590 858 1420 806 1200 774 C1010 746 905 726 935 706 C968 688 1090 690 1255 696" stroke="#2a74ff" strokeWidth="14" />
+          <path d="M1690 925 C1590 858 1420 806 1200 774 C1010 746 905 726 935 706 C968 688 1090 690 1255 696" stroke="url(#trail-main)" strokeWidth="2.2" />
+          <path d="M1690 712 C1610 712 1540 700 1478 684" stroke="#7fd9ff" strokeOpacity="0.55" strokeWidth="1.2" />
+        </g>
+      </svg>
+
       {/* Depois do texto no DOM: leitura e Tab chegam aos CTAs antes do controle da escultura. */}
       <HeroStage className={styles.stage} />
+
+      <ul className={styles.band} aria-label="Sobre a FIORBE">
+        <li>
+          <span className={styles.icon} aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round">
+              <path d="M12 3 3 7.5 12 12l9-4.5L12 3Z" />
+              <path d="m3 12 9 4.5 9-4.5" />
+              <path d="m3 16.5 9 4.5 9-4.5" />
+            </svg>
+          </span>
+          <span>
+            <strong>Empresa multiproduto</strong>
+            Pensada para desenvolver diferentes produtos de software.
+          </span>
+        </li>
+        <li>
+          <span className={styles.icon} aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+              <circle cx="12" cy="12" r="3.2" />
+              <path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1" />
+            </svg>
+          </span>
+          <span>
+            <strong>Primeiro produto: Motor Fiscal</strong>
+            Em desenvolvimento.
+          </span>
+        </li>
+        <li>
+          <span className={styles.icon} aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round">
+              <rect x="4" y="13" width="4" height="7" rx="1" />
+              <rect x="10" y="8" width="4" height="12" rx="1" />
+              <rect x="16" y="4" width="4" height="16" rx="1" />
+            </svg>
+          </span>
+          <span>
+            <strong>Design e engenharia com rigor</strong>
+            Cuidado com a qualidade em cada detalhe.
+          </span>
+        </li>
+      </ul>
     </section>
+  );
+}
+
+function Arrow() {
+  return (
+    <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2.5 8h11M9 3.5 13.5 8 9 12.5" />
+    </svg>
   );
 }

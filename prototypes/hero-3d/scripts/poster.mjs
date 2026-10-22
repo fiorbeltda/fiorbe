@@ -1,4 +1,5 @@
 // Gera o poster estático a partir do próprio render (fundo transparente).
+// Saída em src/assets (import estático com hash no componente).
 // Uso: node scripts/poster.mjs   (servidor em :3100)
 import { chromium } from "playwright-core";
 import { fileURLToPath } from "node:url";
@@ -10,7 +11,7 @@ await page.waitForTimeout(1200);
 await page.addStyleTag({ content: "html,body{background:transparent!important} body *{visibility:hidden!important} canvas{visibility:visible!important}" });
 await page.waitForTimeout(300);
 const stage = await page.locator('div[data-status="live"]').boundingBox();
-const path = fileURLToPath(new URL("../public/hero-poster.png", import.meta.url));
+const path = fileURLToPath(new URL("../src/assets/hero-poster.png", import.meta.url));
 await page.screenshot({ path, omitBackground: true, clip: stage });
 await browser.close();
 console.log(path, stage);
