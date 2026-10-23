@@ -28,7 +28,7 @@ import { createSculptureMaterial, createSculptureUniforms } from "./sculpture/ma
 import { createFiberNoise } from "./sculpture/textures";
 import { WaveDirector } from "./motion/waveDirector";
 import { createWaveDebug } from "./motion/waveDebug";
-import { createStudioEnvironment } from "./scene/environment";
+import { createPremiumEnvironment, createStudioEnvironment } from "./scene/environment";
 import { updateIdle } from "./motion/idle";
 import { InteractionController } from "./motion/interaction";
 import { ScrollTimeline } from "./motion/scrollTimeline";
@@ -139,7 +139,12 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
   // V2 (lâmina esculpida, faixas largas): onda calibrada para metal, não tecido.
   if (blender && formParam?.startsWith("blender2")) uniforms.uWaveWide.value = 1;
   uniforms.uFloorY.value = FLOOR_LOCAL;
-  const material = createSculptureMaterial(uniforms);
+  // Metal premium: padrão na Blender V2 (?metal=v1 volta ao anterior); ?metal=v2 testa nas outras formas.
+  const metalParam = params.get("metal");
+  const premium = metalParam === "v2" || (metalParam !== "v1" && Boolean(formParam?.startsWith("blender2")));
+  const material = createSculptureMaterial(uniforms, { premium });
+  const premiumEnv = premium ? createPremiumEnvironment(renderer) : null;
+  if (premiumEnv) material.envMap = premiumEnv.texture;
   // Lâmina com espessura é um sólido fechado: só as faces externas (metade do preenchimento).
   if (monument && monument.profile !== "sheet") material.side = params.get("lado") === "tras" ? BackSide : FrontSide;
   // ?clay: material neutro para julgar só a forma (sem cor, metal nem brilho de borda).
@@ -474,6 +479,7 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
       waveDebug?.dispose();
       gestureDebug?.dispose();
       env.dispose();
+      premiumEnv?.dispose();
       renderer.dispose();
       root.style.removeProperty("--hero-out");
       root.style.removeProperty("--flow-handoff");

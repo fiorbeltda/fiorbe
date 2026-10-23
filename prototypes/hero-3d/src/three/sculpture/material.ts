@@ -112,6 +112,7 @@ uniform float uFlowGap;
 uniform float uFlowHalf;
 varying vec3 vRib;
 varying float vFlowK;
+varying float vEdgeK;
 `;
 
 /** k do desenrolar: começa pela ponta u=1 e percorre a fita (efeito de "desfiar"). */
@@ -121,6 +122,8 @@ fpK = fpK * fpK * (3.0 - 2.0 * fpK);
 vRib = aRib;
 vFlowK = fpK;
 #include <beginnormal_vertex>
+// Quanto a superfície revela a espessura (borda/tampa da lâmina): normal perpendicular à da fita.
+vEdgeK = dot(aN, aN) > 0.25 ? smoothstep(0.55, 0.97, 1.0 - abs(dot(normalize(objectNormal), normalize(aN)))) : 0.0;
 
 // --- Onda viajante em comprimento de arco (RIB-02) ---
 // Várias ondas (slots) podem correr na mesma fita contínua. Para cada uma:
@@ -219,6 +222,27 @@ varying float vFlowK;
 varying vec3 vGrooveDir;
 varying float vFiberU;
 varying float vFray;
+varying float vEdgeK;
+`;
+
+/**
+ * Metal premium (só com FIORBE_PREMIUM): o metal é azul-prateado — a cor por
+ * vértice (paleta azul/teal) fica, mas dessaturada para a prata; o azul profundo
+ * vem do estúdio de reflexos. Nas bordas (onde a lâmina mostra a espessura) o
+ * metal é mais polido e mais prateado: o realce fino nasce da luz refletida e
+ * varia com orientação, câmera e curvatura — não é um contorno emissivo.
+ */
+const PREMIUM_COLOR = /* glsl */ `
+#include <color_fragment>
+#ifdef FIORBE_PREMIUM
+  diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.8, 0.88, 0.96), 0.14 + 0.5 * vEdgeK);
+#endif
+`;
+const PREMIUM_ROUGHNESS = /* glsl */ `
+#include <roughnessmap_fragment>
+#ifdef FIORBE_PREMIUM
+  roughnessFactor = mix(roughnessFactor, 0.1, vEdgeK);
+#endif
 `;
 
 /**
@@ -271,28 +295,47 @@ const NORMAL_MAPS = /* glsl */ `
   float grW = max(fwidth(grX), 1e-5);
   float grD = 0.0;
   // (frequência, amplitude, fase)
-  vec3 grT[3] = vec3[3](vec3(36.0, 0.55, 0.0), vec3(9.0, 0.25, 1.3), vec3(71.0, 0.12, 2.1));
-  for (int i = 0; i < 3; i++) {
+  #ifdef FIORBE_PREMIUM
+  // Escovado mais fino e mais presente: linhas extremamente finas que aparecem nos realces.
+  const int GR_N = 4;
+  vec3 grT[GR_N] = vec3[GR_N](vec3(36.0, 0.5, 0.0), vec3(9.0, 0.22, 1.3), vec3(71.0, 0.32, 2.1), vec3(143.0, 0.22, 0.7));
+  float grDepth = GROOVE_DEPTH * 1.9;
+  #else
+  const int GR_N = 3;
+  vec3 grT[GR_N] = vec3[GR_N](vec3(36.0, 0.55, 0.0), vec3(9.0, 0.25, 1.3), vec3(71.0, 0.12, 2.1));
+  float grDepth = GROOVE_DEPTH;
+  #endif
+  for (int i = 0; i < GR_N; i++) {
     float f = grT[i].x;
     float keep = 1.0 - smoothstep(0.18, 0.42, f * grW);
     grD += grT[i].y * keep * 6.2831853 * f * cos(6.2831853 * f * grX + grT[i].z);
   }
   vec3 grDir = normalize(vGrooveDir - normal * dot(vGrooveDir, normal));
-  normal = normalize(normal - grDir * grD * GROOVE_DEPTH);
+  normal = normalize(normal - grDir * grD * grDepth);
 }
 `;
 
 const FRAGMENT_OUT = /* glsl */ `
 float fpEdge = smoothstep(0.86, 1.0, abs(vRib.y));
 float fpFres = pow(1.0 - clamp(abs(dot(normal, normalize(vViewPosition))), 0.0, 1.0), 3.0);
+#ifdef FIORBE_PREMIUM
+// Sem contorno emissivo: só um véu de Fresnel muito leve (o brilho de borda vem do metal).
+outgoingLight += uRim * fpFres * 0.025;
+#else
 outgoingLight += uRim * (fpFres * 0.06 + fpEdge * 0.14);
+#endif
 outgoingLight = mix(outgoingLight, vColor.rgb * 1.35, vFlowK * 0.75);
 outgoingLight += mix(vColor.rgb * 1.8, uFrayEdge, 0.45) * fyEdge * 0.75;
 diffuseColor.a *= fyCov;
 #include <opaque_fragment>
 `;
 
-export function createSculptureMaterial(uniforms: SculptureUniforms): MeshPhysicalMaterial {
+export interface SculptureMaterialOptions {
+  /** Metal premium (Blender V2): prata azulada, bordas polidas, escovado fino. */
+  premium?: boolean;
+}
+
+export function createSculptureMaterial(uniforms: SculptureUniforms, opts: SculptureMaterialOptions = {}): MeshPhysicalMaterial {
   const material = new MeshPhysicalMaterial({
     color: 0xffffff,
     vertexColors: true,
@@ -308,6 +351,14 @@ export function createSculptureMaterial(uniforms: SculptureUniforms): MeshPhysic
     // Bordas do desfiar suavizadas pelo MSAA (alfa = cobertura; resto da fita = 1).
     alphaToCoverage: true,
   });
+  if (opts.premium) {
+    // Acetinado escovado: um pouco mais áspero e bem mais anisotrópico (realces longos ao longo da fita).
+    material.defines = { ...material.defines, FIORBE_PREMIUM: "" };
+    material.roughness = 0.2;
+    material.anisotropy = 0.8;
+    material.clearcoat = 0.12;
+    material.envMapIntensity = 1.3;
+  }
 
   material.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, uniforms);
@@ -318,9 +369,11 @@ export function createSculptureMaterial(uniforms: SculptureUniforms): MeshPhysic
       .replace("#include <project_vertex>", PROJECT_VERTEX);
     shader.fragmentShader = FRAGMENT_HEAD + shader.fragmentShader
       .replace("#include <clipping_planes_fragment>", FRAGMENT_FRAY)
+      .replace("#include <color_fragment>", PREMIUM_COLOR)
+      .replace("#include <roughnessmap_fragment>", PREMIUM_ROUGHNESS)
       .replace("#include <normal_fragment_maps>", NORMAL_MAPS)
       .replace("#include <opaque_fragment>", FRAGMENT_OUT);
   };
-  material.customProgramCacheKey = () => "fiorbe-ribbon-v7";
+  material.customProgramCacheKey = () => (opts.premium ? "fiorbe-ribbon-v8-premium" : "fiorbe-ribbon-v8");
   return material;
 }
