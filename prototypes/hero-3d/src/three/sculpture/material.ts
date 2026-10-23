@@ -284,6 +284,17 @@ varying float vEdgeK;
 const PREMIUM_COLOR = /* glsl */ `
 #include <color_fragment>
 #ifdef FIORBE_PREMIUM
+  #ifdef FIORBE_TINT23
+  // Variedade de metal ao longo do percurso (referência: passagens em azul profundo, teal e
+  // prata). Tinta do metal (F0), não emissivo: muda a COR dos reflexos, não a luz. Ciclos
+  // inteiros por volta → sem costura em u = 1 → 0; varia devagar (uma passagem, um tom).
+  float tA = 0.5 + 0.5 * sin(vRib.x * 6.2831853 * 3.0 + 1.1);
+  float tB = 0.5 + 0.5 * sin(vRib.x * 6.2831853 * 5.0 + 4.0);
+  // (1ª tentativa clareava a peça inteira: azul profundo mais saturado, menos prata.)
+  vec3 tint = mix(vec3(0.16, 0.34, 1.0), vec3(0.3, 0.9, 0.88), smoothstep(0.5, 0.92, tA));
+  tint = mix(tint, vec3(0.86, 0.92, 1.0), smoothstep(0.6, 0.97, tB) * 0.6);
+  diffuseColor.rgb = mix(diffuseColor.rgb, tint, 0.45);
+  #endif
   diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.8, 0.88, 0.96), 0.14 + 0.5 * vEdgeK);
 #endif
 `;
@@ -408,6 +419,8 @@ export interface SculptureMaterialOptions {
   premium?: boolean;
   /** Acabamento V2.2: escovado com passo físico constante e bordas sem serrilhado. */
   finish22?: boolean;
+  /** V2.3: metal em azul profundo, teal e prata alternando ao longo do percurso. */
+  tint23?: boolean;
 }
 
 export function createSculptureMaterial(uniforms: SculptureUniforms, opts: SculptureMaterialOptions = {}): MeshPhysicalMaterial {
@@ -434,6 +447,7 @@ export function createSculptureMaterial(uniforms: SculptureUniforms, opts: Sculp
     material.clearcoat = 0.12;
     material.envMapIntensity = 1.3;
     if (opts.finish22) material.defines.FIORBE_GROOVE_PHYS = "";
+    if (opts.tint23) material.defines.FIORBE_TINT23 = "";
   }
 
   material.onBeforeCompile = (shader) => {
@@ -450,6 +464,6 @@ export function createSculptureMaterial(uniforms: SculptureUniforms, opts: Sculp
       .replace("#include <normal_fragment_maps>", NORMAL_MAPS)
       .replace("#include <opaque_fragment>", FRAGMENT_OUT);
   };
-  material.customProgramCacheKey = () => (opts.premium ? (opts.finish22 ? "fiorbe-ribbon-v9-premium22" : "fiorbe-ribbon-v9-premium") : "fiorbe-ribbon-v9");
+  material.customProgramCacheKey = () => (opts.premium ? (opts.finish22 ? (opts.tint23 ? "fiorbe-ribbon-v9-premium23" : "fiorbe-ribbon-v9-premium22") : "fiorbe-ribbon-v9-premium") : "fiorbe-ribbon-v9");
   return material;
 }

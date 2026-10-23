@@ -199,8 +199,24 @@ void main() {
   vec2 pw = vec2(p.x, p.y * 0.3);
   float nMid = texture(uNoise, pw * 0.23 + 0.17).g;
   float nBig = texture(uNoise, pw * 0.045 + vec2(0.31, 0.07)).b;
-  float wet = smoothstep(0.36, 0.74, nBig * 0.72 + nMid * 0.4);
-  float rough = clamp(mix(0.5, 0.07, wet) + (nMid - 0.5) * 0.05, 0.05, 0.75);
+  float wetRaw = nBig * 0.72 + nMid * 0.4;
+  float wet = smoothstep(0.36, 0.74, wetRaw);
+  // --- Detalhe do concreto arquitetônico ---
+  // Juntas de dilatação entre placas grandes (2,8 un ≈ 1/5 da altura da peça: escala real):
+  // corte fino e discreto (quebra o reflexo em vez de desenhar uma linha preta), antisserrilhado
+  // pela derivada e apagado ao longe (onde viraria moiré).
+  vec2 fwp = fwidth(p);
+  vec2 jd = (0.5 - abs(fract(p / 2.8 + vec2(0.37, 0.11)) - 0.5)) * 2.8;
+  vec2 jw = vec2(0.012) + fwp * 0.75;
+  float joint = max(1.0 - smoothstep(0.0, jw.x, jd.x), 1.0 - smoothstep(0.0, jw.y, jd.y));
+  joint *= 1.0 - smoothstep(0.035, 0.11, max(fwp.x, fwp.y));
+  // Agregado fino (grão de pedra) perto da câmera; o mip o some ao longe.
+  float agg = texture(uNoise, p * 6.3 + vec2(0.13, 0.71)).r;
+  agg = clamp((agg - 0.5) * 1.6 + 0.5, 0.0, 1.0);
+  // Borda das manchas molhadas: o concreto úmido em volta da poça fica mais escuro.
+  float wetEdge = exp(-pow((wetRaw - 0.5) / 0.045, 2.0));
+  wet *= 1.0 - joint;
+  float rough = clamp(mix(0.5, 0.07, wet) + (nMid - 0.5) * 0.05 + (agg - 0.5) * 0.08 * (1.0 - wet) + joint * 0.35, 0.05, 0.85);
   // Microrrelevo (gradiente do ruído no espaço do chão), mais liso onde está molhado.
   float e = 0.012;
   float h0 = nA.r * 0.65 + nMid * 0.35;
@@ -274,13 +290,13 @@ void main() {
   float t = max(q.y, 0.0);
   float sheet = smoothstep(-4.2, -2.4, q.x - t * 0.1) * (1.0 - smoothstep(3.2, 4.8, q.x + t * 0.1)) * exp(-t * 0.5) * smoothstep(0.0, 0.25, t);
   float pool = exp(-pow((q.x - uCoreX) / 1.6, 2.0) - pow(t / 1.4, 2.0));
-  vec3 albedo = uAlbedo * (0.85 + 0.3 * nMid) * mix(1.0, 0.7, wet);
+  vec3 albedo = uAlbedo * (0.85 + 0.3 * nMid) * mix(1.0, 0.7, wet) * (0.86 + 0.28 * agg) * (1.0 - 0.3 * wetEdge) * (1.0 - 0.22 * joint);
   // Em piso molhado quem domina é o reflexo: a difusa é discreta e mais forte no concreto seco.
   vec3 diffuse = albedo * (uHalo * sheet * 1.1 + uCore * pool * 0.45) * mix(1.0, 0.55, wet) * (1.0 - 0.85 * shadow) * (1.0 - 0.9 * fshadow);
   diffuse += albedo * 0.08;
 
   // Reflexo: forte nas poças, apagado e espalhado no concreto seco; a oclusão de contato também o apaga.
-  float reflK = F * mix(0.16, 1.0, wet) * uReflGain;
+  float reflK = F * mix(0.16, 1.0, wet) * uReflGain * (1.0 - 0.38 * joint);
   vec3 col = diffuse * (1.0 - ao * 0.55) + R * reflK * (1.0 - ao * 0.3);
   // Highlights: mais fortes junto ao contato, apagados no concreto seco (só o molhado espelha bem).
   float hlK = (0.14 + 0.6 * F) * mix(0.18, 1.0, wet * wet) * (0.4 + 1.0 * (1.0 - away)) * uReflGain;
