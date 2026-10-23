@@ -87,6 +87,9 @@ export function HeroStage({ className }: { className?: string }) {
           aria-hidden="true"
           fill
           sizes="(max-width: 1023px) 100vw, 50vw"
+          // É o maior elemento da primeira visão (LCP) até o 3D assumir: carregar já.
+          loading="eager"
+          fetchPriority="high"
           draggable={false}
         />
         {status === "live" && !reduced && (

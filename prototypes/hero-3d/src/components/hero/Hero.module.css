@@ -244,7 +244,10 @@
   list-style: none;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  align-items: center;
+  /* Itens com a altura da linha (divisórias iguais) e conteúdo pelo topo: títulos e ícones
+     alinhados mesmo quando uma descrição tem uma linha só; a linha fica centrada na faixa. */
+  align-content: center;
+  align-items: stretch;
   border-radius: 16px;
   border: 1px solid rgb(110 140 190 / 0.22);
   background: rgb(8 16 32 / 0.42);
