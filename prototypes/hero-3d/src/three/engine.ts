@@ -145,8 +145,8 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
   // Metal premium: padrão na Blender V2 (?metal=v1 volta ao anterior); ?metal=v2 testa nas outras formas.
   const metalParam = params.get("metal");
   const premium = metalParam === "v2" || (metalParam !== "v1" && Boolean(formParam?.startsWith("blender2")));
-  // Acabamento V2.2 só na forma V2.2 (V2.1 B e anteriores ficam como estavam).
-  const material = createSculptureMaterial(uniforms, { premium, finish22: Boolean(formParam?.startsWith("blender2-v22")) });
+  // Acabamento V2.2 nas formas V2.2 em diante (V2.1 B e anteriores ficam como estavam).
+  const material = createSculptureMaterial(uniforms, { premium, finish22: /^blender2-v2[2-9]/.test(formParam ?? "") });
   const premiumEnv = premium ? createPremiumEnvironment(renderer) : null;
   if (premiumEnv) material.envMap = premiumEnv.texture;
   // Lâmina com espessura é um sólido fechado: só as faces externas (metade do preenchimento).

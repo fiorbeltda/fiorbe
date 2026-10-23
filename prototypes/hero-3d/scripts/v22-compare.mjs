@@ -1,10 +1,10 @@
 // Folha V2.1 B × V2.2: referência, anterior, argila, metal, close-ups (coroa, faixa central,
 // redemoinho) e cena completa — todos na mesma câmera (1672×941).
-// Uso: node scripts/v22-compare.mjs <antes> <depois> [saida]   (prefixos de sculpt-shots.mjs)
+// Uso: node scripts/v22-compare.mjs <antes> <depois> [saida] [rótulo antes] [rótulo depois]   (prefixos de sculpt-shots.mjs)
 import { chromium } from "playwright-core";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
-const [before = "v21b", after = "v22c", name = "v22-comparacao"] = process.argv.slice(2);
+const [before = "v21b", after = "v22c", name = "v22-comparacao", A = "V2.1 B", B = "V2.2"] = process.argv.slice(2);
 const cap = (f) => fileURLToPath(new URL(`../captures/${f}`, import.meta.url));
 const img = async (f) => `data:image/png;base64,${(await readFile(f)).toString("base64")}`;
 const ref = await img(fileURLToPath(new URL("../../../referencias/hero/referencia-hero-v1.png", import.meta.url)));
@@ -17,12 +17,12 @@ const CROWN = [850, 70, 520, 330];
 const CENTER = [820, 320, 640, 270];
 const WHIRL = [1250, 200, 420, 420];
 const rows = [
-  [crop(ref, FULL, "1 · referência"), crop(bm, FULL, "2 · V2.1 B (anterior)")],
-  [crop(ac, FULL, "3 · V2.2 argila"), crop(am, FULL, "4 · V2.2 metal premium")],
-  [crop(bm, CROWN, "5 · coroa — V2.1 B"), crop(am, CROWN, "5 · coroa — V2.2")],
-  [crop(bm, CENTER, "6 · faixa central — V2.1 B"), crop(am, CENTER, "6 · faixa central — V2.2")],
-  [crop(bm, WHIRL, "7 · redemoinho — V2.1 B"), crop(am, WHIRL, "7 · redemoinho — V2.2")],
-  [crop(ref, [0, 0, 1672, 941], "8 · referência — cena"), crop(am, [0, 0, 1672, 941], "8 · V2.2 — cena completa")],
+  [crop(ref, FULL, "1 · referência"), crop(bm, FULL, `2 · ${A} (anterior)`)],
+  [crop(ac, FULL, `3 · ${B} argila`), crop(am, FULL, `4 · ${B} metal premium`)],
+  [crop(bm, CROWN, `5 · coroa — ${A}`), crop(am, CROWN, `5 · coroa — ${B}`)],
+  [crop(bm, CENTER, `6 · faixa central — ${A}`), crop(am, CENTER, `6 · faixa central — ${B}`)],
+  [crop(bm, WHIRL, `7 · redemoinho — ${A}`), crop(am, WHIRL, `7 · redemoinho — ${B}`)],
+  [crop(ref, [0, 0, 1672, 941], "8 · referência — cena"), crop(am, [0, 0, 1672, 941], `8 · ${B} — cena completa`)],
 ];
 const html = `<body style="margin:0;background:#000;font:14px monospace;color:#fff">${rows.map((r) => `<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:4px">${r.join("")}</div>`).join("")}</body>`;
 const b = await chromium.launch({ headless: true, args: ["--disable-gpu"] });

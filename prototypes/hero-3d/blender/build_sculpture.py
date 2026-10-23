@@ -178,6 +178,35 @@ FIORBE22_EDITS.update({
 FIORBE22 = [FIORBE22_EDITS.get((p[0], p[1]), p) for p in FIORBE2]
 assert sum(1 for p in FIORBE2 if (p[0], p[1]) in FIORBE22_EDITS) == len(FIORBE22_EDITS)
 
+# V2.3 — composição: hierarquia entre lâminas gigantes e passagens finas, mais direções.
+# Edições sobre a V2.2, indexadas pelo ponto da V2.2 (x, y).
+FIORBE23_EDITS = {
+    # Grandes superfícies iluminadas — arco superior esquerdo: largo, fechado e com a face
+    # voltada para a luz principal (reflexo longo da esquerda até a coroa).
+    (690, 320): [690, 320, 0.1, 1.3, 0.45, 0.4, 6, 0.0],
+    (790, 262): [790, 262, -0.1, 1.55, 0.05, 0.6, 7, -0.25, 0.0],
+    (900, 232): [900, 232, -0.2, 1.8, -0.2, 0.8, 8, -0.35, 0.0],
+    # Faixa central diagonal: lâmina gigante prateada (mais larga, face para a luz).
+    # (ciclo 2: mais íngreme — ≈ 135 px de desnível — e o trecho direito, que lia azul-marinho
+    # de frente para a câmera, gira para a luz.)
+    (1300, 462): [1305, 440, 1.0, 1.75, 0.15, 0.8, 10, 0.3],
+    (1160, 494): [1160, 486, 1.1, 1.6, -0.15, 0.8, 10, 0.3],
+    (1025, 530): [1025, 535, 0.2, 1.3, -0.35, 0.6, 8, 0.2],
+    (905, 560): [905, 575, 0.1, 1.0, 0.35, 0.4, 7, 0.0],
+    # Contraste — a faixa escura média vira uma passagem FINA, íngreme e quase de borda:
+    # deixa de ser uma barreira horizontal e passa a ser o entrelaçamento pequeno que cruza
+    # a lâmina gigante em X.
+    (1015, 352): [1015, 335, 0.2, 0.75, -0.9, 0.6, 8, 0.0, 0.0],
+    (1140, 372): [1140, 380, 0.45, 0.75, -1.0, 0.5, 8, 0.0, 0.0],
+    (1268, 400): [1268, 420, 0.4, 0.75, -0.95, 0.4, 7, 0.0],
+    # Redemoinho: o leque da coroa direita gira ao longo do arco (lâminas deixam de ser
+    # paralelas; alternância face/borda).
+    (1418, 262): [1418, 262, -0.2, 1.2, -0.45, 0.8, 9, 0.2, 0.95],
+    (1502, 298): [1502, 298, -0.15, 1.15, 0.45, 0.7, 8, 0.0, 0.85],
+}
+FIORBE23 = [FIORBE23_EDITS.get((p[0], p[1]), p) for p in FIORBE22]
+assert sum(1 for p in FIORBE22 if (p[0], p[1]) in FIORBE23_EDITS) == len(FIORBE23_EDITS)
+
 # Estilos da seção (mesmo percurso; o 6º valor de cada ponto muda de papel):
 #   plissado — dobras longitudinais contínuas; valor = profundidade das dobras.
 #   lamelas  — a fita se divide em lâminas reais, encostadas onde o valor é 0 (leem
@@ -192,6 +221,7 @@ MODELS2 = {
     "fiorbe2-a": (FIORBE2, "satin"),
     "fiorbe2-b": (FIORBE2, "sculpted"),
     "fiorbe2-v22": (FIORBE22, "sculpted22"),
+    "fiorbe2-v23": (FIORBE23, "sculpted22"),
 }
 
 # Perfil das lâminas V2.1. p: expoente da superelipse da espessura (maior = face mais
