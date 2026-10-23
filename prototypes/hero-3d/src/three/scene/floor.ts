@@ -67,6 +67,11 @@ export interface CinematicFloor {
   material: ShaderMaterial;
   /** Desenha reflexo (e, a cada poucos quadros, a pegada da escultura). */
   render(renderer: WebGLRenderer, camera: Camera, groupWorld: Matrix4, sculpture: Mesh | null): void;
+  /**
+   * Tela estreita (piso sob o texto): sem reflexo e só uma faixa sob o contato.
+   * Reavaliado a cada redimensionamento — antes era decidido uma vez na carga.
+   */
+  setCompact(compact: boolean): void;
   /** Trilhas como polilinhas no espaço do chão: [x, z][]; largura em unidades. */
   setTrails(trails: Array<{ points: Array<[number, number]>; width: number; intensity: number; fade: number }>): void;
   dispose(): void;
@@ -122,7 +127,9 @@ function noiseTexture(size = 256): CanvasTexture {
       img.data[i] = fbm(x, y, 16, 3, 1) * 255;
       img.data[i + 1] = fbm(x, y, 6, 3, 2) * 255;
       img.data[i + 2] = fbm(x, y, 2, 4, 3) * 255;
-      img.data[i + 3] = 255 * ((Math.sin(x * 12.9898 + y * 78.233) * 43758.5453) % 1 + 1) % 1;
+      // Alfa opaco: o canvas 2D guarda as cores pré-multiplicadas — um alfa aleatório aqui
+      // destruía a precisão dos outros canais (blocos e degraus no relevo e na umidade).
+      img.data[i + 3] = 255;
     }
   g.putImageData(img, 0, 0);
   const t = new CanvasTexture(c);
@@ -185,17 +192,28 @@ void main() {
   vec2 p = vLocal.xz;
   // --- Material: relevo fino, médio e manchas molhadas ---
   vec4 nA = texture(uNoise, p * 0.9);
-  float nMid = texture(uNoise, p * 0.23 + 0.17).g;
-  float nBig = texture(uNoise, p * 0.045 + vec2(0.31, 0.07)).b;
-  float wet = smoothstep(0.42, 0.66, nBig * 0.72 + nMid * 0.4);
+  // Manchas (umidade, rugosidade, desníveis) alongadas em profundidade: a câmera rasante
+  // comprime o chão 5–10× na vertical da tela, e manchas redondas viravam faixas
+  // horizontais (lia como água agitada). Alongadas, ficam proporcionais na tela.
+  vec2 pw = vec2(p.x, p.y * 0.3);
+  float nMid = texture(uNoise, pw * 0.23 + 0.17).g;
+  float nBig = texture(uNoise, pw * 0.045 + vec2(0.31, 0.07)).b;
+  float wet = smoothstep(0.36, 0.74, nBig * 0.72 + nMid * 0.4);
   float rough = clamp(mix(0.5, 0.07, wet) + (nMid - 0.5) * 0.05, 0.05, 0.75);
   // Microrrelevo (gradiente do ruído no espaço do chão), mais liso onde está molhado.
   float e = 0.012;
   float h0 = nA.r * 0.65 + nMid * 0.35;
-  float hx = texture(uNoise, (p + vec2(e, 0.0)) * 0.9).r * 0.65 + texture(uNoise, (p + vec2(e, 0.0)) * 0.23 + 0.17).g * 0.35;
-  float hz = texture(uNoise, (p + vec2(0.0, e)) * 0.9).r * 0.65 + texture(uNoise, (p + vec2(0.0, e)) * 0.23 + 0.17).g * 0.35;
+  float hx = texture(uNoise, (p + vec2(e, 0.0)) * 0.9).r * 0.65 + texture(uNoise, (pw + vec2(e, 0.0)) * 0.23 + 0.17).g * 0.35;
+  float hz = texture(uNoise, (p + vec2(0.0, e)) * 0.9).r * 0.65 + texture(uNoise, (pw + vec2(0.0, e * 0.3)) * 0.23 + 0.17).g * 0.35;
   float bump = mix(0.4, 0.12, wet);
   vec3 N = normalize(vec3(-(hx - h0) / e * bump * 0.02, 1.0, -(hz - h0) / e * bump * 0.02));
+  // Ondulação do reflexo só pelo relevo LARGO (desníveis do concreto). O relevo fino,
+  // comprimido pela perspectiva rasante, virava faixas horizontais — lia como água agitada.
+  float eL = 0.08;
+  float l0 = nMid * 0.6 + nBig * 0.4;
+  float lx = texture(uNoise, (pw + vec2(eL, 0.0)) * 0.23 + 0.17).g * 0.6 + texture(uNoise, (pw + vec2(eL, 0.0)) * 0.045 + vec2(0.31, 0.07)).b * 0.4;
+  float lz = texture(uNoise, (pw + vec2(0.0, eL * 0.3)) * 0.23 + 0.17).g * 0.6 + texture(uNoise, (pw + vec2(0.0, eL * 0.3)) * 0.045 + vec2(0.31, 0.07)).b * 0.4;
+  vec2 warp = vec2(lx - l0, lz - l0) / eL;
   vec3 V = normalize(cameraPosition - vWorld);
   float NdV = clamp(dot(N, V), 0.0, 1.0);
   float F = 0.02 + 0.98 * pow(1.0 - NdV, 5.0);
@@ -207,9 +225,10 @@ void main() {
     // Nítido junto ao contato (linha da base na tela), desfoca com a distância dele.
     float away = clamp((uContactY - suv.y) * 3.2, 0.0, 1.0);
     // Distorção quase só vertical: concreto molhado borra na direção do olhar; jitter lateral lê como água.
-    vec2 off = vec2(N.x * 0.12, -N.z) * (0.0015 + 0.008 * rough) * (0.4 + away);
-    float lod = 0.7 + rough * (1.2 + 3.4 * away) + away * 1.6;
-    R = refl(suv + off, lod, 1.0 + (rough * 20.0 + 10.0) * away);
+    // Distorção mínima: só um desvio suave e vertical (o desfoque e a rugosidade fazem o resto).
+    vec2 off = vec2(0.0, -warp.y) * (0.00015 + 0.0006 * rough) * (0.35 + away);
+    float lod = 0.8 + rough * (1.4 + 3.2 * away) + away * 1.4;
+    R = refl(suv + off, lod, 1.0 + (rough * 16.0 + 6.0) * away);
   }
 
   // --- Sombras: pegada da escultura vista de cima ---
@@ -246,10 +265,23 @@ void main() {
   diffuse += albedo * 0.08;
 
   // Reflexo: forte nas poças, apagado e espalhado no concreto seco; a oclusão de contato também o apaga.
-  float reflK = F * mix(0.4, 1.0, wet) * uReflGain;
+  float reflK = F * mix(0.16, 1.0, wet) * uReflGain;
   vec3 col = diffuse * (1.0 - ao * 0.55) + R * reflK * (1.0 - ao * 0.3);
+  // Sem reflexo real (tier baixo / tela estreita): a luz da parede refletida de forma
+  // analítica — faixa vertical difusa sob o núcleo e brilho rasante no horizonte —
+  // para o piso não virar um plano preto.
+  if (uHasRefl < 0.5) {
+    float streak = exp(-pow((q.x - uCoreX) / 1.5, 2.0)) * exp(-t * 0.13) * smoothstep(0.0, 0.3, t);
+    float horizonGlow = exp(-t * 0.6) * smoothstep(-4.2, -2.0, q.x) * (1.0 - smoothstep(3.0, 4.8, q.x));
+    float ambient = exp(-t * 0.18) * smoothstep(-5.0, -2.5, q.x) * (1.0 - smoothstep(3.5, 6.0, q.x));
+    col += mix(uHalo, uCore, 0.35) * (streak * 0.45 + horizonGlow * 0.25 + ambient * 0.08) * mix(0.5, 1.0, wet) * (1.0 - ao * 0.5) * (1.0 - 0.8 * fshadow);
+  }
   // Brilhos minúsculos de umidade onde há luz refletida.
-  float glint = smoothstep(0.985, 1.0, nA.a) * wet;
+  // Células alongadas em profundidade (pontos na tela, não traços sob a perspectiva rasante).
+  vec2 gq = vec2(p.x * 150.0, p.y * 45.0);
+  vec2 gc = floor(gq);
+  float gDot = smoothstep(0.42, 0.08, length(fract(gq) - 0.5));
+  float glint = smoothstep(0.985, 1.0, fract(sin(dot(gc, vec2(12.9898, 78.233))) * 43758.5453)) * gDot * wet;
   col += R * glint * 1.6;
 
   // --- Trilhas pintadas no piso ---
@@ -373,7 +405,7 @@ export function createCinematicFloor(o: FloorOptions): CinematicFloor {
       uTrailRect: { value: trailUniform },
       uRes: { value: new Vector2(1, 1) },
       uOpacity: { value: 1 },
-      uReflGain: { value: 1.7 },
+      uReflGain: { value: 1.35 },
       uHasRefl: { value: o.reflections ? 1 : 0 },
       uHasFoot: { value: 0 },
       uHalo: { value: new Color("#2a8fe6") },
@@ -406,6 +438,12 @@ export function createCinematicFloor(o: FloorOptions): CinematicFloor {
   const footWorld = new Matrix4();
   let frame = 0;
   let footReady = false;
+  let compact = Boolean(o.compact);
+  const applyCompact = () => {
+    material.uniforms.uCompact!.value = compact ? 1 : 0;
+    material.uniforms.uHasRefl!.value = o.reflections && !compact ? 1 : 0;
+  };
+  applyCompact();
 
   return {
     mesh,
@@ -418,7 +456,7 @@ export function createCinematicFloor(o: FloorOptions): CinematicFloor {
       material.uniforms.uContactY!.value = contact.y * 0.5 + 0.5;
       renderer.getDrawingBufferSize(size);
       (material.uniforms.uRes!.value as Vector2).copy(size);
-      if (o.reflections) {
+      if (o.reflections && !compact) {
         const w = Math.max(2, Math.round(size.x / 2));
         const h = Math.max(2, Math.round(size.y / 2));
         if (reflRT.width !== w || reflRT.height !== h) reflRT.setSize(w, h);
@@ -440,6 +478,11 @@ export function createCinematicFloor(o: FloorOptions): CinematicFloor {
         material.uniforms.uHasFoot!.value = 1;
       }
       renderer.setRenderTarget(prev);
+    },
+    setCompact(next) {
+      if (next === compact) return;
+      compact = next;
+      applyCompact();
     },
     setTrails(trails) {
       if (!trails.length) return;

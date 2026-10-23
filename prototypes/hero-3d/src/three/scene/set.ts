@@ -68,6 +68,8 @@ export interface SculptureSet {
    * pinta no piso; esconde o SVG. Chamar com a peça em repouso. false = sem piso cinematográfico.
    */
   layoutTrails(svg: SVGSVGElement, viewportW: number, viewportH: number): boolean;
+  /** Tela estreita ↔ larga em tempo real (reflexos, piso e trilhas acompanham). */
+  setCompact(compact: boolean): void;
   dispose(): void;
 }
 
@@ -263,6 +265,14 @@ export function createSculptureSet(opts: SetOptions, reflectionSource: { geometr
     renderEnvironment(renderer, camera) {
       floor?.render(renderer, camera, group.matrixWorld, opts.sculpture ?? null);
     },
+    setCompact(next) {
+      floor?.setCompact(next);
+      // Ambiente v1: os reflexos ficam na cena principal.
+      if (!floor) {
+        if (reflection) reflection.userData.compactHidden = next;
+        if (figureReflection) figureReflection.userData.compactHidden = next;
+      }
+    },
     layoutTrails(svg, vw, vh) {
       if (!floor || !opts.camera) return false;
       const box = svg.getBoundingClientRect();
@@ -319,8 +329,8 @@ export function createSculptureSet(opts: SetOptions, reflectionSource: { geometr
     },
     setOpacity(alpha) {
       group.visible = alpha > 0.001;
-      if (reflection) reflection.visible = alpha > 0.001;
-      if (figureReflection) figureReflection.visible = alpha > 0.001;
+      if (reflection) reflection.visible = alpha > 0.001 && !reflection.userData.compactHidden;
+      if (figureReflection) figureReflection.visible = alpha > 0.001 && !figureReflection.userData.compactHidden;
       fadeables.forEach(({ material, base }) => {
         material.opacity = base * alpha;
       });

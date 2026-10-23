@@ -189,8 +189,12 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
 
   // Cenário (chão, trilhas, figura, luz de fundo) — irmão da escultura, não gira com o arraste.
   // Em telas estreitas o chão fica sob o texto: sem reflexo ali.
-  const compact = window.innerWidth < 1024;
-  const reflections = profile.reflections && !useKnot && !compact;
+  // Tela estreita (piso sob o texto): reavaliada a cada redimensionamento. Os recursos
+  // de reflexo são criados sempre que o tier permite e só ligam/desligam com a largura —
+  // decidir isso uma vez na carga congelava a cena no modo celular se a janela abrisse estreita.
+  const isCompact = () => window.innerWidth < 1024;
+  let compact = isCompact();
+  const reflections = profile.reflections && !useKnot;
   const reflectionGeometry =
     reflections && blender
       ? blender.geometry
@@ -214,6 +218,7 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
     reflectionGeometry ? { geometry: reflectionGeometry, material } : null,
   );
   scrollRig.add(set.group);
+  set.setCompact(compact);
   const trailSvg = document.querySelector<SVGSVGElement>("svg[data-floor-trails]");
   let trailsDirty = true;
   // Ambiente v1: reflexos na cena principal. Cinematográfico: já estão na cena do reflexo do piso.
@@ -381,6 +386,13 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
 
   const onResize = () => {
     layout();
+    const nextCompact = isCompact();
+    if (nextCompact !== compact) {
+      compact = nextCompact;
+      set.setCompact(compact);
+      // Volta ao SVG em tela estreita (o CSS do celular o esconde); larga: o 3D reprojeta.
+      if (compact && trailSvg) trailSvg.style.display = "";
+    }
     trailsDirty = true;
   };
   window.addEventListener("resize", onResize, { passive: true });
