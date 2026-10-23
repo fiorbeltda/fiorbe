@@ -1,4 +1,4 @@
-import { Color, DoubleSide, MeshPhysicalMaterial, Vector3, type Texture } from "three";
+import { Color, DoubleSide, MeshPhysicalMaterial, Vector3, Vector4, type Texture } from "three";
 
 /** Máximo de fitas da escultura (tamanho do array de comprimentos). */
 export const WAVE_BANDS = 6;
@@ -19,6 +19,15 @@ export interface SculptureUniforms {
   uPointer: { value: Vector3 };
   /** 0..1 — intensidade da reação local ao cursor. */
   uPointerAmt: { value: number };
+  /** Toque local (RIB-004), no espaço da fita: arco 0..1 e largura −1..1 do ponto tocado. */
+  uPokeU: { value: number };
+  uPokeV: { value: number };
+  /** Deslocamento do amassado (unidades locais; mola amortecida na CPU). */
+  uPokeAmt: { value: number };
+  /** Direção do olhar no espaço local: o amassado afunda para longe do visitante. */
+  uPokeDir: { value: Vector3 };
+  /** Pulsos que correm pela fita a partir do toque: (arco de origem, tempo desde a emissão, amplitude já amortecida, —). */
+  uPulse: { value: Vector4[] };
   /** 0..1 — progresso do desenrolar em fluxos (timeline de scroll). */
   uFlow: { value: number };
   /** Alvo dos fluxos em coordenadas de mundo. */
@@ -42,6 +51,8 @@ export interface SculptureUniforms {
   uWaveA: { value: number };
   /** Torção máxima (rad) da fita em torno da tangente na passagem da onda. */
   uTwistA: { value: number };
+  /** 0..1: calibra a onda pela meia-largura (faixas largas flexionam menos e a torção limita o deslocamento da borda). */
+  uWaveWide: { value: number };
   // --- RIB-03 (experimental, flag): desfiar em fios ---
   uFray: { value: number };
   uFiber: { value: Texture | null };
@@ -54,6 +65,11 @@ export function createSculptureUniforms(): SculptureUniforms {
     uIdleAmp: { value: 0 },
     uPointer: { value: new Vector3(99, 99, 99) },
     uPointerAmt: { value: 0 },
+    uPokeU: { value: 0 },
+    uPokeV: { value: 0 },
+    uPokeAmt: { value: 0 },
+    uPokeDir: { value: new Vector3(0, 0, -1) },
+    uPulse: { value: [new Vector4(), new Vector4()] },
     uFlow: { value: 0 },
     uFlowLeft: { value: -4 },
     uFlowRight: { value: 4 },
@@ -69,6 +85,7 @@ export function createSculptureUniforms(): SculptureUniforms {
     uFloorY: { value: -100 },
     uWaveA: { value: 0.13 },
     uTwistA: { value: 0.5 },
+    uWaveWide: { value: 0 },
     uFray: { value: 0 },
     uFiber: { value: null },
     uFrayEdge: { value: new Color("#bdf2ff") },
@@ -85,7 +102,10 @@ attribute float aHalf;
 attribute float aClear;
 attribute vec3 aN;
 varying vec3 vGrooveDir;
+varying float vGrHalf;
+varying vec3 vFaceN;
 uniform float uTwistA;
+uniform float uWaveWide;
 #define WAVE_SLOTS ${WAVE_SLOTS}
 uniform float uWaveC[${WAVE_SLOTS}];
 uniform float uWaveAmp[${WAVE_SLOTS}];
@@ -100,6 +120,11 @@ uniform float uTime;
 uniform float uIdleAmp;
 uniform vec3 uPointer;
 uniform float uPointerAmt;
+uniform float uPokeU;
+uniform float uPokeV;
+uniform float uPokeAmt;
+uniform vec3 uPokeDir;
+uniform vec4 uPulse[2];
 uniform float uFlow;
 uniform float uFlowLeft;
 uniform float uFlowRight;
@@ -108,6 +133,7 @@ uniform float uFlowGap;
 uniform float uFlowHalf;
 varying vec3 vRib;
 varying float vFlowK;
+varying float vEdgeK;
 `;
 
 /** k do desenrolar: começa pela ponta u=1 e percorre a fita (efeito de "desfiar"). */
@@ -117,6 +143,8 @@ fpK = fpK * fpK * (3.0 - 2.0 * fpK);
 vRib = aRib;
 vFlowK = fpK;
 #include <beginnormal_vertex>
+// Quanto a superfície revela a espessura (borda/tampa da lâmina): normal perpendicular à da fita.
+vEdgeK = dot(aN, aN) > 0.25 ? smoothstep(0.55, 0.97, 1.0 - abs(dot(normalize(objectNormal), normalize(aN)))) : 0.0;
 
 // --- Onda viajante em comprimento de arco (RIB-02) ---
 // Várias ondas (slots) podem correr na mesma fita contínua. Para cada uma:
@@ -133,6 +161,11 @@ float wvDisp = 0.0;
 float wvTh = 0.0;
 float wvSlopeRaw = 0.0;
 float wvFr = 0.0;
+// Metal, não tecido: com uWaveWide, faixas largas flexionam menos e a torção
+// passa a limitar o deslocamento da borda (≈ mesmo em qualquer largura).
+float wvHalf = max(aHalf, 1e-3);
+float wvFlexK = mix(1.0, 0.7 * clamp(0.36 / wvHalf, 0.45, 1.0), uWaveWide);
+float wvTwistK = mix(1.0, clamp(0.11 / wvHalf, 0.12, 1.0), uWaveWide);
 for (int k = 0; k < WAVE_SLOTS; k++) {
   float on = uWaveAmp[k] * (1.0 - step(0.5, abs(uWaveBand[k] - aRib.z)));
   if (on <= 0.0) continue;
@@ -142,12 +175,39 @@ for (int k = 0; k < WAVE_SLOTS; k++) {
   float env = exp(-d * d / (2.0 * sig * sig)) * (1.0 - smoothstep(2.4 * sig, 3.0 * sig, abs(d)));
   float car = sin(WAVE_K * d - uWavePh[k]);
   float cs = cos(WAVE_K * d - uWavePh[k]);
-  float a = uWaveA * on * wvCross * wvGround;
+  float a = uWaveA * on * wvCross * wvGround * wvFlexK;
   wvDisp += a * env * car;
-  wvTh += uTwistA * on * wvGround * env * cs;
+  wvTh += uTwistA * on * wvGround * env * cs * wvTwistK;
   wvSlopeRaw += a * (-d / (sig * sig) * env * car + env * WAVE_K * cs);
   float df = d + 0.6;
   wvFr = max(wvFr, on * exp(-df * df / (2.0 * 0.85 * 0.85)) * wvGround);
+}
+// --- Toque local (RIB-004): campo no espaço da fita, somado à onda ---
+// Amassado gaussiano em torno do ponto tocado (comprimento de arco × largura) e pulsos
+// que correm pela fita a partir dele (frente a 1,6 un/s). Entram no mesmo
+// deslocamento e na mesma inclinação de normal da onda — portanto no mesmo limite de folga.
+{
+  float pkSign = dot(normalize(aN + vec3(1e-6)), uPokeDir) >= 0.0 ? 1.0 : -1.0;
+  float pkDs = aRib.x - uPokeU;
+  pkDs = (pkDs - floor(pkDs + 0.5)) * wvL;
+  float pkDv = (aRib.y - uPokeV) * wvHalf;
+  float pkG = exp(-pkDs * pkDs / 0.18 - pkDv * pkDv / 0.12);
+  float pkD = uPokeAmt * pkG;
+  float pkS = uPokeAmt * pkG * (-2.0 * pkDs / 0.18);
+  for (int i = 0; i < 2; i++) {
+    vec4 pu = uPulse[i];
+    if (pu.z <= 0.0) continue;
+    float d = aRib.x - pu.x;
+    d = (d - floor(d + 0.5)) * wvL;
+    // Pacote longo e baixo (λ ≈ 1,05, σ ≈ 0,35): um pacote curto vincava a lâmina.
+    float r = abs(d) - pu.y * 1.6;
+    float e = exp(-r * r / 0.24);
+    float sn = sin(r * 6.0);
+    pkD += pu.z * e * sn;
+    pkS += pu.z * e * (6.0 * cos(r * 6.0) - (2.0 / 0.24) * r * sn) * sign(d);
+  }
+  wvDisp += pkD * pkSign * wvGround;
+  wvSlopeRaw += pkS * pkSign * wvGround;
 }
 // Referencial da FITA (não do vértice): a lâmina tem face de cima, de baixo
 // e bordas — todas se movem juntas ao longo da normal da fita.
@@ -165,9 +225,12 @@ objectNormal = objectNormal * cos(wvA) + cross(aTan, objectNormal) * sin(wvA) + 
 objectNormal = normalize(objectNormal - wvKeep * wvSlopeRaw * aTan * dot(objectNormal, wvN));
 // Direção através da largura (já torcida) para as estrias analíticas.
 vGrooveDir = normalMatrix * (wvW * cos(wvA) + wvN * sin(wvA));
+// Normal da FACE da fita (já torcida) para a filtragem das bordas subpixel.
+vFaceN = normalMatrix * (wvN * cos(wvA) - wvW * sin(wvA));
 vFray = wvFr;
 // Coordenada de fibra com número inteiro de repetições por volta: sem costura em u=1→0.
 vFiberU = aRib.x * max(1.0, floor(wvL * 0.16 + 0.5));
+vGrHalf = aHalf;
 `;
 
 const NORMAL_FLOW = /* glsl */ `
@@ -208,8 +271,66 @@ uniform vec3 uFrayEdge;
 varying vec3 vRib;
 varying float vFlowK;
 varying vec3 vGrooveDir;
+varying float vGrHalf;
+varying vec3 vFaceN;
 varying float vFiberU;
 varying float vFray;
+varying float vEdgeK;
+`;
+
+/**
+ * Metal premium (só com FIORBE_PREMIUM): o metal é azul-prateado — a cor por
+ * vértice (paleta azul/teal) fica, mas dessaturada para a prata; o azul profundo
+ * vem do estúdio de reflexos. Nas bordas (onde a lâmina mostra a espessura) o
+ * metal é mais polido e mais prateado: o realce fino nasce da luz refletida e
+ * varia com orientação, câmera e curvatura — não é um contorno emissivo.
+ */
+const PREMIUM_COLOR = /* glsl */ `
+#include <color_fragment>
+#ifdef FIORBE_PREMIUM
+  #ifdef FIORBE_TINT23
+  // Variedade de metal ao longo do percurso (referência: passagens em azul profundo, teal e
+  // prata). Tinta do metal (F0), não emissivo: muda a COR dos reflexos, não a luz. Ciclos
+  // inteiros por volta → sem costura em u = 1 → 0; varia devagar (uma passagem, um tom).
+  float tA = 0.5 + 0.5 * sin(vRib.x * 6.2831853 * 3.0 + 1.1);
+  float tB = 0.5 + 0.5 * sin(vRib.x * 6.2831853 * 5.0 + 4.0);
+  // (1ª tentativa clareava a peça inteira: azul profundo mais saturado, menos prata.)
+    #ifdef FIORBE_TINT23R
+  // V2.3r: a lâmina central lia azul-pastel — teal claro + faixa prata sobreposta + 14% de
+  // prata no metal todo. Teal mais escuro e saturado, azul elétrico, prata só em faixas
+  // estreitas; a prata das bordas fica.
+  vec3 tint = mix(vec3(0.08, 0.3, 1.0), vec3(0.04, 0.6, 0.74), smoothstep(0.5, 0.92, tA));
+  tint = mix(tint, vec3(0.86, 0.92, 1.0), smoothstep(0.78, 0.99, tB) * 0.5);
+  diffuseColor.rgb = mix(diffuseColor.rgb, tint, 0.62);
+  diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.8, 0.88, 0.96), 0.05 + 0.55 * vEdgeK);
+    #else
+  vec3 tint = mix(vec3(0.16, 0.34, 1.0), vec3(0.3, 0.9, 0.88), smoothstep(0.5, 0.92, tA));
+  tint = mix(tint, vec3(0.86, 0.92, 1.0), smoothstep(0.6, 0.97, tB) * 0.6);
+  diffuseColor.rgb = mix(diffuseColor.rgb, tint, 0.45);
+  diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.8, 0.88, 0.96), 0.14 + 0.5 * vEdgeK);
+    #endif
+  #else
+  diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.8, 0.88, 0.96), 0.14 + 0.5 * vEdgeK);
+  #endif
+#endif
+`;
+const PREMIUM_ROUGHNESS = /* glsl */ `
+#include <roughnessmap_fragment>
+#ifdef FIORBE_PREMIUM
+  #ifdef FIORBE_GROOVE_PHYS
+  // Antisserrilhado especular geométrico: onde a normal muda mais rápido que o pixel
+  // consegue mostrar (bordas finas vistas de topo, lâminas de perfil no redemoinho), o
+  // realce piscava entre claro e escuro. A rugosidade sobe com a variação da normal no
+  // pixel, e o polimento da borda some quando a borda fica menor que ~1 px.
+  vec3 saN = normalize(vNormal);
+  float saVar = dot(fwidth(saN), vec3(1.0));
+  float saEdgeVis = 1.0 - smoothstep(0.35, 0.9, fwidth(vEdgeK));
+  roughnessFactor = mix(roughnessFactor, 0.1, vEdgeK * saEdgeVis);
+  roughnessFactor = max(roughnessFactor, clamp(saVar * 0.6, 0.0, 0.55));
+  #else
+  roughnessFactor = mix(roughnessFactor, 0.1, vEdgeK);
+  #endif
+#endif
 `;
 
 /**
@@ -257,33 +378,95 @@ if (uFray > 0.5 && vFray > 0.004) {
  * que gerava os "pentes" escuros nas curvas fechadas.
  */
 const NORMAL_MAPS = /* glsl */ `
+#ifdef FIORBE_EDGE_AA
 {
+  // Borda arredondada da lâmina vista de perfil: quando a faixa da borda fica menor que ~1 px,
+  // a normal gira 90° dentro de um pixel e o brilho pisca claro/escuro (pontos e dentes).
+  // Nesse caso a borda é sombreada como a face visível (a voltada para a câmera — escolha
+  // estável); bordas largas o bastante para serem vistas mantêm o polimento.
+  float eaHide = vEdgeK * smoothstep(0.2, 0.7, fwidth(vEdgeK));
+  vec3 eaF = normalize(vFaceN);
+  eaF *= dot(eaF, -vViewPosition) >= 0.0 ? 1.0 : -1.0;
+  normal = normalize(mix(normal, eaF, eaHide));
+}
+#endif
+{
+  #ifdef FIORBE_GROOVE_PHYS
+  // Passo FÍSICO constante (ranhuras por unidade de metal, não por largura da faixa):
+  // nas faixas largas da coroa o passo por largura dobrava e as ranhuras grossas
+  // viravam estrias escuras. Referência: meia-largura 0,4 = mesmo passo de antes.
+  float grX = (vRib.y * 0.5 + 0.5) * vGrHalf / 0.4;
+  #else
   float grX = vRib.y * 0.5 + 0.5;
+  #endif
   float grW = max(fwidth(grX), 1e-5);
   float grD = 0.0;
   // (frequência, amplitude, fase)
-  vec3 grT[3] = vec3[3](vec3(36.0, 0.55, 0.0), vec3(9.0, 0.25, 1.3), vec3(71.0, 0.12, 2.1));
-  for (int i = 0; i < 3; i++) {
+  #ifdef FIORBE_PREMIUM
+  // Escovado mais fino e mais presente: linhas extremamente finas que aparecem nos realces.
+  const int GR_N = 4;
+  #ifdef FIORBE_GROOVE_PHYS
+  // V2.2: componentes grossas mais rasas (eram elas que liam como cortes) e a fina domina.
+  vec3 grT[GR_N] = vec3[GR_N](vec3(36.0, 0.24, 0.0), vec3(9.0, 0.08, 1.3), vec3(71.0, 0.3, 2.1), vec3(143.0, 0.26, 0.7));
+  #else
+  vec3 grT[GR_N] = vec3[GR_N](vec3(36.0, 0.5, 0.0), vec3(9.0, 0.22, 1.3), vec3(71.0, 0.32, 2.1), vec3(143.0, 0.22, 0.7));
+  #endif
+  float grDepth = GROOVE_DEPTH * 1.9;
+  #else
+  const int GR_N = 3;
+  vec3 grT[GR_N] = vec3[GR_N](vec3(36.0, 0.55, 0.0), vec3(9.0, 0.25, 1.3), vec3(71.0, 0.12, 2.1));
+  float grDepth = GROOVE_DEPTH;
+  #endif
+  #ifdef FIORBE_NO_GROOVES
+  grDepth = 0.0;
+  #endif
+  for (int i = 0; i < GR_N; i++) {
     float f = grT[i].x;
     float keep = 1.0 - smoothstep(0.18, 0.42, f * grW);
     grD += grT[i].y * keep * 6.2831853 * f * cos(6.2831853 * f * grX + grT[i].z);
   }
   vec3 grDir = normalize(vGrooveDir - normal * dot(vGrooveDir, normal));
-  normal = normalize(normal - grDir * grD * GROOVE_DEPTH);
+  normal = normalize(normal - grDir * grD * grDepth);
 }
 `;
 
 const FRAGMENT_OUT = /* glsl */ `
 float fpEdge = smoothstep(0.86, 1.0, abs(vRib.y));
 float fpFres = pow(1.0 - clamp(abs(dot(normal, normalize(vViewPosition))), 0.0, 1.0), 3.0);
+#ifdef FIORBE_PREMIUM
+// Sem contorno emissivo: só um véu de Fresnel muito leve (o brilho de borda vem do metal).
+outgoingLight += uRim * fpFres * 0.025;
+#else
 outgoingLight += uRim * (fpFres * 0.06 + fpEdge * 0.14);
+#endif
 outgoingLight = mix(outgoingLight, vColor.rgb * 1.35, vFlowK * 0.75);
 outgoingLight += mix(vColor.rgb * 1.8, uFrayEdge, 0.45) * fyEdge * 0.75;
 diffuseColor.a *= fyCov;
+// Vistas de depuração (?vista=normais | faces): só para diagnóstico.
+#if defined(FIORBE_VIEW_NORMALS)
+outgoingLight = normal * 0.5 + 0.5;
+#elif defined(FIORBE_VIEW_FACES)
+outgoingLight = gl_FrontFacing ? vec3(0.15, 0.7, 0.25) : vec3(0.9, 0.12, 0.1);
+#endif
 #include <opaque_fragment>
 `;
 
-export function createSculptureMaterial(uniforms: SculptureUniforms): MeshPhysicalMaterial {
+export interface SculptureMaterialOptions {
+  /** Metal premium (Blender V2): prata azulada, bordas polidas, escovado fino. */
+  premium?: boolean;
+  /** Acabamento V2.2: escovado com passo físico constante e bordas sem serrilhado. */
+  finish22?: boolean;
+  /** V2.3: metal em azul profundo, teal e prata alternando ao longo do percurso. */
+  tint23?: boolean;
+  /** V2.3r: mesma alternância, com teal e azul saturados (sem aspecto leitoso). */
+  tint23r?: boolean;
+  /** V2.3r: bordas subpixel sombreadas como a face (sem pontos claros/escuros). */
+  edgeAA?: boolean;
+  /** Depuração: "normais", "faces", "semestrias" (sem microestrias), "wire". */
+  view?: string | null;
+}
+
+export function createSculptureMaterial(uniforms: SculptureUniforms, opts: SculptureMaterialOptions = {}): MeshPhysicalMaterial {
   const material = new MeshPhysicalMaterial({
     color: 0xffffff,
     vertexColors: true,
@@ -299,7 +482,23 @@ export function createSculptureMaterial(uniforms: SculptureUniforms): MeshPhysic
     // Bordas do desfiar suavizadas pelo MSAA (alfa = cobertura; resto da fita = 1).
     alphaToCoverage: true,
   });
+  if (opts.premium) {
+    // Acetinado escovado: um pouco mais áspero e bem mais anisotrópico (realces longos ao longo da fita).
+    material.defines = { ...material.defines, FIORBE_PREMIUM: "" };
+    material.roughness = 0.2;
+    material.anisotropy = 0.8;
+    material.clearcoat = 0.12;
+    material.envMapIntensity = 1.3;
+    if (opts.finish22) material.defines.FIORBE_GROOVE_PHYS = "";
+    if (opts.tint23) material.defines.FIORBE_TINT23 = "";
+    if (opts.tint23r) material.defines.FIORBE_TINT23R = "";
+    if (opts.edgeAA) material.defines.FIORBE_EDGE_AA = "";
+  }
 
+  if (opts.view === "normais") material.defines = { ...material.defines, FIORBE_VIEW_NORMALS: "" };
+  if (opts.view === "faces") material.defines = { ...material.defines, FIORBE_VIEW_FACES: "" };
+  if (opts.view === "semestrias") material.defines = { ...material.defines, FIORBE_NO_GROOVES: "" };
+  if (opts.view === "wire") material.wireframe = true;
   material.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, uniforms);
     shader.vertexShader = VERTEX_HEAD + shader.vertexShader
@@ -309,9 +508,11 @@ export function createSculptureMaterial(uniforms: SculptureUniforms): MeshPhysic
       .replace("#include <project_vertex>", PROJECT_VERTEX);
     shader.fragmentShader = FRAGMENT_HEAD + shader.fragmentShader
       .replace("#include <clipping_planes_fragment>", FRAGMENT_FRAY)
+      .replace("#include <color_fragment>", PREMIUM_COLOR)
+      .replace("#include <roughnessmap_fragment>", PREMIUM_ROUGHNESS)
       .replace("#include <normal_fragment_maps>", NORMAL_MAPS)
       .replace("#include <opaque_fragment>", FRAGMENT_OUT);
   };
-  material.customProgramCacheKey = () => "fiorbe-ribbon-v7";
+  material.customProgramCacheKey = () => (opts.view ? `v-${opts.view}-` : "") + (opts.premium ? (opts.finish22 ? (opts.tint23r || opts.edgeAA ? `fiorbe-ribbon-v9-premium23r${opts.tint23r ? "t" : ""}${opts.edgeAA ? "e" : ""}` : opts.tint23 ? "fiorbe-ribbon-v9-premium23" : "fiorbe-ribbon-v9-premium22") : "fiorbe-ribbon-v9-premium") : "fiorbe-ribbon-v9");
   return material;
 }

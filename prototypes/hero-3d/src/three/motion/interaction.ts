@@ -14,6 +14,15 @@ export interface InteractionLimits {
 
 const DEFAULT_LIMITS: InteractionLimits = { followXDeg: 4, followYDeg: 8, pitchLimitDeg: 28 };
 const MAX_ANGULAR_VELOCITY = 7;
+/**
+ * Peso no arraste: o ponteiro move um ALVO; a peça o persegue por uma mola rígida e bem
+ * amortecida (resposta inicial com massa, sem copiar o ponteiro). Ao soltar, a velocidade
+ * da própria mola vira inércia, limitada baixa — peça monumental, não objeto leve.
+ */
+const DRAG_STIFFNESS = 38;
+const DRAG_DAMPING_RATIO = 0.95;
+const RELEASE_MAX_VELOCITY = 2.2;
+const RETURN_STIFFNESS = 2.4;
 const TOUCH_SLOP = 8;
 
 /**
@@ -28,14 +37,25 @@ const TOUCH_SLOP = 8;
 export class InteractionController {
   private readonly followX: Spring = createSpring(16, 0.82);
   private readonly followY: Spring = createSpring(16, 0.82);
-  private readonly yaw: Spring = createSpring(2.4, 0.92);
-  private readonly pitch: Spring = createSpring(2.4, 0.95);
+  private readonly yaw: Spring = createSpring(RETURN_STIFFNESS, 0.92);
+  private readonly pitch: Spring = createSpring(RETURN_STIFFNESS, 0.95);
+  /** Alvo do arraste (o ponteiro move o alvo; a mola move a peça). */
+  private dragYaw = 0;
+  private dragPitch = 0;
   /** 0..1 — presença do cursor sobre o palco (reação local). */
   readonly presence: Spring = createSpring(10, 1);
 
   /** Coordenadas do ponteiro em pixels de viewport (para o raycast local). */
   pointerX = -1;
   pointerY = -1;
+  /** Velocidade do ponteiro (px/s), suavizada e decaindo quando ele para. */
+  pointerSpeed = 0;
+  /**
+   * Mouse: o arraste só começa sobre a escultura (o motor responde pelo raycast).
+   * Sem isso, qualquer ponto vazio do palco girava a peça.
+   */
+  canGrab: ((x: number, y: number) => boolean) | null = null;
+  private moveT = 0;
 
   private nx = 0;
   private ny = 0;
@@ -86,6 +106,12 @@ export class InteractionController {
   }
 
   private onMove(e: PointerEvent): void {
+    const t = e.timeStamp / 1000;
+    if (this.pointerX >= 0 && t > this.moveT) {
+      const v = Math.hypot(e.clientX - this.pointerX, e.clientY - this.pointerY) / Math.max(t - this.moveT, 1 / 240);
+      this.pointerSpeed = Math.min(6000, 0.6 * this.pointerSpeed + 0.4 * v);
+    }
+    this.moveT = t;
     this.pointerX = e.clientX;
     this.pointerY = e.clientY;
     if (e.pointerType === "mouse") {
@@ -106,17 +132,12 @@ export class InteractionController {
 
     if (!this.dragging || e.pointerId !== this.activeId) return;
     const now = e.timeStamp / 1000;
-    const dt = Math.max(now - this.lastT, 1 / 240);
     const dYaw = (e.clientX - this.lastX) * 0.0062;
     const dPitch = (e.clientY - this.lastY) * 0.0042;
     // Limite elástico: perto do limite o arraste rende cada vez menos.
-    const room = Number.isFinite(this.yawLimit) ? Math.max(0, 1 - Math.abs(this.yaw.value + dYaw) / this.yawLimit) : 1;
-    const yawBefore = this.yaw.value;
-    this.yaw.value += dYaw * (Math.sign(dYaw) === Math.sign(this.yaw.value) ? room : 1);
-    const yawApplied = this.yaw.value - yawBefore;
-    this.pitch.value = Math.max(-this.pitchLimit, Math.min(this.pitchLimit, this.pitch.value + dPitch));
-    this.yaw.velocity = 0.65 * this.yaw.velocity + 0.35 * clampVel(yawApplied / dt);
-    this.pitch.velocity = 0.65 * this.pitch.velocity + 0.35 * clampVel(dPitch / dt);
+    const room = Number.isFinite(this.yawLimit) ? Math.max(0, 1 - Math.abs(this.dragYaw + dYaw) / this.yawLimit) : 1;
+    this.dragYaw += dYaw * (Math.sign(dYaw) === Math.sign(this.dragYaw) ? room : 1);
+    this.dragPitch = Math.max(-this.pitchLimit, Math.min(this.pitchLimit, this.dragPitch + dPitch));
     this.lastX = e.clientX;
     this.lastY = e.clientY;
     this.lastT = now;
@@ -128,6 +149,7 @@ export class InteractionController {
     if (e.target instanceof Element && e.target.closest("button, a")) return;
     if (e.pointerType === "mouse") {
       if (e.button !== 0) return;
+      if (this.canGrab && !this.canGrab(e.clientX, e.clientY)) return;
       this.beginDrag(e);
     } else {
       this.pending = { id: e.pointerId, x: e.clientX, y: e.clientY };
@@ -141,8 +163,10 @@ export class InteractionController {
     this.lastX = e.clientX;
     this.lastY = e.clientY;
     this.lastT = e.timeStamp / 1000;
-    this.yaw.velocity = 0;
-    this.pitch.velocity = 0;
+    this.dragYaw = this.yaw.value;
+    this.dragPitch = this.pitch.value;
+    setSpringRate(this.yaw, DRAG_STIFFNESS, DRAG_DAMPING_RATIO);
+    setSpringRate(this.pitch, DRAG_STIFFNESS, DRAG_DAMPING_RATIO);
     try {
       this.stage.setPointerCapture(e.pointerId);
     } catch {
@@ -154,9 +178,10 @@ export class InteractionController {
   private onUp(e: PointerEvent): void {
     if (this.pending && e.pointerId === this.pending.id) this.pending = null;
     if (!this.dragging || e.pointerId !== this.activeId) return;
+    // Soltou parado (sem movimento recente): sem arremesso.
     if (e.timeStamp / 1000 - this.lastT > 0.08) {
-      this.yaw.velocity = 0;
-      this.pitch.velocity = 0;
+      this.yaw.velocity *= 0.3;
+      this.pitch.velocity *= 0.3;
     }
     this.endDrag();
   }
@@ -168,6 +193,10 @@ export class InteractionController {
     this.dragging = false;
     this.activeId = null;
     this.pending = null;
+    setSpringRate(this.yaw, RETURN_STIFFNESS, 0.92);
+    setSpringRate(this.pitch, RETURN_STIFFNESS, 0.95);
+    this.yaw.velocity = Math.max(-RELEASE_MAX_VELOCITY, Math.min(RELEASE_MAX_VELOCITY, this.yaw.velocity));
+    this.pitch.velocity = Math.max(-RELEASE_MAX_VELOCITY, Math.min(RELEASE_MAX_VELOCITY, this.pitch.velocity));
     this.yaw.value = Math.atan2(Math.sin(this.yaw.value), Math.cos(this.yaw.value));
     delete this.stage.dataset.dragging;
   }
@@ -180,7 +209,13 @@ export class InteractionController {
     stepSpring(this.followX, dt);
     stepSpring(this.followY, dt);
 
-    if (!this.dragging) {
+    if (this.dragging) {
+      this.yaw.target = this.dragYaw;
+      this.pitch.target = this.dragPitch;
+      stepSpring(this.yaw, dt);
+      stepSpring(this.pitch, dt);
+      this.yaw.velocity = clampVel(this.yaw.velocity);
+    } else {
       this.yaw.target = 0;
       this.pitch.target = 0;
       stepSpring(this.yaw, dt);
@@ -192,11 +227,17 @@ export class InteractionController {
       }
     }
 
+    this.pointerSpeed *= Math.exp(-6 * dt);
     this.presence.target = this.enabled && (this.hovering || this.dragging) ? weight : 0;
     stepSpring(this.presence, dt);
 
     rig.rotation.x = this.followX.value + this.pitch.value * weight;
     rig.rotation.y = this.followY.value + this.yaw.value * weight;
+  }
+
+  /** Ponteiro sobre o palco (não sobre a página fora dele). */
+  get isHovering(): boolean {
+    return this.hovering;
   }
 
   get isDragging(): boolean {
@@ -207,6 +248,11 @@ export class InteractionController {
     this.endDrag();
     this.cleanup.forEach((fn) => fn());
   }
+}
+
+function setSpringRate(s: Spring, stiffness: number, dampingRatio: number): void {
+  s.stiffness = stiffness;
+  s.damping = 2 * Math.sqrt(stiffness) * dampingRatio;
 }
 
 function clampVel(v: number): number {

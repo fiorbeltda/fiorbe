@@ -21,10 +21,14 @@
 .stage {
   position: relative;
   z-index: var(--z-content);
-  cursor: grab;
   touch-action: pan-y;
   user-select: none;
   -webkit-user-select: none;
+}
+
+/* Cursor contextual: normal fora da escultura, grab sobre ela (raycast), grabbing no arraste. */
+.stage[data-over="true"] {
+  cursor: grab;
 }
 
 .stage[data-dragging="true"] {

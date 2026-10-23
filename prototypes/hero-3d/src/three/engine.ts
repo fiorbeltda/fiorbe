@@ -6,10 +6,12 @@ import {
   FrontSide,
   type BufferGeometry,
   DirectionalLight,
+  DoubleSide,
   NeutralToneMapping,
   Group,
   Matrix4,
   Mesh,
+  MeshBasicMaterial,
   PerspectiveCamera,
   Plane,
   Raycaster,
@@ -28,9 +30,10 @@ import { createSculptureMaterial, createSculptureUniforms } from "./sculpture/ma
 import { createFiberNoise } from "./sculpture/textures";
 import { WaveDirector } from "./motion/waveDirector";
 import { createWaveDebug } from "./motion/waveDebug";
-import { createStudioEnvironment } from "./scene/environment";
+import { createPremiumEnvironment, createStudioEnvironment } from "./scene/environment";
 import { updateIdle } from "./motion/idle";
 import { InteractionController } from "./motion/interaction";
+import { createSpring, damp, stepSpring } from "./motion/spring";
 import { ScrollTimeline } from "./motion/scrollTimeline";
 import { AdaptiveDpr, detectTier, profileFor, type Tier } from "./quality/quality";
 
@@ -49,13 +52,16 @@ export interface EngineOptions {
 }
 
 /**
- * ?forma=blender (escultura modelada no Blender) ou ?forma=blender-teste (prova de
+ * ?forma=blender (escultura V1 modelada no Blender), ?forma=blender2[sufixo] (V2,
+ * lâmina esculpida — `escultura-v2[sufixo].glb`) ou ?forma=blender-teste (prova de
  * integração): carrega o GLB antes de criar o motor. Qualquer outra forma: null.
  */
 export async function preloadSculpture(): Promise<BufferGeometry | null> {
-  const forma = new URLSearchParams(window.location.search).get("forma");
-  if (forma !== "blender" && forma !== "blender-teste") return null;
+  const forma = new URLSearchParams(window.location.search).get("forma") ?? "";
+  const v2 = /^blender2([a-z0-9-]*)$/.exec(forma);
+  if (forma !== "blender" && forma !== "blender-teste" && !v2) return null;
   const { loadBlenderGeometry } = await import("./sculpture/blenderSculpture");
+  if (v2) return loadBlenderGeometry(`/models/escultura-v2${v2[1]}.glb`);
   return loadBlenderGeometry(forma === "blender" ? "/models/escultura.glb" : "/models/teste.glb");
 }
 
@@ -133,10 +139,29 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
       ? new WaveDirector(monument.lengths, MAIN_BAND, uniforms)
       : null;
   if (monument) uniforms.uLen.value = monument.lengths.slice();
+  // V2 (lâmina esculpida, faixas largas): onda calibrada para metal, não tecido.
+  if (blender && formParam?.startsWith("blender2")) uniforms.uWaveWide.value = 1;
   uniforms.uFloorY.value = FLOOR_LOCAL;
-  const material = createSculptureMaterial(uniforms);
+  // Metal premium: padrão na Blender V2 (?metal=v1 volta ao anterior); ?metal=v2 testa nas outras formas.
+  const metalParam = params.get("metal");
+  const premium = metalParam === "v2" || (metalParam !== "v1" && Boolean(formParam?.startsWith("blender2")));
+  // Acabamento V2.2 nas formas V2.2 em diante (V2.1 B e anteriores ficam como estavam).
+  // A tinta azul/teal/prata é cor de metal: na argila (?clay) fica desligada para julgar só a forma.
+  const tinted = !params.has("clay");
+  const material = createSculptureMaterial(uniforms, {
+    premium,
+    finish22: /^blender2-v2[2-9]/.test(formParam ?? ""),
+    tint23: tinted && /^blender2-v2[3-9]/.test(formParam ?? ""),
+    tint23r: tinted && formParam === "blender2-v23r",
+    edgeAA: formParam === "blender2-v23r",
+    view: params.get("vista"),
+  });
+  const premiumEnv = premium ? createPremiumEnvironment(renderer) : null;
+  if (premiumEnv) material.envMap = premiumEnv.texture;
   // Lâmina com espessura é um sólido fechado: só as faces externas (metade do preenchimento).
   if (monument && monument.profile !== "sheet") material.side = params.get("lado") === "tras" ? BackSide : FrontSide;
+  // Depuração (?vista=faces): frente verde, trás vermelho — os dois lados desenhados.
+  if (params.get("vista") === "faces") material.side = DoubleSide;
   // ?clay: material neutro para julgar só a forma (sem cor, metal nem brilho de borda).
   const clay = params.has("clay");
   if (clay) {
@@ -179,8 +204,12 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
 
   // Cenário (chão, trilhas, figura, luz de fundo) — irmão da escultura, não gira com o arraste.
   // Em telas estreitas o chão fica sob o texto: sem reflexo ali.
-  const compact = window.innerWidth < 1024;
-  const reflections = profile.reflections && !useKnot && !compact;
+  // Tela estreita (piso sob o texto): reavaliada a cada redimensionamento. Os recursos
+  // de reflexo são criados sempre que o tier permite e só ligam/desligam com a largura —
+  // decidir isso uma vez na carga congelava a cena no modo celular se a janela abrisse estreita.
+  const isCompact = () => window.innerWidth < 1024;
+  let compact = isCompact();
+  const reflections = profile.reflections && !useKnot;
   const reflectionGeometry =
     reflections && blender
       ? blender.geometry
@@ -196,12 +225,20 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
       person: useKnot ? null : PERSON_LOCAL,
       reducedMotion,
       camera,
+      // ?ambiente=v1: piso e reflexo anteriores (comparação).
+      cinematic: params.get("ambiente") !== "v1",
+      sculpture: mesh,
+      compact,
     },
     reflectionGeometry ? { geometry: reflectionGeometry, material } : null,
   );
   scrollRig.add(set.group);
-  if (set.reflection) scene.add(set.reflection);
-  if (set.figureReflection) scene.add(set.figureReflection);
+  set.setCompact(compact);
+  const trailSvg = document.querySelector<SVGSVGElement>("svg[data-floor-trails]");
+  let trailsDirty = true;
+  // Ambiente v1: reflexos na cena principal. Cinematográfico: já estão na cena do reflexo do piso.
+  if (set.reflection && !set.reflection.parent) scene.add(set.reflection);
+  if (set.figureReflection && !set.figureReflection.parent) scene.add(set.figureReflection);
 
   const interaction = new InteractionController(
     stage,
@@ -215,6 +252,40 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
   const plane = new Plane(new Vector3(0, 0, 1), 0);
   const hit = new Vector3();
   const inverse = new Matrix4();
+
+  // --- Toque local (RIB-004): raycast na superfície média da fita (proxy leve) ---
+  // O ponto tocado é a passagem visível mais próxima; a reação vive no espaço da fita
+  // (arco × largura), com massa: alvo suavizado (resistência inicial) → mola pouco
+  // subamortecida (recuperação elástica) → pulsos que correm pela fita quando o cursor
+  // a varre rápido. Tudo em tempo real (molas com subpassos fixos: 30/60/120 Hz iguais).
+  // DoubleSide: a fita gira e mostra as duas faces — com um lado só, o raycast ignorava metade.
+  const proxy = monument?.proxy ? new Mesh(monument.proxy, new MeshBasicMaterial({ side: DoubleSide })) : null;
+  if (proxy) {
+    proxy.matrixAutoUpdate = false;
+    proxy.matrixWorldAutoUpdate = false;
+  }
+  const poke = createSpring(42, 0.55);
+  let pokeDrive = 0;
+  let pokeU = 0;
+  let pokeV = 0;
+  let pokeHasPoint = false;
+  let over = false;
+  let lastPulse = -10;
+  const pulses = [
+    { u: 0, t: 0, a: 0 },
+    { u: 0, t: 0, a: 0 },
+  ];
+  const rayHits: Array<{ uv?: Vector2 }> = [];
+  const castProxy = (x: number, y: number) => {
+    if (!proxy) return null;
+    ndc.set((x / width) * 2 - 1, -(y / height) * 2 + 1);
+    raycaster.setFromCamera(ndc, camera);
+    proxy.matrixWorld.copy(mesh.matrixWorld);
+    rayHits.length = 0;
+    raycaster.intersectObject(proxy, false, rayHits as never);
+    return rayHits[0] ?? null;
+  };
+  if (proxy) interaction.canGrab = (x, y) => castProxy(x, y) !== null;
 
   let width = 0;
   let height = 0;
@@ -326,7 +397,52 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
 
     // --- Reação local ao cursor ---
     scene.updateMatrixWorld();
-    if (interaction.pointerX >= 0) {
+    if (proxy) {
+      const live = !reducedMotion && !paused && heroW > 0.01;
+      // O cursor contextual vale também pausado (o arraste continua disponível); só a deformação para.
+      const hov = !reducedMotion && heroW > 0.01 && interaction.isHovering && interaction.pointerX >= 0 ? castProxy(interaction.pointerX, interaction.pointerY) : null;
+      const h = live ? hov : null;
+      const nowOver = hov !== null || interaction.isDragging;
+      if (nowOver !== over) {
+        over = nowOver;
+        if (over) stage.dataset.over = "true";
+        else delete stage.dataset.over;
+      }
+      if (h?.uv) {
+        // Arco periódico: segue pelo caminho mais curto (sem saltar na emenda).
+        const u = h.uv.x - Math.floor(h.uv.x);
+        if (!pokeHasPoint) {
+          pokeU = u;
+          pokeV = h.uv.y;
+        }
+        let du = u - pokeU;
+        du -= Math.round(du);
+        pokeU = (pokeU + du * (1 - Math.exp(-14 * dt)) + 1) % 1;
+        pokeV = damp(pokeV, h.uv.y, 14, dt);
+        pokeHasPoint = true;
+        uniforms.uPokeDir.value.copy(raycaster.ray.direction).transformDirection(inverse.copy(mesh.matrixWorld).invert());
+      }
+      const speed = interaction.pointerSpeed;
+      // Cursor parado sobre a lâmina: amassado pequeno; varrendo: mais fundo (limitado).
+      const target = h ? 0.22 + 0.78 * Math.min(1, speed / 1400) : 0;
+      pokeDrive = damp(pokeDrive, target, 7, dt);
+      poke.target = pokeDrive;
+      stepSpring(poke, dt);
+      if (h && speed > 700 && idleTime - lastPulse > 0.45) {
+        const slot = pulses[0]!.t > pulses[1]!.t ? pulses[0]! : pulses[1]!;
+        Object.assign(slot, { u: pokeU, t: 0, a: Math.min(1, speed / 2600) * 0.018 });
+        lastPulse = idleTime;
+      }
+      pulses.forEach((p, i) => {
+        p.t += live ? dt : 0;
+        const amp = live && p.t < 2.6 ? p.a * Math.exp(-1.7 * p.t) : 0;
+        uniforms.uPulse.value[i]!.set(p.u, p.t, amp, 0);
+      });
+      uniforms.uPokeU.value = pokeU;
+      uniforms.uPokeV.value = pokeV;
+      uniforms.uPokeAmt.value = live ? poke.value * 0.05 * heroW : 0;
+      uniforms.uPointerAmt.value = 0;
+    } else if (interaction.pointerX >= 0) {
       ndc.set((interaction.pointerX / width) * 2 - 1, -(interaction.pointerY / height) * 2 + 1);
       raycaster.setFromCamera(ndc, camera);
       plane.constant = -scrollRig.position.z;
@@ -335,9 +451,24 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
         uniforms.uPointer.value.copy(hit).applyMatrix4(inverse);
       }
     }
-    uniforms.uPointerAmt.value = interaction.presence.value * (reducedMotion ? 0 : 1);
+    if (!proxy) {
+      uniforms.uPointerAmt.value = interaction.presence.value * (reducedMotion ? 0 : 1);
+      // Formas sem proxy (forma C e demais): o palco inteiro continua arrastável, como antes.
+      const nowOver = (!reducedMotion && interaction.isHovering) || interaction.isDragging;
+      if (nowOver !== over) {
+        over = nowOver;
+        if (over) stage.dataset.over = "true";
+        else delete stage.dataset.over;
+      }
+    }
     set.syncReflection(mesh.matrixWorld, scrollRig.position.y + floorLocal * scale);
+    // Trilhas do piso: projetadas com a peça em repouso (no início e depois de redimensionar).
+    if (trailsDirty && k === 0 && trailSvg && !compact) {
+      set.layoutTrails(trailSvg, width, height);
+      trailsDirty = false;
+    }
 
+    set.renderEnvironment(renderer, camera);
     renderer.render(scene, camera);
 
     if (!readySent) {
@@ -356,7 +487,18 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
     }
   }
 
-  const onResize = () => layout();
+  const onResize = () => {
+    layout();
+    const nextCompact = isCompact();
+    // Sempre: dentro do layout empilhado a faixa com reflexo também depende da largura.
+    set.setCompact(nextCompact);
+    if (nextCompact !== compact) {
+      compact = nextCompact;
+      // Volta ao SVG em tela estreita (o CSS do celular o esconde); larga: o 3D reprojeta.
+      if (compact && trailSvg) trailSvg.style.display = "";
+    }
+    trailsDirty = true;
+  };
   window.addEventListener("resize", onResize, { passive: true });
 
   const onVisibility = () => {
@@ -384,6 +526,19 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
     // Custo real de GPU por quadro, independente do rAF (que o navegador pode estrangular).
     (window as unknown as { __fiorbe?: unknown }).__fiorbe = {
       figure: () => set.probe(),
+      floor: () => ({ ...(set.floor?.material.userData ?? {}), svgHidden: trailSvg?.style.display === "none" }),
+      /** x da parede de luz (relativo ao centro dela, na linha do chão) → pixel CSS na tela. */
+      wallToScreen(xs: number[], up = 0) {
+        const fm = set.floor?.material;
+        if (!fm) return [];
+        const [wx, wz] = fm.uniforms.uWall!.value as number[];
+        const fy = fm.uniforms.uFloorY!.value as number;
+        set.group.updateWorldMatrix(true, false);
+        return xs.map((x) => {
+          const v = new Vector3(wx! + x, fy + up, wz!).applyMatrix4(set.group.matrixWorld).project(camera);
+          return [Math.round((v.x * 0.5 + 0.5) * window.innerWidth), Math.round((0.5 - v.y * 0.5) * window.innerHeight)];
+        });
+      },
       waves: () => waves?.snapshot() ?? [],
       /** Congela só as ondas e avança o tempo delas (capturas determinísticas). */
       holdWaves(hold: boolean) {
@@ -409,11 +564,13 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
         const gl = renderer.getContext();
         const px = new Uint8Array(4);
         const sync = () => gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+        set.renderEnvironment(renderer, camera);
         renderer.render(scene, camera);
         sync();
         const t0 = performance.now();
         for (let i = 0; i < frames; i++) {
           uniforms.uTime.value += 1 / 60;
+          set.renderEnvironment(renderer, camera);
           renderer.render(scene, camera);
           sync();
         }
@@ -444,11 +601,13 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
       geometry.dispose();
       if (reflectionGeometry !== geometry) reflectionGeometry?.dispose();
       set.dispose();
+      if (trailSvg) trailSvg.style.display = "";
       material.dispose();
       fiber.dispose();
       waveDebug?.dispose();
       gestureDebug?.dispose();
       env.dispose();
+      premiumEnv?.dispose();
       renderer.dispose();
       root.style.removeProperty("--hero-out");
       root.style.removeProperty("--flow-handoff");

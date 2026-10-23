@@ -18,7 +18,10 @@ export async function loadBlenderGeometry(url: string): Promise<BufferGeometry> 
   const gltf = await new GLTFLoader().loadAsync(url);
   let geometry: BufferGeometry | null = null;
   gltf.scene.traverse((o) => {
-    if (!geometry && (o as Mesh).isMesh) geometry = (o as Mesh).geometry as BufferGeometry;
+    if (geometry || !(o as Mesh).isMesh) return;
+    geometry = (o as Mesh).geometry as BufferGeometry;
+    // V2: o construtor já entrega as faces voltadas para fora (extras do glTF).
+    geometry.userData.outward = Boolean(o.userData.fiorbe_outward);
   });
   if (!geometry) throw new Error("GLB sem malha");
   return geometry;
@@ -98,16 +101,18 @@ export function buildFromBlender(src: BufferGeometry): MonumentBuild {
 
   const geometry = new BufferGeometry();
   geometry.setAttribute("position", pos);
-  // O perfil do Curve to Mesh sai com as faces voltadas para dentro da lâmina:
+  // V1: o perfil do Curve to Mesh sai com as faces voltadas para dentro da lâmina —
   // inverte o enrolamento e as normais (o material desenha só as faces externas).
+  // V2 (seção esculpida no construtor) já sai para fora.
+  const flip = !src.userData.outward;
   const index = src.getIndex()!;
   const tri = index.array.slice() as Uint32Array | Uint16Array;
-  for (let t = 0; t < tri.length; t += 3) {
+  for (let t = 0; flip && t < tri.length; t += 3) {
     const k = tri[t + 1]!;
     tri[t + 1] = tri[t + 2]!;
     tri[t + 2] = k;
   }
-  const nrm = (src.getAttribute("normal").array as Float32Array).map((x) => -x);
+  const nrm = (src.getAttribute("normal").array as Float32Array).map((x) => (flip ? -x : x));
   geometry.setAttribute("normal", new BufferAttribute(nrm, 3));
   geometry.setIndex(new BufferAttribute(tri, 1));
   geometry.setAttribute("color", new BufferAttribute(colors, 3));
@@ -121,7 +126,7 @@ export function buildFromBlender(src: BufferGeometry): MonumentBuild {
   geometry.computeBoundingSphere();
 
   const curve = new CatmullRomCurve3(centers, true, "centripetal");
-  return { geometry, bands: 1, lengths: [length], curves: [curve], cols: 0, profile: "blade" };
+  return { geometry, bands: 1, lengths: [length], curves: [curve], cols: 0, profile: "blade", proxy: interactionProxy(centers, widths, halves, arcs) };
 }
 
 /**
@@ -129,6 +134,45 @@ export function buildFromBlender(src: BufferGeometry): MonumentBuild {
  * percurso (> 0,9 de arco), menos uma margem; constante na seção. Grade
  * espacial, alvos amostrados — dezenas de milissegundos.
  */
+/**
+ * Proxy do cursor: a superfície média da fita (bordas v = ±1 e centro), um anel a cada
+ * PROXY_STEP — ≈ 1 mil triângulos em vez de 137 mil, barato para raycast a cada quadro.
+ * O raycast devolve a passagem MAIS PRÓXIMA da câmera (nunca uma lâmina escondida atrás) e,
+ * pelo uv, a posição na fita. O último anel repete o primeiro com u + 1 (sem costura no uv).
+ */
+const PROXY_STEP = 3;
+function interactionProxy(centers: Vector3[], widths: Vector3[], halves: number[], arcs: number[]): BufferGeometry {
+  const R = centers.length;
+  const rings: number[] = [];
+  for (let r = 0; r < R; r += PROXY_STEP) rings.push(r);
+  const n = rings.length + 1;
+  const pos = new Float32Array(n * 3 * 3);
+  const uv = new Float32Array(n * 3 * 2);
+  const p = new Vector3();
+  for (let j = 0; j < n; j++) {
+    const r = rings[j % rings.length]!;
+    for (let k = 0; k < 3; k++) {
+      const v = k - 1;
+      p.copy(widths[r]!).multiplyScalar(halves[r]! * v).add(centers[r]!);
+      pos.set([p.x, p.y, p.z], (j * 3 + k) * 3);
+      uv.set([arcs[r]! + (j === rings.length ? 1 : 0), v], (j * 3 + k) * 2);
+    }
+  }
+  const idx: number[] = [];
+  for (let j = 0; j < n - 1; j++)
+    for (let k = 0; k < 2; k++) {
+      const a = j * 3 + k;
+      const b = a + 3;
+      idx.push(a, b, a + 1, a + 1, b, b + 1);
+    }
+  const g = new BufferGeometry();
+  g.setAttribute("position", new BufferAttribute(pos, 3));
+  g.setAttribute("uv", new BufferAttribute(uv, 2));
+  g.setIndex(idx);
+  g.computeBoundingSphere();
+  return g;
+}
+
 function clearanceByRing(positions: Float32Array, arc: Float32Array, centers: Vector3[], arcs: number[], length: number, cap = 0.6, slack = 0.08): Float32Array {
   const n = positions.length / 3;
   const cell = cap;

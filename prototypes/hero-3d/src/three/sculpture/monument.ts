@@ -251,6 +251,11 @@ export interface MonumentBuild {
   /** Vértices por anel (perfil transversal completo). */
   cols: number;
   profile: ProfileKind;
+  /**
+   * Superfície média simplificada da fita para o raycast do cursor (uv = arco 0..1+, largura −1..1).
+   * Só nas formas do Blender; nas outras a reação usa o plano de antes.
+   */
+  proxy?: BufferGeometry;
 }
 
 /** Ponto do perfil transversal: deslocamentos (W, N) absolutos, normal 2D e posição v na largura (−1..1). */
