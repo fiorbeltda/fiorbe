@@ -204,10 +204,12 @@ export function createFigureRig(): FigureRig {
   loft(
     b,
     [
+      // Caimento do ombro (trapézio): antes ia do pescoço à largura total em 1,4 cm — ombro quadrado.
       { y: 0.84, cx: 0, cz: 0.002, rx: 0.036, rz: 0.034 },
-      { y: 0.826, cx: 0, cz: 0.004, rx: 0.075, rz: 0.06 },
-      { y: 0.812, cx: 0, cz: 0.004, rx: 0.118, rz: 0.066 },
-      { y: 0.79, cx: 0, cz: 0.004, rx: 0.128, rz: 0.07 },
+      { y: 0.83, cx: 0, cz: 0.004, rx: 0.062, rz: 0.056 },
+      { y: 0.815, cx: 0, cz: 0.004, rx: 0.1, rz: 0.064 },
+      { y: 0.798, cx: 0, cz: 0.004, rx: 0.122, rz: 0.069 },
+      { y: 0.775, cx: 0, cz: 0.004, rx: 0.127, rz: 0.07 },
       { y: 0.74, cx: 0, cz: 0.002, rx: 0.118, rz: 0.072 },
       { y: 0.67, cx: 0, cz: 0.002, rx: 0.104, rz: 0.066 },
       { y: 0.6, cx: 0, cz: 0, rx: 0.094, rz: 0.06 },
@@ -270,8 +272,10 @@ export function createFigureRig(): FigureRig {
         { y: 0.5, cx: side * 0.054, cz: 0, rx: 0.05, rz: 0.056 },
         { y: 0.4, cx: side * 0.055, cz: 0.002, rx: 0.046, rz: 0.05 },
         { y: 0.27, cx: side * 0.056, cz: 0.004, rx: 0.039, rz: 0.042 },
-        { y: 0.15, cx: side * 0.056, cz: 0.002, rx: 0.037, rz: 0.039 },
-        { y: 0.06, cx: side * 0.056, cz: 0, rx: 0.036, rz: 0.038 },
+        { y: 0.17, cx: side * 0.056, cz: 0.002, rx: 0.036, rz: 0.04 },
+        { y: 0.09, cx: side * 0.056, cz: 0, rx: 0.033, rz: 0.036 },
+        // Leve quebra da calça sobre o sapato.
+        { y: 0.05, cx: side * 0.056, cz: -0.002, rx: 0.036, rz: 0.04 },
       ],
       [
         [0.5, s("thigh")],
@@ -302,14 +306,16 @@ export function createFigureRig(): FigureRig {
     shader.fragmentShader = shader.fragmentShader.replace(
       "#include <opaque_fragment>",
       /* glsl */ `
-      // Contraluz só na borda voltada para a luz (direita da tela): filete fino, não contorno.
-      float fgFres = pow(1.0 - clamp(abs(dot(normal, normalize(vViewPosition))), 0.0, 1.0), 5.0);
-      float fgSide = smoothstep(0.25, 0.95, normal.x);
-      outgoingLight += vec3(0.45, 0.8, 1.0) * fgFres * fgSide * 0.55;
+      // Contraluz: a parede de luz fica ATRÁS da figura, então a luz contorna a silhueta —
+      // mais no alto (cabeça e ombros) e no lado do núcleo de luz (esquerda da tela), quase
+      // nada embaixo. Filete fino pela potência do Fresnel; nada de emissivo chapado.
+      float fgFres = pow(1.0 - clamp(abs(dot(normal, normalize(vViewPosition))), 0.0, 1.0), 3.2);
+      float fgSide = mix(0.55, 1.0, smoothstep(0.1, -0.9, normal.x)) * (0.45 + 0.55 * smoothstep(-0.3, 0.7, normal.y));
+      outgoingLight += vec3(0.5, 0.82, 1.0) * fgFres * fgSide * 0.75;
       #include <opaque_fragment>`,
     );
   };
-  material.customProgramCacheKey = () => "fiorbe-figure-v1";
+  material.customProgramCacheKey = () => "fiorbe-figure-v2";
 
   // Vínculo na origem (matriz identidade): as inversas dos ossos ficam no
   // espaço da figura, o que permite reaproveitar o esqueleto no reflexo.
