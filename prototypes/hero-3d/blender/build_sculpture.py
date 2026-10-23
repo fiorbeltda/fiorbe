@@ -136,10 +136,28 @@ FIORBE2 = [
 #   lamelas  — a fita se divide em lâminas reais, encostadas onde o valor é 0 (leem
 #              como uma faixa com vincos finos) e abertas em leque onde cresce: vãos,
 #              rotação própria e escalonamento em profundidade (folhas aninhadas).
+# V2.1 — lâminas (mesmo percurso e mesmos leques; muda só a seção transversal):
+#   satin    (A): face ampla e plana, espessura mínima, borda quase imperceptível;
+#   sculpted (B): lâmina fina com leve curvatura transversal (reflexos mais ricos).
 MODELS2 = {
     "fiorbe2": (FIORBE2, "lamelas"),
     "fiorbe2-plissado": (FIORBE2, "plissado"),
+    "fiorbe2-a": (FIORBE2, "satin"),
+    "fiorbe2-b": (FIORBE2, "sculpted"),
 }
+
+# Perfil das lâminas V2.1. p: expoente da superelipse da espessura (maior = face mais
+# plana e borda mais curta); t_open/t_closed: meia-espessura (× THICK·h/HALF_WIDTH) da
+# lâmina solta e da superfície fechada; cup: fração da concavidade da faixa; bow:
+# curvatura transversal própria de cada lâmina aberta (fração da meia-largura).
+BLADE_STYLES = {
+    "satin": {"p": 10.0, "t_open": 0.15, "t_closed": 0.26, "cup": 0.35, "bow": 0.0},
+    "sculpted": {"p": 6.0, "t_open": 0.19, "t_closed": 0.3, "cup": 1.0, "bow": 0.07},
+}
+# Amostras através de cada lâmina (por face): concentradas nas bordas — a curvatura da
+# borda fica confinada nela e a face continua plana na luz.
+BLADE_XS = [-1.0, -0.965, -0.85, -0.35, 0.35, 0.85, 0.965, 1.0]
+STEP_BLADE = 0.055
 
 
 def clear_scene():
@@ -302,9 +320,10 @@ def make_nodes():
     return ng
 
 
-def make_frame_nodes():
+def make_frame_nodes(step=None):
     """V2: só o referencial da fita — uma linha de borda a borda varrida pela curva
     (2 vértices por anel: v = −1 e +1), com _arc e _v. A seção é esculpida depois."""
+    step = step or STEP2
     ng = bpy.data.node_groups.new("Referencial", "GeometryNodeTree")
     ng.interface.new_socket("Geometry", in_out="INPUT", socket_type="NodeSocketGeometry")
     ng.interface.new_socket("Geometry", in_out="OUTPUT", socket_type="NodeSocketGeometry")
@@ -315,7 +334,7 @@ def make_frame_nodes():
     set_menu(normal, "Mode", "Z Up")
     resample = N.new("GeometryNodeResampleCurve")
     set_menu(resample, "Mode", "Length")
-    resample.inputs["Length"].default_value = STEP2
+    resample.inputs["Length"].default_value = step
     param = N.new("GeometryNodeSplineParameter")
     store_arc = N.new("GeometryNodeStoreNamedAttribute")
     store_arc.data_type = "FLOAT"
@@ -429,7 +448,7 @@ def sculpt_blade(frame, arcs, points, style="plissado"):
             print(f"FIORBE d2h={d2h:.4f} d2c={d2c:.4f} h={hs[r]:.3f} u={keys[r]:.3f} ref=({c.x / PX + REF_CENTER_X:.0f},{REF_FLOOR_PX - (c.y - FLOOR) / PX:.0f})")
     vs = [-1 + 2 * j / (M - 1) for j in range(M)]
     vb = [-1 + 2 * j / (LAMELLA_SAMPLES - 1) for j in range(LAMELLA_SAMPLES)]
-    verts, vattr, aattr, normals = [], [], [], []
+    verts, vattr, aattr, normals, custom_n = [], [], [], [], []
     for r, a in enumerate(keys):
         c = centers[r]
         w = widths[r].copy()
@@ -462,6 +481,63 @@ def sculpt_blade(frame, arcs, points, style="plissado"):
             # Dobras com envelope nulo nas bordas: o número de lamelas varia ao longo
             # do percurso e, sem isso, a fase na borda oscilava (borda ondulada).
             return -depth * math.cos(math.pi * k * v * 0.5) * (1 - v ** 4) + cupped(v)
+
+        if style in BLADE_STYLES:
+            # V2.1: lâminas de face plana. Fechadas (abertura 0) formam UMA superfície
+            # ampla (mesma espessura e mesma superfície média nas juntas, normais
+            # contínuas); abrindo, separam-se com vãos, giro e escalonamento. A
+            # abertura passa por smoothstep: vãos quase fechados não ficam como
+            # frestas escuras e as lâminas não se cruzam ao girar.
+            st = BLADE_STYLES[style]
+            O = min(1.0, max(0.0, periodic_catmull(arcs, open_v, a)))
+            Os = O * O * (3 - 2 * O)
+            lat = lats[r]
+            nB = LAMELLAE
+            T0 = THICK * h / HALF_WIDTH
+
+            def env(x, pe):
+                return max(0.0, 1 - abs(x) ** pe) ** (1 / pe)
+
+            for i in range(nB):
+                e = (2 * i - (nB - 1)) / (nB - 1)
+                vc0 = -1 + (2 * i + 1) / nB
+                vc = vc0 * (1 + 0.45 * Os)
+                hb = h / nB * (1 - 0.18 * Os)
+                ang = e * Os * FAN_ANGLE
+                ca, sa = math.cos(ang), math.sin(ang)
+                base = c + w * (vc * h) + n * (e * e * Os * 0.12 * h - Os * 0.06 * h)
+                nb = n * ca - w * sa  # normal própria da lâmina girada
+
+                def pos(x, side):
+                    vg = vc0 + x / nB
+                    th = (1 - Os) * st["t_closed"] * T0 * env(vg, st["p"]) + Os * st["t_open"] * T0 * env(x, st["p"])
+                    surf = st["cup"] * cupped(vg if Os < 1e-6 else vc + x * hb / h)
+                    surf += Os * st["bow"] * hb * (x * x - 1 / 3)
+                    lx = x * hb
+                    ly = side * th + surf
+                    return c + (base - c) * lat + w * ((lx * ca - ly * sa) * lat) + n * (lx * sa + ly * ca)
+
+                ring = [(x, 1) for x in BLADE_XS] + [(x, -1) for x in reversed(BLADE_XS)]
+                for x, side in ring:
+                    q = pos(x, side)
+                    # Normal analítica do perfil: derivada da própria seção (não da malha).
+                    dx = 0.012
+                    x0, x1 = max(-1.0, x - dx), min(1.0, x + dx)
+                    d = pos(x1, side) - pos(x0, side)
+                    nn = t.cross(d).normalized()
+                    if nn.dot(nb * side) < 0:
+                        nn = -nn
+                    # Na ponta (x = ±1) a normal gira para fora pela borda — só na lâmina solta.
+                    # Encostada na vizinha (fechada), a junta fica quase invisível: um vinco
+                    # leve, não uma linha escura (era o giro inteiro que desenhava frestas).
+                    if abs(x) > 0.999:
+                        out = (w * ca + n * sa) * (1 if x > 0 else -1)
+                        nn = (nn + out * (0.1 + 1.3 * Os)).normalized()
+                    verts.append(q)
+                    custom_n.append(nn)
+                    vattr.append(max(-1.0, min(1.0, vc + x * hb / h)))
+                    aattr.append(a)
+            continue
 
         if style == "lamelas":
             # Híbrido: fechada (abertura 0) a seção é a mesma lâmina plissada contínua —
@@ -499,7 +575,9 @@ def sculpt_blade(frame, arcs, points, style="plissado"):
             verts.append(c + w * (v * h) + n * off)
             vattr.append(max(-1.0, min(1.0, v)))
             aattr.append(a)
-    if style == "lamelas":
+    if style in BLADE_STYLES:
+        loops = [(i * 2 * len(BLADE_XS), 2 * len(BLADE_XS)) for i in range(LAMELLAE)]
+    elif style == "lamelas":
         Mb = len(vb)
         loops = [(i * (2 * Mb + 2), 2 * Mb + 2) for i in range(LAMELLAE)]
     else:
@@ -544,6 +622,9 @@ def sculpt_blade(frame, arcs, points, style="plissado"):
     if probe.normal.dot(normals[R // 3]) < 0:
         me.flip_normals()
     me.shade_smooth()
+    if custom_n:
+        # Normais do perfil (V2.1): a transição face/borda é controlada pela seção, sem arestas vivas.
+        me.normals_split_custom_set_from_vertices([tuple(v) for v in custom_n])
     at = me.attributes.new("_arc", "FLOAT", "POINT")
     at.data.foreach_set("value", aattr)
     av = me.attributes.new("_v", "FLOAT", "POINT")
@@ -628,7 +709,7 @@ def main():
     else:
         spine = make_spine(points)
     mod = spine.modifiers.new("Lamina", "NODES")
-    mod.node_group = make_frame_nodes() if v2 else make_nodes()
+    mod.node_group = (make_frame_nodes(STEP_BLADE if style in BLADE_STYLES else None)) if v2 else make_nodes()
 
     me = evaluated_mesh(spine)
     if v2:
