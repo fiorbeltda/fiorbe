@@ -1,4 +1,4 @@
-import { Color, DoubleSide, MeshPhysicalMaterial, Vector3, type Texture } from "three";
+import { Color, DoubleSide, MeshPhysicalMaterial, Vector3, Vector4, type Texture } from "three";
 
 /** Máximo de fitas da escultura (tamanho do array de comprimentos). */
 export const WAVE_BANDS = 6;
@@ -19,6 +19,15 @@ export interface SculptureUniforms {
   uPointer: { value: Vector3 };
   /** 0..1 — intensidade da reação local ao cursor. */
   uPointerAmt: { value: number };
+  /** Toque local (RIB-004), no espaço da fita: arco 0..1 e largura −1..1 do ponto tocado. */
+  uPokeU: { value: number };
+  uPokeV: { value: number };
+  /** Deslocamento do amassado (unidades locais; mola amortecida na CPU). */
+  uPokeAmt: { value: number };
+  /** Direção do olhar no espaço local: o amassado afunda para longe do visitante. */
+  uPokeDir: { value: Vector3 };
+  /** Pulsos que correm pela fita a partir do toque: (arco de origem, tempo desde a emissão, amplitude já amortecida, —). */
+  uPulse: { value: Vector4[] };
   /** 0..1 — progresso do desenrolar em fluxos (timeline de scroll). */
   uFlow: { value: number };
   /** Alvo dos fluxos em coordenadas de mundo. */
@@ -56,6 +65,11 @@ export function createSculptureUniforms(): SculptureUniforms {
     uIdleAmp: { value: 0 },
     uPointer: { value: new Vector3(99, 99, 99) },
     uPointerAmt: { value: 0 },
+    uPokeU: { value: 0 },
+    uPokeV: { value: 0 },
+    uPokeAmt: { value: 0 },
+    uPokeDir: { value: new Vector3(0, 0, -1) },
+    uPulse: { value: [new Vector4(), new Vector4()] },
     uFlow: { value: 0 },
     uFlowLeft: { value: -4 },
     uFlowRight: { value: 4 },
@@ -105,6 +119,11 @@ uniform float uTime;
 uniform float uIdleAmp;
 uniform vec3 uPointer;
 uniform float uPointerAmt;
+uniform float uPokeU;
+uniform float uPokeV;
+uniform float uPokeAmt;
+uniform vec3 uPokeDir;
+uniform vec4 uPulse[2];
 uniform float uFlow;
 uniform float uFlowLeft;
 uniform float uFlowRight;
@@ -161,6 +180,33 @@ for (int k = 0; k < WAVE_SLOTS; k++) {
   wvSlopeRaw += a * (-d / (sig * sig) * env * car + env * WAVE_K * cs);
   float df = d + 0.6;
   wvFr = max(wvFr, on * exp(-df * df / (2.0 * 0.85 * 0.85)) * wvGround);
+}
+// --- Toque local (RIB-004): campo no espaço da fita, somado à onda ---
+// Amassado gaussiano em torno do ponto tocado (comprimento de arco × largura) e pulsos
+// que correm pela fita a partir dele (frente a 1,6 un/s). Entram no mesmo
+// deslocamento e na mesma inclinação de normal da onda — portanto no mesmo limite de folga.
+{
+  float pkSign = dot(normalize(aN + vec3(1e-6)), uPokeDir) >= 0.0 ? 1.0 : -1.0;
+  float pkDs = aRib.x - uPokeU;
+  pkDs = (pkDs - floor(pkDs + 0.5)) * wvL;
+  float pkDv = (aRib.y - uPokeV) * wvHalf;
+  float pkG = exp(-pkDs * pkDs / 0.18 - pkDv * pkDv / 0.12);
+  float pkD = uPokeAmt * pkG;
+  float pkS = uPokeAmt * pkG * (-2.0 * pkDs / 0.18);
+  for (int i = 0; i < 2; i++) {
+    vec4 pu = uPulse[i];
+    if (pu.z <= 0.0) continue;
+    float d = aRib.x - pu.x;
+    d = (d - floor(d + 0.5)) * wvL;
+    // Pacote longo e baixo (λ ≈ 1,05, σ ≈ 0,35): um pacote curto vincava a lâmina.
+    float r = abs(d) - pu.y * 1.6;
+    float e = exp(-r * r / 0.24);
+    float sn = sin(r * 6.0);
+    pkD += pu.z * e * sn;
+    pkS += pu.z * e * (6.0 * cos(r * 6.0) - (2.0 / 0.24) * r * sn) * sign(d);
+  }
+  wvDisp += pkD * pkSign * wvGround;
+  wvSlopeRaw += pkS * pkSign * wvGround;
 }
 // Referencial da FITA (não do vértice): a lâmina tem face de cima, de baixo
 // e bordas — todas se movem juntas ao longo da normal da fita.

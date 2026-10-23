@@ -6,10 +6,12 @@ import {
   FrontSide,
   type BufferGeometry,
   DirectionalLight,
+  DoubleSide,
   NeutralToneMapping,
   Group,
   Matrix4,
   Mesh,
+  MeshBasicMaterial,
   PerspectiveCamera,
   Plane,
   Raycaster,
@@ -31,6 +33,7 @@ import { createWaveDebug } from "./motion/waveDebug";
 import { createPremiumEnvironment, createStudioEnvironment } from "./scene/environment";
 import { updateIdle } from "./motion/idle";
 import { InteractionController } from "./motion/interaction";
+import { createSpring, damp, stepSpring } from "./motion/spring";
 import { ScrollTimeline } from "./motion/scrollTimeline";
 import { AdaptiveDpr, detectTier, profileFor, type Tier } from "./quality/quality";
 
@@ -239,6 +242,40 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
   const hit = new Vector3();
   const inverse = new Matrix4();
 
+  // --- Toque local (RIB-004): raycast na superfície média da fita (proxy leve) ---
+  // O ponto tocado é a passagem visível mais próxima; a reação vive no espaço da fita
+  // (arco × largura), com massa: alvo suavizado (resistência inicial) → mola pouco
+  // subamortecida (recuperação elástica) → pulsos que correm pela fita quando o cursor
+  // a varre rápido. Tudo em tempo real (molas com subpassos fixos: 30/60/120 Hz iguais).
+  // DoubleSide: a fita gira e mostra as duas faces — com um lado só, o raycast ignorava metade.
+  const proxy = monument?.proxy ? new Mesh(monument.proxy, new MeshBasicMaterial({ side: DoubleSide })) : null;
+  if (proxy) {
+    proxy.matrixAutoUpdate = false;
+    proxy.matrixWorldAutoUpdate = false;
+  }
+  const poke = createSpring(42, 0.55);
+  let pokeDrive = 0;
+  let pokeU = 0;
+  let pokeV = 0;
+  let pokeHasPoint = false;
+  let over = false;
+  let lastPulse = -10;
+  const pulses = [
+    { u: 0, t: 0, a: 0 },
+    { u: 0, t: 0, a: 0 },
+  ];
+  const rayHits: Array<{ uv?: Vector2 }> = [];
+  const castProxy = (x: number, y: number) => {
+    if (!proxy) return null;
+    ndc.set((x / width) * 2 - 1, -(y / height) * 2 + 1);
+    raycaster.setFromCamera(ndc, camera);
+    proxy.matrixWorld.copy(mesh.matrixWorld);
+    rayHits.length = 0;
+    raycaster.intersectObject(proxy, false, rayHits as never);
+    return rayHits[0] ?? null;
+  };
+  if (proxy) interaction.canGrab = (x, y) => castProxy(x, y) !== null;
+
   let width = 0;
   let height = 0;
   let worldPerPx = 1;
@@ -349,7 +386,52 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
 
     // --- Reação local ao cursor ---
     scene.updateMatrixWorld();
-    if (interaction.pointerX >= 0) {
+    if (proxy) {
+      const live = !reducedMotion && !paused && heroW > 0.01;
+      // O cursor contextual vale também pausado (o arraste continua disponível); só a deformação para.
+      const hov = !reducedMotion && heroW > 0.01 && interaction.isHovering && interaction.pointerX >= 0 ? castProxy(interaction.pointerX, interaction.pointerY) : null;
+      const h = live ? hov : null;
+      const nowOver = hov !== null || interaction.isDragging;
+      if (nowOver !== over) {
+        over = nowOver;
+        if (over) stage.dataset.over = "true";
+        else delete stage.dataset.over;
+      }
+      if (h?.uv) {
+        // Arco periódico: segue pelo caminho mais curto (sem saltar na emenda).
+        const u = h.uv.x - Math.floor(h.uv.x);
+        if (!pokeHasPoint) {
+          pokeU = u;
+          pokeV = h.uv.y;
+        }
+        let du = u - pokeU;
+        du -= Math.round(du);
+        pokeU = (pokeU + du * (1 - Math.exp(-14 * dt)) + 1) % 1;
+        pokeV = damp(pokeV, h.uv.y, 14, dt);
+        pokeHasPoint = true;
+        uniforms.uPokeDir.value.copy(raycaster.ray.direction).transformDirection(inverse.copy(mesh.matrixWorld).invert());
+      }
+      const speed = interaction.pointerSpeed;
+      // Cursor parado sobre a lâmina: amassado pequeno; varrendo: mais fundo (limitado).
+      const target = h ? 0.22 + 0.78 * Math.min(1, speed / 1400) : 0;
+      pokeDrive = damp(pokeDrive, target, 7, dt);
+      poke.target = pokeDrive;
+      stepSpring(poke, dt);
+      if (h && speed > 700 && idleTime - lastPulse > 0.45) {
+        const slot = pulses[0]!.t > pulses[1]!.t ? pulses[0]! : pulses[1]!;
+        Object.assign(slot, { u: pokeU, t: 0, a: Math.min(1, speed / 2600) * 0.018 });
+        lastPulse = idleTime;
+      }
+      pulses.forEach((p, i) => {
+        p.t += live ? dt : 0;
+        const amp = live && p.t < 2.6 ? p.a * Math.exp(-1.7 * p.t) : 0;
+        uniforms.uPulse.value[i]!.set(p.u, p.t, amp, 0);
+      });
+      uniforms.uPokeU.value = pokeU;
+      uniforms.uPokeV.value = pokeV;
+      uniforms.uPokeAmt.value = live ? poke.value * 0.05 * heroW : 0;
+      uniforms.uPointerAmt.value = 0;
+    } else if (interaction.pointerX >= 0) {
       ndc.set((interaction.pointerX / width) * 2 - 1, -(interaction.pointerY / height) * 2 + 1);
       raycaster.setFromCamera(ndc, camera);
       plane.constant = -scrollRig.position.z;
@@ -358,7 +440,7 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
         uniforms.uPointer.value.copy(hit).applyMatrix4(inverse);
       }
     }
-    uniforms.uPointerAmt.value = interaction.presence.value * (reducedMotion ? 0 : 1);
+    if (!proxy) uniforms.uPointerAmt.value = interaction.presence.value * (reducedMotion ? 0 : 1);
     set.syncReflection(mesh.matrixWorld, scrollRig.position.y + floorLocal * scale);
     // Trilhas do piso: projetadas com a peça em repouso (no início e depois de redimensionar).
     if (trailsDirty && k === 0 && trailSvg && !compact) {
