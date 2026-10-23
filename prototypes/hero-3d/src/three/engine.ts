@@ -201,12 +201,19 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
       person: useKnot ? null : PERSON_LOCAL,
       reducedMotion,
       camera,
+      // ?ambiente=v1: piso e reflexo anteriores (comparação).
+      cinematic: params.get("ambiente") !== "v1",
+      sculpture: mesh,
+      compact,
     },
     reflectionGeometry ? { geometry: reflectionGeometry, material } : null,
   );
   scrollRig.add(set.group);
-  if (set.reflection) scene.add(set.reflection);
-  if (set.figureReflection) scene.add(set.figureReflection);
+  const trailSvg = document.querySelector<SVGSVGElement>("svg[data-floor-trails]");
+  let trailsDirty = true;
+  // Ambiente v1: reflexos na cena principal. Cinematográfico: já estão na cena do reflexo do piso.
+  if (set.reflection && !set.reflection.parent) scene.add(set.reflection);
+  if (set.figureReflection && !set.figureReflection.parent) scene.add(set.figureReflection);
 
   const interaction = new InteractionController(
     stage,
@@ -342,7 +349,13 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
     }
     uniforms.uPointerAmt.value = interaction.presence.value * (reducedMotion ? 0 : 1);
     set.syncReflection(mesh.matrixWorld, scrollRig.position.y + floorLocal * scale);
+    // Trilhas do piso: projetadas com a peça em repouso (no início e depois de redimensionar).
+    if (trailsDirty && k === 0 && trailSvg && !compact) {
+      set.layoutTrails(trailSvg, width, height);
+      trailsDirty = false;
+    }
 
+    set.renderEnvironment(renderer, camera);
     renderer.render(scene, camera);
 
     if (!readySent) {
@@ -361,7 +374,10 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
     }
   }
 
-  const onResize = () => layout();
+  const onResize = () => {
+    layout();
+    trailsDirty = true;
+  };
   window.addEventListener("resize", onResize, { passive: true });
 
   const onVisibility = () => {
@@ -389,6 +405,7 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
     // Custo real de GPU por quadro, independente do rAF (que o navegador pode estrangular).
     (window as unknown as { __fiorbe?: unknown }).__fiorbe = {
       figure: () => set.probe(),
+      floor: () => ({ ...(set.floor?.material.userData ?? {}), svgHidden: trailSvg?.style.display === "none" }),
       waves: () => waves?.snapshot() ?? [],
       /** Congela só as ondas e avança o tempo delas (capturas determinísticas). */
       holdWaves(hold: boolean) {
@@ -414,11 +431,13 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
         const gl = renderer.getContext();
         const px = new Uint8Array(4);
         const sync = () => gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+        set.renderEnvironment(renderer, camera);
         renderer.render(scene, camera);
         sync();
         const t0 = performance.now();
         for (let i = 0; i < frames; i++) {
           uniforms.uTime.value += 1 / 60;
+          set.renderEnvironment(renderer, camera);
           renderer.render(scene, camera);
           sync();
         }
@@ -449,6 +468,7 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
       geometry.dispose();
       if (reflectionGeometry !== geometry) reflectionGeometry?.dispose();
       set.dispose();
+      if (trailSvg) trailSvg.style.display = "";
       material.dispose();
       fiber.dispose();
       waveDebug?.dispose();

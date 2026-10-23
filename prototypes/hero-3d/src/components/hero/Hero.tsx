@@ -47,9 +47,9 @@ export function Hero() {
         </p>
       </div>
 
-      {/* Trilhas de luz no piso, nas coordenadas da referência. O piso é estático
-          no estado de repouso, então um SVG aditivo equivale ao 3D e custa menos. */}
-      <svg className={styles.trails} viewBox="0 0 1672 941" preserveAspectRatio="none" aria-hidden="true">
+      {/* Trilhas de luz no piso, nas coordenadas da referência. Com o piso cinematográfico
+          o 3D lê estas curvas, projeta no chão e esconde o SVG; sem ele, o SVG fica. */}
+      <svg className={styles.trails} viewBox="0 0 1672 941" preserveAspectRatio="none" aria-hidden="true" data-floor-trails="">
         <defs>
           <linearGradient id="trail-main" x1="1672" y1="915" x2="930" y2="700" gradientUnits="userSpaceOnUse">
             <stop offset="0" stopColor="#bff3ff" />
