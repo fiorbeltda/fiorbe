@@ -440,7 +440,16 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
         uniforms.uPointer.value.copy(hit).applyMatrix4(inverse);
       }
     }
-    if (!proxy) uniforms.uPointerAmt.value = interaction.presence.value * (reducedMotion ? 0 : 1);
+    if (!proxy) {
+      uniforms.uPointerAmt.value = interaction.presence.value * (reducedMotion ? 0 : 1);
+      // Formas sem proxy (forma C e demais): o palco inteiro continua arrastável, como antes.
+      const nowOver = (!reducedMotion && interaction.isHovering) || interaction.isDragging;
+      if (nowOver !== over) {
+        over = nowOver;
+        if (over) stage.dataset.over = "true";
+        else delete stage.dataset.over;
+      }
+    }
     set.syncReflection(mesh.matrixWorld, scrollRig.position.y + floorLocal * scale);
     // Trilhas do piso: projetadas com a peça em repouso (no início e depois de redimensionar).
     if (trailsDirty && k === 0 && trailSvg && !compact) {
