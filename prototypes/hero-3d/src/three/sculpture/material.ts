@@ -42,6 +42,8 @@ export interface SculptureUniforms {
   uWaveA: { value: number };
   /** Torção máxima (rad) da fita em torno da tangente na passagem da onda. */
   uTwistA: { value: number };
+  /** 0..1: calibra a onda pela meia-largura (faixas largas flexionam menos e a torção limita o deslocamento da borda). */
+  uWaveWide: { value: number };
   // --- RIB-03 (experimental, flag): desfiar em fios ---
   uFray: { value: number };
   uFiber: { value: Texture | null };
@@ -69,6 +71,7 @@ export function createSculptureUniforms(): SculptureUniforms {
     uFloorY: { value: -100 },
     uWaveA: { value: 0.13 },
     uTwistA: { value: 0.5 },
+    uWaveWide: { value: 0 },
     uFray: { value: 0 },
     uFiber: { value: null },
     uFrayEdge: { value: new Color("#bdf2ff") },
@@ -86,6 +89,7 @@ attribute float aClear;
 attribute vec3 aN;
 varying vec3 vGrooveDir;
 uniform float uTwistA;
+uniform float uWaveWide;
 #define WAVE_SLOTS ${WAVE_SLOTS}
 uniform float uWaveC[${WAVE_SLOTS}];
 uniform float uWaveAmp[${WAVE_SLOTS}];
@@ -133,6 +137,11 @@ float wvDisp = 0.0;
 float wvTh = 0.0;
 float wvSlopeRaw = 0.0;
 float wvFr = 0.0;
+// Metal, não tecido: com uWaveWide, faixas largas flexionam menos e a torção
+// passa a limitar o deslocamento da borda (≈ mesmo em qualquer largura).
+float wvHalf = max(aHalf, 1e-3);
+float wvFlexK = mix(1.0, 0.7 * clamp(0.36 / wvHalf, 0.45, 1.0), uWaveWide);
+float wvTwistK = mix(1.0, clamp(0.11 / wvHalf, 0.12, 1.0), uWaveWide);
 for (int k = 0; k < WAVE_SLOTS; k++) {
   float on = uWaveAmp[k] * (1.0 - step(0.5, abs(uWaveBand[k] - aRib.z)));
   if (on <= 0.0) continue;
@@ -142,9 +151,9 @@ for (int k = 0; k < WAVE_SLOTS; k++) {
   float env = exp(-d * d / (2.0 * sig * sig)) * (1.0 - smoothstep(2.4 * sig, 3.0 * sig, abs(d)));
   float car = sin(WAVE_K * d - uWavePh[k]);
   float cs = cos(WAVE_K * d - uWavePh[k]);
-  float a = uWaveA * on * wvCross * wvGround;
+  float a = uWaveA * on * wvCross * wvGround * wvFlexK;
   wvDisp += a * env * car;
-  wvTh += uTwistA * on * wvGround * env * cs;
+  wvTh += uTwistA * on * wvGround * env * cs * wvTwistK;
   wvSlopeRaw += a * (-d / (sig * sig) * env * car + env * WAVE_K * cs);
   float df = d + 0.6;
   wvFr = max(wvFr, on * exp(-df * df / (2.0 * 0.85 * 0.85)) * wvGround);

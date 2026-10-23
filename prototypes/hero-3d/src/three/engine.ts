@@ -49,13 +49,16 @@ export interface EngineOptions {
 }
 
 /**
- * ?forma=blender (escultura modelada no Blender) ou ?forma=blender-teste (prova de
+ * ?forma=blender (escultura V1 modelada no Blender), ?forma=blender2[sufixo] (V2,
+ * lâmina esculpida — `escultura-v2[sufixo].glb`) ou ?forma=blender-teste (prova de
  * integração): carrega o GLB antes de criar o motor. Qualquer outra forma: null.
  */
 export async function preloadSculpture(): Promise<BufferGeometry | null> {
-  const forma = new URLSearchParams(window.location.search).get("forma");
-  if (forma !== "blender" && forma !== "blender-teste") return null;
+  const forma = new URLSearchParams(window.location.search).get("forma") ?? "";
+  const v2 = /^blender2([a-z0-9-]*)$/.exec(forma);
+  if (forma !== "blender" && forma !== "blender-teste" && !v2) return null;
   const { loadBlenderGeometry } = await import("./sculpture/blenderSculpture");
+  if (v2) return loadBlenderGeometry(`/models/escultura-v2${v2[1]}.glb`);
   return loadBlenderGeometry(forma === "blender" ? "/models/escultura.glb" : "/models/teste.glb");
 }
 
@@ -133,6 +136,8 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
       ? new WaveDirector(monument.lengths, MAIN_BAND, uniforms)
       : null;
   if (monument) uniforms.uLen.value = monument.lengths.slice();
+  // V2 (lâmina esculpida, faixas largas): onda calibrada para metal, não tecido.
+  if (blender && formParam?.startsWith("blender2")) uniforms.uWaveWide.value = 1;
   uniforms.uFloorY.value = FLOOR_LOCAL;
   const material = createSculptureMaterial(uniforms);
   // Lâmina com espessura é um sólido fechado: só as faces externas (metade do preenchimento).

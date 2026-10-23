@@ -18,7 +18,10 @@ export async function loadBlenderGeometry(url: string): Promise<BufferGeometry> 
   const gltf = await new GLTFLoader().loadAsync(url);
   let geometry: BufferGeometry | null = null;
   gltf.scene.traverse((o) => {
-    if (!geometry && (o as Mesh).isMesh) geometry = (o as Mesh).geometry as BufferGeometry;
+    if (geometry || !(o as Mesh).isMesh) return;
+    geometry = (o as Mesh).geometry as BufferGeometry;
+    // V2: o construtor já entrega as faces voltadas para fora (extras do glTF).
+    geometry.userData.outward = Boolean(o.userData.fiorbe_outward);
   });
   if (!geometry) throw new Error("GLB sem malha");
   return geometry;
@@ -98,16 +101,18 @@ export function buildFromBlender(src: BufferGeometry): MonumentBuild {
 
   const geometry = new BufferGeometry();
   geometry.setAttribute("position", pos);
-  // O perfil do Curve to Mesh sai com as faces voltadas para dentro da lâmina:
+  // V1: o perfil do Curve to Mesh sai com as faces voltadas para dentro da lâmina —
   // inverte o enrolamento e as normais (o material desenha só as faces externas).
+  // V2 (seção esculpida no construtor) já sai para fora.
+  const flip = !src.userData.outward;
   const index = src.getIndex()!;
   const tri = index.array.slice() as Uint32Array | Uint16Array;
-  for (let t = 0; t < tri.length; t += 3) {
+  for (let t = 0; flip && t < tri.length; t += 3) {
     const k = tri[t + 1]!;
     tri[t + 1] = tri[t + 2]!;
     tri[t + 2] = k;
   }
-  const nrm = (src.getAttribute("normal").array as Float32Array).map((x) => -x);
+  const nrm = (src.getAttribute("normal").array as Float32Array).map((x) => (flip ? -x : x));
   geometry.setAttribute("normal", new BufferAttribute(nrm, 3));
   geometry.setIndex(new BufferAttribute(tri, 1));
   geometry.setAttribute("color", new BufferAttribute(colors, 3));

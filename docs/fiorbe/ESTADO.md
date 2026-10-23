@@ -3,7 +3,7 @@
 > **Fonte canônica do status.** Atualizar ao fim de TODA tarefa: painel, mapa de componentes e ficha da tarefa (`docs/fiorbe/tarefas/`). Sempre registrar qual é o **próximo objetivo**.
 > Implementado ≠ aprovado. Commit ≠ aprovação. Não usar porcentagens de progresso.
 
-**Última atualização:** 22/10/2026
+**Última atualização:** 23/10/2026
 
 ## Painel
 
@@ -11,10 +11,10 @@
 |---|---|
 | **Objetivo principal** | Concluir a landing page institucional da FIORBE (`/` e `/produtos/motor-fiscal`) no nível de qualidade definido em `CLAUDE.md`. |
 | **Etapa atual** | Hero Experience — protótipo isolado em `E:\dev\fiorbe\prototypes\hero-3d` (antecede as etapas 02–05 do plano). Etapa 01 (Design System) em revisão em paralelo. |
-| **Componentes em desenvolvimento** | `RIB-001` — Escultura viva (v5: modelagem no Blender → GLB, `?forma=blender`; padrão segue forma C) ([ficha](tarefas/RIB-001.md)) · `FIG-001` — Figura humana (v1, aguardando revisão) ([ficha](tarefas/FIG-001.md)) |
-| **Tarefa ativa** | `RIB-001` v5 — primeira escultura modelada no Blender, aguardando revisão visual |
-| **Próximo objetivo** | Revisão da escultura Blender (`captures\ref-vs-bl5.png`, `captures\blender-material-cena.png`). Próxima evolução artística: mais contraste face/borda (torções mais fortes nos grandes gestos), passagens em leque paralelas na coroa e no redemoinho, saia central mais larga; depois decidir se `blender` vira o padrão. |
-| **Branch / último checkpoint** | `exp/hero-fidelidade` · ver Log (último enviado ao GitHub: `2b4ed80`). `main` está em `d498026`. Remoto: `origin` = https://github.com/fiorbeltda/fiorbe (privado), as duas branches enviadas em 22/10/2026 com autorização. Merge em `main` continua exigindo autorização. |
+| **Componentes em desenvolvimento** | `RIB-001` — Escultura viva (Blender V2: lâmina esculpida com leques de lamelas, `?forma=blender2`; padrão segue forma C; V1 em `?forma=blender`) ([ficha](tarefas/RIB-001.md)) · `FIG-001` — Figura humana (v1, aguardando revisão) ([ficha](tarefas/FIG-001.md)) |
+| **Tarefa ativa** | `RIB-001` Blender V2 — evolução artística da escultura, aguardando revisão visual |
+| **Próximo objetivo** | Revisão da Blender V2: `captures\v1-vs-v2.png`, `captures\ref-vs-v2.png`, `captures\v2-leques.png`, `captures\v2-redemoinho.png`, `captures\onda-v2.webm` (alternativa `?forma=blender2-plissado`). Próxima evolução recomendada: passada de material da V2 — bordas luminosas finas e realces prateados como na referência, serrilhado nos vãos estreitos entre lâminas; depois decidir se `blender2` vira o padrão. |
+| **Branch / último checkpoint** | `exp/hero-fidelidade` · ver Log (último enviado ao GitHub: `2b4ed80`; commits locais posteriores não enviados). `main` está em `d498026`. Remoto: `origin` = https://github.com/fiorbeltda/fiorbe (privado), as duas branches enviadas em 22/10/2026 com autorização. Merge em `main` continua exigindo autorização. |
 | **Servidor local** | `npm run dev` em `E:\dev\fiorbe\prototypes\hero-3d` → http://localhost:3100 (`?debug` mostra fps/qualidade) |
 
 ### Aprovado pelo usuário
@@ -31,6 +31,7 @@
 - Laboratório visual da Etapa 01 (canvas, rodadas 1 e 2) — paleta, tipografia, lettering, direções.
 - Hero: composição/interface da referência, escultura de fitas autorais, cenário (chão, reflexo, trilhas, luz), interação (cursor/arraste limitados), transição de scroll (protótipo técnico).
 - Figura humana v1 (esqueleto, idle em camadas, IK nos pés, integração de luz).
+- `RIB-001` Blender V2 (`?forma=blender2`): espinha C2, seção esculpida (6 lamelas: fechadas = superfície plissada contínua; abertas = leque real), percurso de 12 passagens retraçado sobre a referência, onda calibrada para metal. Alternativa `?forma=blender2-plissado`.
 - Cenário do hero: arquitetura de luz monumental atrás da escultura (parede, núcleo, colunas, névoa, horizonte) + contraluz da figura + luz e reflexos no piso.
 - `RIB-001` v3: escultura refeita como UMA fita contínua fechada (8 trechos, por cima/por baixo alternados, 0 interseções); duas ondas circulam continuamente, sem troca de peça; desfiar desligado (`?fios=1` liga); `?clay` mostra só a forma.
 - (Histórico) `RIB-001` v2: onda percorre a fita inteira (volta completa) e só então transfere no cruzamento; torção + flexão limitadas pela folga local; cruzamento A×B sem interpenetração; desfiar em fios por faixa com bordas suavizadas (flag `?fios=0`). Debug `?ondadebug`. DPR 1,25 em GPU integrada.
@@ -55,7 +56,7 @@ Legenda — **Implementação:** Não iniciado · Em andamento · Implementado �
 | Hero Experience | HERO-002 | Escultura 3D (geometria e material) | 04 | Implementado (protótipo) | Aguardando revisão | `HERO_PROTOTIPO.md` |
 | Hero Experience | HERO-003 | Cenário: chão, reflexo, trilhas, luz | 04 | Implementado (protótipo) | Aguardando revisão | `HERO_PROTOTIPO.md` |
 | Hero Experience | FIG-001 | Figura humana tridimensional | 04 | Em andamento (v1 implementada) | Aguardando revisão | [tarefas/FIG-001.md](tarefas/FIG-001.md) |
-| Hero Experience | RIB-001 | Escultura viva: onda, desfiar/recompor, hover, atmosfera, otimização | 04–05 | Em andamento (onda volta completa + desfiar v2) | Conceito e cursor B aprovados; visual aguardando revisão | [tarefas/RIB-001.md](tarefas/RIB-001.md) |
+| Hero Experience | RIB-001 | Escultura viva: onda, desfiar/recompor, hover, atmosfera, otimização | 04–05 | Em andamento (Blender V2 + onda contínua calibrada) | Conceito e cursor B aprovados; visual aguardando revisão | [tarefas/RIB-001.md](tarefas/RIB-001.md) |
 | Hero Experience | HERO-004 | Interação e física (cursor, arraste, inércia) | 04 | Implementado (protótipo) | Aguardando revisão | `HERO_PROTOTIPO.md` |
 | Hero Experience | HERO-005 | Transição de scroll | 05 | Implementado (protótipo técnico) | Aguardando revisão | `HERO_PROTOTIPO.md` |
 | Hero Experience | HERO-006 | Integração do hero ao site definitivo | 02–05 | Não iniciado (depende de DS-002) | — | — |
@@ -78,7 +79,7 @@ Componentes ganham ficha em `tarefas/` quando entram em desenvolvimento. Correç
 | Item | Valor |
 |---|---|
 | Caminho | `E:\dev\fiorbe` |
-| Git | branches `main` e `exp/hero-fidelidade`; sem remoto |
+| Git | branches `main` e `exp/hero-fidelidade`; remoto `origin` (GitHub, privado) |
 | Ambiente | Windows 10 · Node 22.22.2 · npm 12.0.1 · git 2.53 · Claude Code 2.1.308 · pnpm ausente |
 | Disco | C: com ~1 GB livre. Caches já em E: (`E:\npm-cache`, `TEMP` `E:\BrendonData\Temp`, `PLAYWRIGHT_BROWSERS_PATH` `E:\BrendonData\Caches\Playwright`) |
 | Stack | Aprovada (ver Painel). Protótipo usa Next 16.4.2, React 19.3.1, three 0.186.1; playwright-core 1.63 só para testes |
@@ -102,6 +103,7 @@ Componentes ganham ficha em `tarefas/` quando entram em desenvolvimento. Correç
 | 22/10/2026 | HERO-001..005 | Rodada de fidelidade à referência (8 ciclos comparativos) na branch `exp/hero-fidelidade`; commit `517b62f` | Visual pendente |
 | 22/10/2026 | FIG-001 | Figura v1: esqueleto, idle em camadas, IK, integração de luz; commit `763b72a` | Visual pendente |
 | 22/10/2026 | Gestão | Painel central, hierarquia de componentes, fichas em `tarefas/`, skill `/fiorbe-status` | Pedido do usuário |
+| 23/10/2026 | RIB-001 | Blender V2: espinha C2 (fim das quinas de referencial), seção esculpida com 6 lamelas que se abrem em leque (coroa direita, redemoinho, curva interna, pé direito) e fecham numa superfície plissada contínua; percurso de 12 passagens retraçado sobre a referência; faixas mais estreitas; onda calibrada pela largura (`uWaveWide`, só V2). Descartados: plissado profundo, lamelas abertas no percurso todo. 0 interseções; 56,7 mil vértices; GLB 2,5 MB; ≈18,8 ms (V1 16,9; C 18,8). Alternativa `?forma=blender2-plissado`. Capturas `captures\v1-vs-v2.png`, `captures\ref-vs-v2.png`, `captures\v2-leques.png`, `captures\v2-redemoinho.png`, `captures\onda-v2.webm` | Visual pendente |
 | 22/10/2026 | RIB-001 | v5: Blender 5.2.3 LTS portátil (oficial, SHA-256 conferido) em `E:\Tools`, só em background; fluxo curva Bézier + Geometry Nodes → GLB (`_arc`, `_v`) → Three (`?forma=blender`, `?forma=blender-teste`); escultura de 9 gestos num percurso único, 0 interseções (BVH), 41 mil vértices, GLB 1,8 MB, ≈16,8 ms; forma C continua padrão | Visual pendente |
 | 22/10/2026 | RIB-001 | v4 laboratório: formas `?forma=v32|a|b|c` preservadas; perfil com espessura (lâmina fechada com borda arredondada) e só faces externas; estrias analíticas com limite de banda no lugar do bump; causa do pente isolada (fita quase dobrando nas curvas fechadas → normais oscilando, amplificadas pela anisotropia); A (percurso novo do mapa) e B (laminado) descartadas, C adotada como padrão; `?gestos` mostra os grandes gestos; 0 interseções em todas; ≈18,4 ms (v32 17,6) | Visual pendente |
 | 22/10/2026 | RIB-001 | v3.2: fitas mais largas, torções em leque nas varreduras, profundidade dos cruzamentos ×1,3; testada e descartada uma segunda volta aninhada (duplicava as passagens e poluía a forma); 0 interseções; ≈18 ms (+1 ms, fitas maiores). Comparações `captures\escultura-anterior-vs-r4.png`, `captures\ref-vs-r4.png` | Visual pendente |
