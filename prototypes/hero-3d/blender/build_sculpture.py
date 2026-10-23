@@ -20,6 +20,7 @@ Na exportação a malha é girada para o Y-up do glTF, e o arquivo sai exatament
 
 Coordenadas dos pontos: pixels da referência 1672×941 (mesma conversão de monument.ts) + profundidade z.
 """
+import os
 import sys
 import math
 import bpy
@@ -38,7 +39,7 @@ STEP = 0.03           # passo dos anéis ao longo da fita (unidades)
 STEP2 = 0.05          # V2: passo dos anéis
 PROFILE2 = 45         # V2: amostras através da largura em cada face
 PLEAT_DEPTH = 0.12    # V2 plissado: profundidade máxima das dobras / espaçamento entre elas
-DEBUG_FRAME = False   # V2: relatório de suavidade do referencial
+DEBUG_FRAME = os.environ.get("FIORBE_DEBUG") == "1"   # V2: relatório de suavidade do referencial
 FRAME_SMOOTH = 6      # V2: meia-janela da suavização do referencial (anéis)
 LAMELLAE = 6          # V2 lamelas: lâminas por seção
 LAMELLA_SAMPLES = 5   # V2 lamelas: amostras através de cada lâmina, por face
@@ -131,6 +132,43 @@ FIORBE2 = [
     [1455, 470, -0.6, 0.85, -1.3, 0.2, 6, 0.0], [1400, 548, -0.85, 0.9, -0.8, 0.2, 6, 0.0], [1270, 588, -0.5, 0.95, -0.5, 0.3, 6, 0.0], [1150, 618, -0.05, 1.0, -0.2, 0.3, 6, 0.0],
 ]
 
+# V2.2 — refinamento dos grandes gestos (RIB-001). Edições explícitas sobre o percurso V2,
+# indexadas pelo ponto original (x, y) → valores novos; o resto fica idêntico.
+FIORBE22_EDITS = {
+    # Coroa: pétala como UMA superfície larga e contínua (leque fechado), rolando ao longo
+    # do arco — a face vira para cima no alto e para a borda na descida; concha mais funda.
+    (985, 150): [985, 150, -0.35, 1.85, 0.25, 1.0, 9, -0.4, 0.0],
+    (1090, 108): [1090, 108, -0.4, 2.05, -0.1, 1.0, 11, -0.5, 0.0],
+    (1190, 135): [1190, 135, -0.35, 1.75, -0.45, 0.9, 9, -0.3, 0.0],
+    # ... e só ao virar de borda na descida a superfície se abre num leque curto, que volta
+    # a fechar antes da base (variedade: face larga → leque → borda fina).
+    (1250, 215): [1250, 215, -0.3, 1.3, -0.7, 0.6, 7, 0.0, 0.45],
+    (1258, 320): [1258, 320, -0.2, 1.0, -1.2, 0.3, 6, 0.0, 0.15],
+    # Faixa central: diagonal (sobe para a direita), torção gradual (a luz corre pela face) e
+    # largura que afina para a esquerda.
+    (1290, 486): [1300, 462, 1.0, 1.4, -0.3, 0.8, 10, 0.3],
+    (1150, 504): [1160, 494, 1.1, 1.25, 0.05, 0.8, 10, 0.3],
+    (1020, 524): [1025, 530, 0.2, 1.05, -0.3, 0.6, 8, 0.2],
+    (905, 556): [905, 560, 0.1, 0.9, 0.35, 0.4, 7, 0.0],
+    # Faixa escura média: deixa de ser horizontal — desce para a direita e cruza a faixa
+    # central em X (como na referência); torção rumo à face para a luz variar ao longo dela.
+    (915, 385): [915, 372, -0.3, 1.05, 0.2, 0.5, 7, 0.0, 0.4],
+    (1015, 372): [1015, 352, 0.2, 1.1, -0.1, 0.6, 8, 0.0, 0.2],
+    (1140, 370): [1140, 372, 0.45, 1.1, -0.35, 0.5, 8, 0.0, 0.3],
+    (1272, 392): [1268, 400, 0.4, 1.0, -0.6, 0.4, 7, 0.0],
+    # Redemoinho: o leque fecha aos poucos ao entrar na faixa central (antes 0,55 → 0 num
+    # trecho curto e muito curvo) e a torção não dá o salto 0,7 → 1,2 → 0,6.
+    (1528, 352): [1528, 352, 0.0, 1.05, 0.7, 0.5, 7, 0.0, 0.65],
+    (1495, 425): [1498, 422, 0.4, 1.05, 0.95, 0.3, 7, 0.0, 0.45],
+    (1410, 462): [1410, 462, 0.8, 1.15, 0.6, 0.6, 8, 0.2, 0.2],
+    # Volta M → V (giro de até 8,6°/anel): canto mais redondo (o ponto da virada desce e
+    # recua em vez de avançar para fora) e torção sem pico.
+    (1388, 404): [1380, 406, -0.1, 0.75, -1.3, 0.2, 6, 0.0],
+    (1455, 470): [1448, 480, -0.6, 0.85, -1.2, 0.2, 6, 0.0],
+}
+FIORBE22 = [FIORBE22_EDITS.get((p[0], p[1]), p) for p in FIORBE2]
+assert sum(1 for p in FIORBE2 if (p[0], p[1]) in FIORBE22_EDITS) == len(FIORBE22_EDITS)
+
 # Estilos da seção (mesmo percurso; o 6º valor de cada ponto muda de papel):
 #   plissado — dobras longitudinais contínuas; valor = profundidade das dobras.
 #   lamelas  — a fita se divide em lâminas reais, encostadas onde o valor é 0 (leem
@@ -144,6 +182,7 @@ MODELS2 = {
     "fiorbe2-plissado": (FIORBE2, "plissado"),
     "fiorbe2-a": (FIORBE2, "satin"),
     "fiorbe2-b": (FIORBE2, "sculpted"),
+    "fiorbe2-v22": (FIORBE22, "sculpted22"),
 }
 
 # Perfil das lâminas V2.1. p: expoente da superelipse da espessura (maior = face mais
@@ -153,7 +192,17 @@ MODELS2 = {
 BLADE_STYLES = {
     "satin": {"p": 10.0, "t_open": 0.15, "t_closed": 0.26, "cup": 0.35, "bow": 0.0},
     "sculpted": {"p": 6.0, "t_open": 0.19, "t_closed": 0.3, "cup": 1.0, "bow": 0.07},
+    # V2.2: mesma lâmina da B. o_min: aberturas abaixo disso fecham de vez (frestas quase
+    # fechadas viravam fendas escuras serrilhadas); fan_lat: o limite de curvatura conta o
+    # afastamento extra das lâminas abertas (sem isso elas dobravam nas curvas fechadas).
+    "sculpted22": {"p": 6.0, "t_open": 0.19, "t_closed": 0.3, "cup": 1.0, "bow": 0.07, "o_min": 0.12, "fan_lat": True},
 }
+
+
+def blade_open(O, st):
+    """Abertura efetiva das lâminas (0..1) a partir do valor interpolado."""
+    o_min = st.get("o_min", 0.0)
+    return min(1.0, max(0.0, (O - o_min) / (1 - o_min)))
 # Amostras através de cada lâmina (por face): concentradas nas bordas — a curvatura da
 # borda fica confinada nela e a face continua plana na luz.
 BLADE_XS = [-1.0, -0.965, -0.85, -0.35, 0.35, 0.85, 0.965, 1.0]
@@ -425,7 +474,13 @@ def sculpt_blade(frame, arcs, points, style="plissado"):
         ww = widths[r] - tt * widths[r].dot(tt)
         ds = (cn - cp).length / 6
         kw = (cn - 2 * c0 + cp).dot(ww.normalized()) / max(9 * ds * ds, 1e-9)
-        O_ = min(1.0, max(0.0, periodic_catmull(arcs, [e[3] for e in extras], keys[r]))) if style == "lamelas" else 0.0
+        if style == "lamelas":
+            O_ = min(1.0, max(0.0, periodic_catmull(arcs, [e[3] for e in extras], keys[r])))
+        elif style in BLADE_STYLES and BLADE_STYLES[style].get("fan_lat"):
+            O_ = blade_open(periodic_catmull(arcs, [e[3] for e in extras], keys[r]), BLADE_STYLES[style])
+            O_ = O_ * O_ * (3 - 2 * O_)
+        else:
+            O_ = 0.0
         lats_raw.append(min(1.0, 0.8 / max(1e-6, abs(kw) * halves[r] * (1 + 0.45 * O_))))
     W = 10
     lmin = [min(lats_raw[(r + d) % R] for d in range(-W, W + 1)) for r in range(R)]
@@ -489,7 +544,7 @@ def sculpt_blade(frame, arcs, points, style="plissado"):
             # abertura passa por smoothstep: vãos quase fechados não ficam como
             # frestas escuras e as lâminas não se cruzam ao girar.
             st = BLADE_STYLES[style]
-            O = min(1.0, max(0.0, periodic_catmull(arcs, open_v, a)))
+            O = blade_open(periodic_catmull(arcs, open_v, a), st)
             Os = O * O * (3 - 2 * O)
             lat = lats[r]
             nB = LAMELLAE
