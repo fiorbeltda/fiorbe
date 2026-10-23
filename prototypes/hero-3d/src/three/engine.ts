@@ -387,9 +387,10 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
   const onResize = () => {
     layout();
     const nextCompact = isCompact();
+    // Sempre: dentro do layout empilhado a faixa com reflexo também depende da largura.
+    set.setCompact(nextCompact);
     if (nextCompact !== compact) {
       compact = nextCompact;
-      set.setCompact(compact);
       // Volta ao SVG em tela estreita (o CSS do celular o esconde); larga: o 3D reprojeta.
       if (compact && trailSvg) trailSvg.style.display = "";
     }

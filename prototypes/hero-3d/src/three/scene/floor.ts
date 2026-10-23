@@ -441,13 +441,16 @@ export function createCinematicFloor(o: FloorOptions): CinematicFloor {
   let frame = 0;
   let footReady = false;
   let compact = Boolean(o.compact);
-  const finePointer = window.matchMedia("(pointer: fine)").matches;
+  // Faixa com reflexo no layout empilhado: só com mouse e janela de tablet para cima (≥ 768 px);
+  // mais estreito o título fica sobre o piso e o reflexo atrapalharia a leitura.
+  const bandRefl = () => window.matchMedia("(pointer: fine)").matches && window.innerWidth >= 768;
   const applyCompact = () => {
     material.uniforms.uCompact!.value = compact ? 1 : 0;
     // Layout empilhado em computador (mouse): mantém o reflexo, numa faixa sob a escultura.
     // Telas de toque (celular/tablet) seguem sem reflexo.
-    material.uniforms.uHasRefl!.value = o.reflections && (!compact || finePointer) ? 1 : 0;
-    material.uniforms.uCompactBand!.value = compact && finePointer ? 0.34 : 0.16;
+    const band = compact && bandRefl();
+    material.uniforms.uHasRefl!.value = o.reflections && (!compact || band) ? 1 : 0;
+    material.uniforms.uCompactBand!.value = band ? 0.34 : 0.16;
   };
   applyCompact();
 
@@ -462,7 +465,7 @@ export function createCinematicFloor(o: FloorOptions): CinematicFloor {
       material.uniforms.uContactY!.value = contact.y * 0.5 + 0.5;
       renderer.getDrawingBufferSize(size);
       (material.uniforms.uRes!.value as Vector2).copy(size);
-      if (o.reflections && (!compact || finePointer)) {
+      if (material.uniforms.uHasRefl!.value > 0.5) {
         const w = Math.max(2, Math.round(size.x / 2));
         const h = Math.max(2, Math.round(size.y / 2));
         if (reflRT.width !== w || reflRT.height !== h) reflRT.setSize(w, h);
@@ -486,7 +489,6 @@ export function createCinematicFloor(o: FloorOptions): CinematicFloor {
       renderer.setRenderTarget(prev);
     },
     setCompact(next) {
-      if (next === compact) return;
       compact = next;
       applyCompact();
     },
