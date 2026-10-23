@@ -174,6 +174,7 @@ uniform float uFloorY;
 uniform float uDebug;
 uniform float uContactY;
 uniform float uCompact;
+uniform float uCompactBand;
 varying vec3 vLocal;
 varying vec3 vWorld;
 
@@ -301,7 +302,7 @@ void main() {
   float fade = (1.0 - smoothstep(uFade.z, uFade.z + uFade.w, abs(p.x - uFade.x)))
              * smoothstep(uFade.y - 0.6, uFade.y + 0.2, p.y);
   col += (fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453) - 0.5) / 255.0;
-  if (uCompact > 0.5) fade *= smoothstep(uContactY - 0.16, uContactY - 0.015, gl_FragCoord.y / uRes.y);
+  if (uCompact > 0.5) fade *= smoothstep(uContactY - uCompactBand, uContactY - 0.015, gl_FragCoord.y / uRes.y);
   gl_FragColor = vec4(max(col, 0.0), fade * uOpacity);
   #include <tonemapping_fragment>
   #include <colorspace_fragment>
@@ -420,6 +421,7 @@ export function createCinematicFloor(o: FloorOptions): CinematicFloor {
       uFloorY: { value: F },
       uContactY: { value: 0.3 },
       uCompact: { value: o.compact ? 1 : 0 },
+      uCompactBand: { value: 0.16 },
       // ?pisodebug: alvo do reflexo puro; ?pisodebug=sombra: oclusão (R), sombra da escultura (G), da figura (B).
       uDebug: { value: (() => {
         const d = new URLSearchParams(window.location.search).get("pisodebug");
@@ -439,9 +441,13 @@ export function createCinematicFloor(o: FloorOptions): CinematicFloor {
   let frame = 0;
   let footReady = false;
   let compact = Boolean(o.compact);
+  const finePointer = window.matchMedia("(pointer: fine)").matches;
   const applyCompact = () => {
     material.uniforms.uCompact!.value = compact ? 1 : 0;
-    material.uniforms.uHasRefl!.value = o.reflections && !compact ? 1 : 0;
+    // Layout empilhado em computador (mouse): mantém o reflexo, numa faixa sob a escultura.
+    // Telas de toque (celular/tablet) seguem sem reflexo.
+    material.uniforms.uHasRefl!.value = o.reflections && (!compact || finePointer) ? 1 : 0;
+    material.uniforms.uCompactBand!.value = compact && finePointer ? 0.34 : 0.16;
   };
   applyCompact();
 
@@ -456,7 +462,7 @@ export function createCinematicFloor(o: FloorOptions): CinematicFloor {
       material.uniforms.uContactY!.value = contact.y * 0.5 + 0.5;
       renderer.getDrawingBufferSize(size);
       (material.uniforms.uRes!.value as Vector2).copy(size);
-      if (o.reflections && !compact) {
+      if (o.reflections && (!compact || finePointer)) {
         const w = Math.max(2, Math.round(size.x / 2));
         const h = Math.max(2, Math.round(size.y / 2));
         if (reflRT.width !== w || reflRT.height !== h) reflRT.setSize(w, h);
