@@ -207,6 +207,22 @@ FIORBE23_EDITS = {
 FIORBE23 = [FIORBE23_EDITS.get((p[0], p[1]), p) for p in FIORBE22]
 assert sum(1 for p in FIORBE22 if (p[0], p[1]) in FIORBE23_EDITS) == len(FIORBE23_EDITS)
 
+# V2.3r — consolidação: edições sobre a V2.3, indexadas pelo ponto da V2.3 (x, y).
+FIORBE23R_EDITS = {
+    # Vazio da coroa: o arco esquerdo continua largo e iluminado na origem, mas afina perto da
+    # coroa e recua em profundidade — devolve parte do espaço negativo que a V2.3 fechou.
+    (790, 262): [790, 258, -0.15, 1.4, 0.05, 0.6, 7, -0.25, 0.0],
+    (900, 232): [900, 224, -0.4, 1.5, -0.2, 0.8, 8, -0.35, 0.0],
+    # Redemoinho: leque menos aberto e torção alternando face/borda ao longo da passagem —
+    # as lâminas deixam de correr paralelas com a mesma orientação.
+    (1418, 262): [1418, 262, -0.2, 1.2, -0.5, 0.8, 9, 0.2, 0.6],
+    (1502, 298): [1502, 298, -0.15, 1.15, 0.62, 0.7, 8, 0.0, 0.5],
+    (1528, 352): [1528, 352, 0.0, 1.05, 0.25, 0.5, 7, 0.0, 0.55],
+    (1498, 422): [1498, 422, 0.4, 1.05, 1.3, 0.3, 7, 0.0, 0.35],
+}
+FIORBE23R = [FIORBE23R_EDITS.get((p[0], p[1]), p) for p in FIORBE23]
+assert sum(1 for p in FIORBE23 if (p[0], p[1]) in FIORBE23R_EDITS) == len(FIORBE23R_EDITS)
+
 # Estilos da seção (mesmo percurso; o 6º valor de cada ponto muda de papel):
 #   plissado — dobras longitudinais contínuas; valor = profundidade das dobras.
 #   lamelas  — a fita se divide em lâminas reais, encostadas onde o valor é 0 (leem
@@ -222,6 +238,7 @@ MODELS2 = {
     "fiorbe2-b": (FIORBE2, "sculpted"),
     "fiorbe2-v22": (FIORBE22, "sculpted22"),
     "fiorbe2-v23": (FIORBE23, "sculpted22"),
+    "fiorbe2-v23r": (FIORBE23R, "sculpted22"),
 }
 
 # Perfil das lâminas V2.1. p: expoente da superelipse da espessura (maior = face mais

@@ -291,11 +291,23 @@ const PREMIUM_COLOR = /* glsl */ `
   float tA = 0.5 + 0.5 * sin(vRib.x * 6.2831853 * 3.0 + 1.1);
   float tB = 0.5 + 0.5 * sin(vRib.x * 6.2831853 * 5.0 + 4.0);
   // (1ª tentativa clareava a peça inteira: azul profundo mais saturado, menos prata.)
+    #ifdef FIORBE_TINT23R
+  // V2.3r: a lâmina central lia azul-pastel — teal claro + faixa prata sobreposta + 14% de
+  // prata no metal todo. Teal mais escuro e saturado, azul elétrico, prata só em faixas
+  // estreitas; a prata das bordas fica.
+  vec3 tint = mix(vec3(0.08, 0.3, 1.0), vec3(0.04, 0.6, 0.74), smoothstep(0.5, 0.92, tA));
+  tint = mix(tint, vec3(0.86, 0.92, 1.0), smoothstep(0.78, 0.99, tB) * 0.5);
+  diffuseColor.rgb = mix(diffuseColor.rgb, tint, 0.62);
+  diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.8, 0.88, 0.96), 0.05 + 0.55 * vEdgeK);
+    #else
   vec3 tint = mix(vec3(0.16, 0.34, 1.0), vec3(0.3, 0.9, 0.88), smoothstep(0.5, 0.92, tA));
   tint = mix(tint, vec3(0.86, 0.92, 1.0), smoothstep(0.6, 0.97, tB) * 0.6);
   diffuseColor.rgb = mix(diffuseColor.rgb, tint, 0.45);
-  #endif
   diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.8, 0.88, 0.96), 0.14 + 0.5 * vEdgeK);
+    #endif
+  #else
+  diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.8, 0.88, 0.96), 0.14 + 0.5 * vEdgeK);
+  #endif
 #endif
 `;
 const PREMIUM_ROUGHNESS = /* glsl */ `
@@ -421,6 +433,8 @@ export interface SculptureMaterialOptions {
   finish22?: boolean;
   /** V2.3: metal em azul profundo, teal e prata alternando ao longo do percurso. */
   tint23?: boolean;
+  /** V2.3r: mesma alternância, com teal e azul saturados (sem aspecto leitoso). */
+  tint23r?: boolean;
 }
 
 export function createSculptureMaterial(uniforms: SculptureUniforms, opts: SculptureMaterialOptions = {}): MeshPhysicalMaterial {
@@ -448,6 +462,7 @@ export function createSculptureMaterial(uniforms: SculptureUniforms, opts: Sculp
     material.envMapIntensity = 1.3;
     if (opts.finish22) material.defines.FIORBE_GROOVE_PHYS = "";
     if (opts.tint23) material.defines.FIORBE_TINT23 = "";
+    if (opts.tint23r) material.defines.FIORBE_TINT23R = "";
   }
 
   material.onBeforeCompile = (shader) => {
@@ -464,6 +479,6 @@ export function createSculptureMaterial(uniforms: SculptureUniforms, opts: Sculp
       .replace("#include <normal_fragment_maps>", NORMAL_MAPS)
       .replace("#include <opaque_fragment>", FRAGMENT_OUT);
   };
-  material.customProgramCacheKey = () => (opts.premium ? (opts.finish22 ? (opts.tint23 ? "fiorbe-ribbon-v9-premium23" : "fiorbe-ribbon-v9-premium22") : "fiorbe-ribbon-v9-premium") : "fiorbe-ribbon-v9");
+  material.customProgramCacheKey = () => (opts.premium ? (opts.finish22 ? (opts.tint23r ? "fiorbe-ribbon-v9-premium23r" : opts.tint23 ? "fiorbe-ribbon-v9-premium23" : "fiorbe-ribbon-v9-premium22") : "fiorbe-ribbon-v9-premium") : "fiorbe-ribbon-v9");
   return material;
 }

@@ -146,7 +146,14 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
   const metalParam = params.get("metal");
   const premium = metalParam === "v2" || (metalParam !== "v1" && Boolean(formParam?.startsWith("blender2")));
   // Acabamento V2.2 nas formas V2.2 em diante (V2.1 B e anteriores ficam como estavam).
-  const material = createSculptureMaterial(uniforms, { premium, finish22: /^blender2-v2[2-9]/.test(formParam ?? ""), tint23: /^blender2-v2[3-9]/.test(formParam ?? "") });
+  // A tinta azul/teal/prata é cor de metal: na argila (?clay) fica desligada para julgar só a forma.
+  const tinted = !params.has("clay");
+  const material = createSculptureMaterial(uniforms, {
+    premium,
+    finish22: /^blender2-v2[2-9]/.test(formParam ?? ""),
+    tint23: tinted && /^blender2-v2[3-9]/.test(formParam ?? ""),
+    tint23r: tinted && formParam === "blender2-v23r",
+  });
   const premiumEnv = premium ? createPremiumEnvironment(renderer) : null;
   if (premiumEnv) material.envMap = premiumEnv.texture;
   // Lâmina com espessura é um sólido fechado: só as faces externas (metade do preenchimento).
