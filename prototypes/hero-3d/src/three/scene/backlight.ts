@@ -53,10 +53,10 @@ uniform float uTime;
 varying vec2 vUv;
 float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
 ${COLS_GLSL}
-// Coluna de bordas macias (caixa suavizada) que se apaga para cima.
-float column(float x, float y, float H, vec4 c) {
+// Coluna de bordas macias (caixa suavizada) que se apaga para cima. sharp 0..1 estreita a borda.
+float column(float x, float y, float H, vec4 c, float sharp) {
   float hw = c.y * 0.5;
-  float edge = max(0.05, c.y * 0.18);
+  float edge = mix(max(0.05, c.y * 0.18), max(0.018, c.y * 0.05), sharp);
   float body = smoothstep(hw + edge, hw - edge, abs(x - c.x));
   float top = H * c.w;
   return body * pow(clamp(1.0 - y / top, 0.0, 1.0), 1.35);
@@ -95,12 +95,13 @@ void main() {
   // Área da parede: larga, assimétrica (mais para a direita), sobe com gradação.
   float wall = smoothstep(-4.6, -2.8, x) * (1.0 - smoothstep(3.6, 5.2, x)) * pow(clamp(1.0 - h, 0.0, 1.0), 0.9);
   // Núcleo amplo e colunas.
-  float core = column(x, y, H, COLS[0]);
+  float sharp = uCine > 0.5 ? 1.0 : 0.0;
+  float core = column(x, y, H, COLS[0], sharp * 0.5);
   float hot = exp(-pow((x - COLS[0].x) / 0.55, 2.0)) * exp(-pow(y / (0.28 * H), 2.0));
   float cols = 0.0;
   for (int i = 1; i < NCOL; i++) {
     float breathe = 0.9 + 0.1 * sin(uTime * 0.17 + float(i) * 2.1);
-    cols += COLS[i].z * breathe * column(x, y, H, COLS[i]);
+    cols += COLS[i].z * breathe * column(x, y, H, COLS[i], sharp);
   }
   // Névoa atmosférica: volume amplo que envolve tudo.
   float haze = exp(-pow((x - 0.4) / 3.2, 2.0) - pow((y - 0.25 * H) / (0.55 * H), 2.0));
@@ -112,10 +113,31 @@ void main() {
     // luz concentrada perto do horizonte, ciano/teal embaixo e azul-noturno no alto.
     vec3 low = mix(uHalo, vec3(0.16, 0.62, 0.78), smoothstep(0.32, 0.0, h) * 0.55);
     float hz = exp(-pow((x - 0.9) / 2.6, 2.0) - pow(y / (0.3 * H), 2.0));
-    col = uDeep * wall * 0.05
-        + low * (haze * 0.05 + hz * 0.16 + cols * 0.9 + horizon * 0.32)
-        + uCore * (core * 0.46 + hot * 0.32 + cols * 0.2);
-    col *= mix(1.0, 0.35, smoothstep(0.18, 0.7, h));
+    // Fachada de lâminas de luz atrás e à direita da figura (referência): faixas verticais
+    // finas, de larguras, alturas e brilhos variados, bordas nítidas mas suaves (antisserrilhadas
+    // pela derivada), mais brancas embaixo. Só na parede principal.
+    float slats = 0.0;
+    float dx = fwidth(x); // fora do desvio: derivadas dentro de um if por pixel são indefinidas
+    if (uShift == 0.0 && x > 1.5 && x < 4.35) {
+      float cell = 0.13;
+      float ci = floor(x / cell);
+      float fx = x / cell - ci;
+      float r1 = hash(vec2(ci, 3.1));
+      float r2 = hash(vec2(ci, 7.7));
+      float r3 = hash(vec2(ci, 1.3));
+      float hw = mix(0.06, 0.26, r2);
+      float aa = dx / cell * 1.2;
+      float line = smoothstep(hw + aa, hw - aa, abs(fx - 0.5)) * step(0.3, r1);
+      float tall = mix(0.1, 0.34, r3 * r3) * H;
+      float zone = smoothstep(1.55, 2.15, x) * (1.0 - smoothstep(3.7, 4.3, x));
+      slats = line * zone * mix(0.35, 1.0, r1) * pow(clamp(1.0 - y / tall, 0.0, 1.0), 1.6);
+    }
+    // Brilho localizado ciano-branco junto ao horizonte atrás da figura (contraluz).
+    float back = exp(-pow((x - 2.35) / 0.85, 2.0)) * exp(-pow(y / (0.16 * H), 2.0));
+    col = uDeep * wall * 0.04
+        + low * (haze * 0.035 + hz * 0.13 + cols * mix(0.55, 0.85, smoothstep(-0.5, 0.5, x)) + horizon * 0.3)
+        + uCore * (core * 0.4 + hot * 0.3 + cols * 0.22 + slats * 0.75 + back * 0.32);
+    col *= mix(1.0, 0.3, smoothstep(0.16, 0.66, h));
   } else {
     col = uDeep * wall * 0.14
         + uHalo * (haze * 0.2 + cols * 0.95 + horizon * 0.6)

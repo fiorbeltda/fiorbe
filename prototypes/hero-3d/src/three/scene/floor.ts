@@ -221,15 +221,29 @@ void main() {
 
   // --- Reflexo (alvo em meia resolução) ---
   vec3 R = vec3(0.0);
+  vec3 Rhl = vec3(0.0);
+  float away = 1.0;
   if (uHasRefl > 0.5) {
     vec2 suv = gl_FragCoord.xy / uRes;
     // Nítido junto ao contato (linha da base na tela), desfoca com a distância dele.
-    float away = clamp((uContactY - suv.y) * 3.2, 0.0, 1.0);
+    away = clamp((uContactY - suv.y) * 3.2, 0.0, 1.0);
     // Distorção quase só vertical: concreto molhado borra na direção do olhar; jitter lateral lê como água.
     // Distorção mínima: só um desvio suave e vertical (o desfoque e a rugosidade fazem o resto).
     vec2 off = vec2(0.0, -warp.y) * (0.00015 + 0.0006 * rough) * (0.35 + away);
-    float lod = 0.8 + rough * (1.4 + 3.2 * away) + away * 1.4;
+    float lod = 0.6 + rough * (1.3 + 3.2 * away) + away * 1.9;
     R = refl(suv + off, lod, 1.0 + (rough * 16.0 + 6.0) * away);
+    // Highlights das bordas metálicas: amostra mais nítida que o reflexo difuso, só a parte
+    // brilhante, alongada para baixo na tela (o brilho escorre na direção do olhar, como em
+    // concreto molhado). Mesmo alvo de reflexo — sem passe novo.
+    // Base ≥ 0,45: abaixo disso o alvo em meia resolução mostra degraus nas bordas das lâminas.
+    float lodH = 0.45 + rough * (0.9 + 2.6 * away) + away * 1.3;
+    vec2 sv = vec2(0.0, (1.5 + 9.0 * away) / uRes.y);
+    vec2 hu = suv + off;
+    vec3 h = textureLod(uRefl, hu, lodH).rgb;
+    h = max(h, textureLod(uRefl, hu + sv * 1.8, lodH + 0.6).rgb * 0.7);
+    float hl = dot(h, vec3(0.2126, 0.7152, 0.0722));
+    // Prateado: o brilho perde parte da saturação azul ao ficar forte.
+    Rhl = mix(h, vec3(hl), 0.4) * smoothstep(0.12, 0.65, hl);
   }
 
   // --- Sombras: pegada da escultura vista de cima ---
@@ -268,6 +282,9 @@ void main() {
   // Reflexo: forte nas poças, apagado e espalhado no concreto seco; a oclusão de contato também o apaga.
   float reflK = F * mix(0.16, 1.0, wet) * uReflGain;
   vec3 col = diffuse * (1.0 - ao * 0.55) + R * reflK * (1.0 - ao * 0.3);
+  // Highlights: mais fortes junto ao contato, apagados no concreto seco (só o molhado espelha bem).
+  float hlK = (0.14 + 0.6 * F) * mix(0.18, 1.0, wet * wet) * (0.4 + 1.0 * (1.0 - away)) * uReflGain;
+  col += Rhl * hlK * (1.0 - ao * 0.25);
   // Sem reflexo real (tier baixo / tela estreita): a luz da parede refletida de forma
   // analítica — faixa vertical difusa sob o núcleo e brilho rasante no horizonte —
   // para o piso não virar um plano preto.
@@ -283,7 +300,7 @@ void main() {
   vec2 gc = floor(gq);
   float gDot = smoothstep(0.42, 0.08, length(fract(gq) - 0.5));
   float glint = smoothstep(0.985, 1.0, fract(sin(dot(gc, vec2(12.9898, 78.233))) * 43758.5453)) * gDot * wet;
-  col += R * glint * 1.6;
+  col += (R + Rhl) * glint * 1.6;
 
   // --- Trilhas pintadas no piso ---
   vec2 tuv = (p - uTrailRect.xy) * uTrailRect.zw;

@@ -424,6 +424,18 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
     (window as unknown as { __fiorbe?: unknown }).__fiorbe = {
       figure: () => set.probe(),
       floor: () => ({ ...(set.floor?.material.userData ?? {}), svgHidden: trailSvg?.style.display === "none" }),
+      /** x da parede de luz (relativo ao centro dela, na linha do chão) → pixel CSS na tela. */
+      wallToScreen(xs: number[], up = 0) {
+        const fm = set.floor?.material;
+        if (!fm) return [];
+        const [wx, wz] = fm.uniforms.uWall!.value as number[];
+        const fy = fm.uniforms.uFloorY!.value as number;
+        set.group.updateWorldMatrix(true, false);
+        return xs.map((x) => {
+          const v = new Vector3(wx! + x, fy + up, wz!).applyMatrix4(set.group.matrixWorld).project(camera);
+          return [Math.round((v.x * 0.5 + 0.5) * window.innerWidth), Math.round((0.5 - v.y * 0.5) * window.innerHeight)];
+        });
+      },
       waves: () => waves?.snapshot() ?? [],
       /** Congela só as ondas e avança o tempo delas (capturas determinísticas). */
       holdWaves(hold: boolean) {

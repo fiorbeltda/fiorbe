@@ -2,6 +2,7 @@
 // Uso: node scripts/env-compare.mjs <antes> <depois> [saida]   (prefixos de env-shots.mjs)
 import { chromium } from "playwright-core";
 import { readFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 const [before = "antes", after = "c5", name = "ambiente-comparacao"] = process.argv.slice(2);
 const cap = (f) => fileURLToPath(new URL(`../captures/${f}`, import.meta.url));
@@ -15,6 +16,9 @@ const rows = [
   [tile(await img(cap(`${before}-contato.png`)), "contato — antes"), tile(await img(cap(`${after}-contato.png`)), "contato — depois")],
   [tile(await img(cap(`${before}-luz.png`)), "luz — antes"), tile(await img(cap(`${after}-luz.png`)), "luz — depois")],
 ];
+// Janela estreita (layout empilhado), quando capturada.
+if (existsSync(cap(`${after}-estreito.png`)) && existsSync(cap(`${before}-estreito.png`)))
+  rows.push([tile(await img(cap(`${before}-estreito.png`)), "janela estreita — antes"), tile(await img(cap(`${after}-estreito.png`)), "janela estreita — depois")]);
 const html = `<body style="margin:0;background:#000;font:14px monospace;color:#fff">${rows.map((r) => `<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:4px">${r.join("")}</div>`).join("")}</body>`;
 const b = await chromium.launch({ headless: true, args: ["--disable-gpu"] });
 const p = await b.newPage({ viewport: { width: 1600, height: 600 } });
