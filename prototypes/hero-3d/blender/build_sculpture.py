@@ -238,7 +238,7 @@ MODELS2 = {
     "fiorbe2-b": (FIORBE2, "sculpted"),
     "fiorbe2-v22": (FIORBE22, "sculpted22"),
     "fiorbe2-v23": (FIORBE23, "sculpted22"),
-    "fiorbe2-v23r": (FIORBE23R, "sculpted22"),
+    "fiorbe2-v23r": (FIORBE23R, "sculpted23r"),
 }
 
 # Perfil das lâminas V2.1. p: expoente da superelipse da espessura (maior = face mais
@@ -255,7 +255,22 @@ BLADE_STYLES = {
                    # junta fechada mais discreta (anéis mais densos testados: não tiravam as
                    # faixas da coroa, que vêm do reflexo — descartado, +30% de vértices).
                    "joint": 0.04},
+    # V2.3r: igual à 2.2, com a orientação das normais da borda estável (sem pente claro/escuro).
+    # Testado e descartado duas vezes: fast_root (raiz do leque em V) — com a abertura rápida a
+    # borda gira depressa perto da raiz e o pente volta.
+    "sculpted23r": {"p": 6.0, "t_open": 0.19, "t_closed": 0.3, "cup": 1.0, "bow": 0.07, "o_min": 0.22, "fan_lat": True,
+                    "joint": 0.04, "robust_normals": True},
 }
+
+
+def blade_ease(O, st):
+    """Curva da abertura. smoothstep (padrão) começa com inclinação zero: por um trecho longo
+    do arco a fresta entre lâminas fica abaixo de 1 px e vira uma linha pontilhada de
+    "dentes" claros/escuros (paredes laterais das lâminas vistas pela fresta). fast_root
+    (V2.3r): ease-out — a fresta cresce já na raiz e o leque nasce num V limpo."""
+    if st.get("fast_root"):
+        return 1 - (1 - O) * (1 - O)
+    return O * O * (3 - 2 * O)
 
 
 def blade_open(O, st):
@@ -537,7 +552,7 @@ def sculpt_blade(frame, arcs, points, style="plissado"):
             O_ = min(1.0, max(0.0, periodic_catmull(arcs, [e[3] for e in extras], keys[r])))
         elif style in BLADE_STYLES and BLADE_STYLES[style].get("fan_lat"):
             O_ = blade_open(periodic_catmull(arcs, [e[3] for e in extras], keys[r]), BLADE_STYLES[style])
-            O_ = O_ * O_ * (3 - 2 * O_)
+            O_ = blade_ease(O_, BLADE_STYLES[style])
         else:
             O_ = 0.0
         lats_raw.append(min(1.0, 0.8 / max(1e-6, abs(kw) * halves[r] * (1 + 0.45 * O_))))
@@ -604,7 +619,7 @@ def sculpt_blade(frame, arcs, points, style="plissado"):
             # frestas escuras e as lâminas não se cruzam ao girar.
             st = BLADE_STYLES[style]
             O = blade_open(periodic_catmull(arcs, open_v, a), st)
-            Os = O * O * (3 - 2 * O)
+            Os = blade_ease(O, st)
             lat = lats[r]
             nB = LAMELLAE
             T0 = THICK * h / HALF_WIDTH
@@ -639,7 +654,16 @@ def sculpt_blade(frame, arcs, points, style="plissado"):
                     x0, x1 = max(-1.0, x - dx), min(1.0, x + dx)
                     d = pos(x1, side) - pos(x0, side)
                     nn = t.cross(d).normalized()
-                    if nn.dot(nb * side) < 0:
+                    ref = nb * side
+                    if st.get("robust_normals") and abs(x) > 0.8:
+                        # Na borda arredondada a normal real fica quase perpendicular a nb: o teste
+                        # contra nb decidia o sinal por arredondamento e alternava anel a anel (pente
+                        # claro/escuro nas lâminas vistas de perfil). Perto da borda a referência
+                        # passa a ser a direção lateral para fora da borda.
+                        kx = (abs(x) - 0.8) / 0.2
+                        out_x = (w * ca + n * sa) * (1 if x > 0 else -1)
+                        ref = nb * side * (1 - kx) + out_x * (2.0 * kx)
+                    if nn.dot(ref) < 0:
                         nn = -nn
                     # Na ponta (x = ±1) a normal gira para fora pela borda — só na lâmina solta.
                     # Encostada na vizinha (fechada), a junta fica quase invisível: um vinco

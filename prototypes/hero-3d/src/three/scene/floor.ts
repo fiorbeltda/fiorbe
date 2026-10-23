@@ -251,15 +251,22 @@ void main() {
     // Highlights das bordas metálicas: amostra mais nítida que o reflexo difuso, só a parte
     // brilhante, alongada para baixo na tela (o brilho escorre na direção do olhar, como em
     // concreto molhado). Mesmo alvo de reflexo — sem passe novo.
-    // Base ≥ 0,45: abaixo disso o alvo em meia resolução mostra degraus nas bordas das lâminas.
-    float lodH = 0.45 + rough * (0.9 + 2.6 * away) + away * 1.3;
+    // Base 0,85: abaixo disso o alvo em meia resolução mostra degraus nas bordas das lâminas.
+    float lodH = 0.85 + rough * (0.9 + 2.6 * away) + away * 1.3;
     vec2 sv = vec2(0.0, (1.5 + 9.0 * away) / uRes.y);
     vec2 hu = suv + off;
     vec3 h = textureLod(uRefl, hu, lodH).rgb;
     h = max(h, textureLod(uRefl, hu + sv * 1.8, lodH + 0.6).rgb * 0.7);
-    float hl = dot(h, vec3(0.2126, 0.7152, 0.0722));
+    // Só o detalhe MAIS CLARO que a vizinhança (filetes prateados das bordas): subtrair o
+    // reflexo desfocado. Antes o realce pegava as faixas largas de luz entre as lâminas
+    // inteiras e as tornava barras brancas repetitivas.
+    vec3 hd = max(h - R * 1.05, 0.0);
+    float hl = dot(hd, vec3(0.2126, 0.7152, 0.0722));
     // Prateado: o brilho perde parte da saturação azul ao ficar forte.
-    Rhl = mix(h, vec3(hl), 0.4) * smoothstep(0.12, 0.65, hl);
+    Rhl = mix(hd, vec3(hl), 0.4) * smoothstep(0.02, 0.25, hl) * 1.6;
+    // Luz larga refletida: compressão suave só dos valores altos (escuros e detalhes intactos).
+    float rl = dot(R, vec3(0.2126, 0.7152, 0.0722));
+    R *= 1.0 / (1.0 + 0.9 * max(rl - 0.22, 0.0));
   }
 
   // --- Sombras: pegada da escultura vista de cima ---
@@ -296,11 +303,14 @@ void main() {
   diffuse += albedo * 0.08;
 
   // Reflexo: forte nas poças, apagado e espalhado no concreto seco; a oclusão de contato também o apaga.
-  float reflK = F * mix(0.16, 1.0, wet) * uReflGain * (1.0 - 0.38 * joint);
+  // Variação de molhado/áspero em manchas alongadas (perspectiva): o reflexo se parte em áreas
+  // em vez de faixas regulares.
+  float wetVar = 0.62 + 0.38 * smoothstep(0.3, 0.7, texture(uNoise, pw * 0.6 + vec2(0.53, 0.29)).g);
+  float reflK = F * mix(0.16, 1.0, wet) * uReflGain * (1.0 - 0.38 * joint) * wetVar;
   vec3 col = diffuse * (1.0 - ao * 0.55) + R * reflK * (1.0 - ao * 0.3);
   // Highlights: mais fortes junto ao contato, apagados no concreto seco (só o molhado espelha bem).
   float hlK = (0.14 + 0.6 * F) * mix(0.18, 1.0, wet * wet) * (0.4 + 1.0 * (1.0 - away)) * uReflGain;
-  col += Rhl * hlK * (1.0 - ao * 0.25);
+  col += Rhl * hlK * (1.0 - ao * 0.25) * (abs(uDebug - 4.0) < 0.5 ? 0.0 : 1.0);
   // Sem reflexo real (tier baixo / tela estreita): a luz da parede refletida de forma
   // analítica — faixa vertical difusa sob o núcleo e brilho rasante no horizonte —
   // para o piso não virar um plano preto.
@@ -326,7 +336,9 @@ void main() {
     col += uTrailColor * (tr.r * 2.2 + tr.g * 0.3 + trHalo * mix(0.15, 0.35, rough)) + vec3(0.55, 0.85, 1.0) * tr.r * tr.r * 0.9;
   }
 
-  if (uDebug > 1.5) col = vec3(ao, shadow, fshadow);
+  if (abs(uDebug - 3.0) < 0.5) col = R;
+  else if (uDebug > 3.5) {}
+  else if (uDebug > 1.5) col = vec3(ao, shadow, fshadow);
   else if (uDebug > 0.5) col = textureLod(uRefl, gl_FragCoord.xy / uRes, 0.0).rgb + vec3(0.0, 0.0, 0.05);
   // Névoa muito sutil junto ao horizonte (piso distante, diante da luz), sem cobrir a escultura.
   float haze = exp(-max(p.y - uWall.y, 0.0) * 0.55) * (0.35 + 0.65 * sheet);
@@ -458,7 +470,8 @@ export function createCinematicFloor(o: FloorOptions): CinematicFloor {
       // ?pisodebug: alvo do reflexo puro; ?pisodebug=sombra: oclusão (R), sombra da escultura (G), da figura (B).
       uDebug: { value: (() => {
         const d = new URLSearchParams(window.location.search).get("pisodebug");
-        return d === null ? 0 : d === "sombra" ? 2 : 1;
+        // filtrado: reflexo após desfoque/distorção (antes do material); semhl: composto sem os destaques.
+        return d === null ? 0 : d === "sombra" ? 2 : d === "filtrado" ? 3 : d === "semhl" ? 4 : 1;
       })() },
     },
     transparent: true,

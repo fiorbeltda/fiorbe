@@ -103,6 +103,7 @@ attribute float aClear;
 attribute vec3 aN;
 varying vec3 vGrooveDir;
 varying float vGrHalf;
+varying vec3 vFaceN;
 uniform float uTwistA;
 uniform float uWaveWide;
 #define WAVE_SLOTS ${WAVE_SLOTS}
@@ -224,6 +225,8 @@ objectNormal = objectNormal * cos(wvA) + cross(aTan, objectNormal) * sin(wvA) + 
 objectNormal = normalize(objectNormal - wvKeep * wvSlopeRaw * aTan * dot(objectNormal, wvN));
 // Direção através da largura (já torcida) para as estrias analíticas.
 vGrooveDir = normalMatrix * (wvW * cos(wvA) + wvN * sin(wvA));
+// Normal da FACE da fita (já torcida) para a filtragem das bordas subpixel.
+vFaceN = normalMatrix * (wvN * cos(wvA) - wvW * sin(wvA));
 vFray = wvFr;
 // Coordenada de fibra com número inteiro de repetições por volta: sem costura em u=1→0.
 vFiberU = aRib.x * max(1.0, floor(wvL * 0.16 + 0.5));
@@ -269,6 +272,7 @@ varying vec3 vRib;
 varying float vFlowK;
 varying vec3 vGrooveDir;
 varying float vGrHalf;
+varying vec3 vFaceN;
 varying float vFiberU;
 varying float vFray;
 varying float vEdgeK;
@@ -374,6 +378,18 @@ if (uFray > 0.5 && vFray > 0.004) {
  * que gerava os "pentes" escuros nas curvas fechadas.
  */
 const NORMAL_MAPS = /* glsl */ `
+#ifdef FIORBE_EDGE_AA
+{
+  // Borda arredondada da lâmina vista de perfil: quando a faixa da borda fica menor que ~1 px,
+  // a normal gira 90° dentro de um pixel e o brilho pisca claro/escuro (pontos e dentes).
+  // Nesse caso a borda é sombreada como a face visível (a voltada para a câmera — escolha
+  // estável); bordas largas o bastante para serem vistas mantêm o polimento.
+  float eaHide = vEdgeK * smoothstep(0.2, 0.7, fwidth(vEdgeK));
+  vec3 eaF = normalize(vFaceN);
+  eaF *= dot(eaF, -vViewPosition) >= 0.0 ? 1.0 : -1.0;
+  normal = normalize(mix(normal, eaF, eaHide));
+}
+#endif
 {
   #ifdef FIORBE_GROOVE_PHYS
   // Passo FÍSICO constante (ranhuras por unidade de metal, não por largura da faixa):
@@ -401,6 +417,9 @@ const NORMAL_MAPS = /* glsl */ `
   vec3 grT[GR_N] = vec3[GR_N](vec3(36.0, 0.55, 0.0), vec3(9.0, 0.25, 1.3), vec3(71.0, 0.12, 2.1));
   float grDepth = GROOVE_DEPTH;
   #endif
+  #ifdef FIORBE_NO_GROOVES
+  grDepth = 0.0;
+  #endif
   for (int i = 0; i < GR_N; i++) {
     float f = grT[i].x;
     float keep = 1.0 - smoothstep(0.18, 0.42, f * grW);
@@ -423,6 +442,12 @@ outgoingLight += uRim * (fpFres * 0.06 + fpEdge * 0.14);
 outgoingLight = mix(outgoingLight, vColor.rgb * 1.35, vFlowK * 0.75);
 outgoingLight += mix(vColor.rgb * 1.8, uFrayEdge, 0.45) * fyEdge * 0.75;
 diffuseColor.a *= fyCov;
+// Vistas de depuração (?vista=normais | faces): só para diagnóstico.
+#if defined(FIORBE_VIEW_NORMALS)
+outgoingLight = normal * 0.5 + 0.5;
+#elif defined(FIORBE_VIEW_FACES)
+outgoingLight = gl_FrontFacing ? vec3(0.15, 0.7, 0.25) : vec3(0.9, 0.12, 0.1);
+#endif
 #include <opaque_fragment>
 `;
 
@@ -435,6 +460,10 @@ export interface SculptureMaterialOptions {
   tint23?: boolean;
   /** V2.3r: mesma alternância, com teal e azul saturados (sem aspecto leitoso). */
   tint23r?: boolean;
+  /** V2.3r: bordas subpixel sombreadas como a face (sem pontos claros/escuros). */
+  edgeAA?: boolean;
+  /** Depuração: "normais", "faces", "semestrias" (sem microestrias), "wire". */
+  view?: string | null;
 }
 
 export function createSculptureMaterial(uniforms: SculptureUniforms, opts: SculptureMaterialOptions = {}): MeshPhysicalMaterial {
@@ -463,8 +492,13 @@ export function createSculptureMaterial(uniforms: SculptureUniforms, opts: Sculp
     if (opts.finish22) material.defines.FIORBE_GROOVE_PHYS = "";
     if (opts.tint23) material.defines.FIORBE_TINT23 = "";
     if (opts.tint23r) material.defines.FIORBE_TINT23R = "";
+    if (opts.edgeAA) material.defines.FIORBE_EDGE_AA = "";
   }
 
+  if (opts.view === "normais") material.defines = { ...material.defines, FIORBE_VIEW_NORMALS: "" };
+  if (opts.view === "faces") material.defines = { ...material.defines, FIORBE_VIEW_FACES: "" };
+  if (opts.view === "semestrias") material.defines = { ...material.defines, FIORBE_NO_GROOVES: "" };
+  if (opts.view === "wire") material.wireframe = true;
   material.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, uniforms);
     shader.vertexShader = VERTEX_HEAD + shader.vertexShader
@@ -479,6 +513,6 @@ export function createSculptureMaterial(uniforms: SculptureUniforms, opts: Sculp
       .replace("#include <normal_fragment_maps>", NORMAL_MAPS)
       .replace("#include <opaque_fragment>", FRAGMENT_OUT);
   };
-  material.customProgramCacheKey = () => (opts.premium ? (opts.finish22 ? (opts.tint23r ? "fiorbe-ribbon-v9-premium23r" : opts.tint23 ? "fiorbe-ribbon-v9-premium23" : "fiorbe-ribbon-v9-premium22") : "fiorbe-ribbon-v9-premium") : "fiorbe-ribbon-v9");
+  material.customProgramCacheKey = () => (opts.view ? `v-${opts.view}-` : "") + (opts.premium ? (opts.finish22 ? (opts.tint23r || opts.edgeAA ? `fiorbe-ribbon-v9-premium23r${opts.tint23r ? "t" : ""}${opts.edgeAA ? "e" : ""}` : opts.tint23 ? "fiorbe-ribbon-v9-premium23" : "fiorbe-ribbon-v9-premium22") : "fiorbe-ribbon-v9-premium") : "fiorbe-ribbon-v9");
   return material;
 }

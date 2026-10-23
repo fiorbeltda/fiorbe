@@ -153,11 +153,15 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
     finish22: /^blender2-v2[2-9]/.test(formParam ?? ""),
     tint23: tinted && /^blender2-v2[3-9]/.test(formParam ?? ""),
     tint23r: tinted && formParam === "blender2-v23r",
+    edgeAA: formParam === "blender2-v23r",
+    view: params.get("vista"),
   });
   const premiumEnv = premium ? createPremiumEnvironment(renderer) : null;
   if (premiumEnv) material.envMap = premiumEnv.texture;
   // Lâmina com espessura é um sólido fechado: só as faces externas (metade do preenchimento).
   if (monument && monument.profile !== "sheet") material.side = params.get("lado") === "tras" ? BackSide : FrontSide;
+  // Depuração (?vista=faces): frente verde, trás vermelho — os dois lados desenhados.
+  if (params.get("vista") === "faces") material.side = DoubleSide;
   // ?clay: material neutro para julgar só a forma (sem cor, metal nem brilho de borda).
   const clay = params.has("clay");
   if (clay) {
