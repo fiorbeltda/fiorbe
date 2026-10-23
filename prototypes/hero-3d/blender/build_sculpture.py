@@ -152,9 +152,11 @@ FIORBE22_EDITS = {
     (905, 556): [905, 560, 0.1, 0.9, 0.35, 0.4, 7, 0.0],
     # Faixa escura média: deixa de ser horizontal — desce para a direita e cruza a faixa
     # central em X (como na referência); torção rumo à face para a luz variar ao longo dela.
-    (915, 385): [915, 372, -0.3, 1.05, 0.2, 0.5, 7, 0.0, 0.4],
-    (1015, 372): [1015, 352, 0.2, 1.1, -0.1, 0.6, 8, 0.0, 0.2],
-    (1140, 370): [1140, 372, 0.45, 1.1, -0.35, 0.5, 8, 0.0, 0.3],
+    # Master polish: a face gira para a luz principal (alto, à direita) — o trecho esquerdo
+    # deixava de receber reflexo e lia como um bloco azul-marinho.
+    (915, 385): [915, 372, -0.3, 1.05, -0.1, 0.5, 7, 0.1, 0.4],
+    (1015, 372): [1015, 352, 0.2, 1.1, -0.4, 0.6, 8, 0.15, 0.2],
+    (1140, 370): [1140, 372, 0.45, 1.1, -0.5, 0.5, 8, 0.1, 0.3],
     (1272, 392): [1268, 400, 0.4, 1.0, -0.6, 0.4, 7, 0.0],
     # Redemoinho: o leque fecha aos poucos ao entrar na faixa central (antes 0,55 → 0 num
     # trecho curto e muito curvo) e a torção não dá o salto 0,7 → 1,2 → 0,6.
@@ -166,6 +168,13 @@ FIORBE22_EDITS = {
     (1388, 404): [1380, 406, -0.1, 0.75, -1.3, 0.2, 6, 0.0],
     (1455, 470): [1448, 480, -0.6, 0.85, -1.2, 0.2, 6, 0.0],
 }
+# Master polish — superfície baixa da esquerda (A): era uma face lisa e uniforme. Concha
+# mais funda (faixas de reflexo longitudinais) e um leque curto no meio da varredura.
+FIORBE22_EDITS.update({
+    (940, 618): [940, 618, 0.95, 1.15, 0.0, 0.3, 6, 0.45],
+    (800, 568): [800, 568, 1.0, 1.25, -0.3, 0.4, 7, 0.5, 0.32],
+    (695, 495): [695, 495, 0.8, 1.2, -0.5, 0.4, 7, 0.3, 0.12],
+})
 FIORBE22 = [FIORBE22_EDITS.get((p[0], p[1]), p) for p in FIORBE2]
 assert sum(1 for p in FIORBE2 if (p[0], p[1]) in FIORBE22_EDITS) == len(FIORBE22_EDITS)
 
@@ -195,7 +204,10 @@ BLADE_STYLES = {
     # V2.2: mesma lâmina da B. o_min: aberturas abaixo disso fecham de vez (frestas quase
     # fechadas viravam fendas escuras serrilhadas); fan_lat: o limite de curvatura conta o
     # afastamento extra das lâminas abertas (sem isso elas dobravam nas curvas fechadas).
-    "sculpted22": {"p": 6.0, "t_open": 0.19, "t_closed": 0.3, "cup": 1.0, "bow": 0.07, "o_min": 0.12, "fan_lat": True},
+    "sculpted22": {"p": 6.0, "t_open": 0.19, "t_closed": 0.3, "cup": 1.0, "bow": 0.07, "o_min": 0.12, "fan_lat": True,
+                   # junta fechada mais discreta (anéis mais densos testados: não tiravam as
+                   # faixas da coroa, que vêm do reflexo — descartado, +30% de vértices).
+                   "joint": 0.04},
 }
 
 
@@ -587,7 +599,7 @@ def sculpt_blade(frame, arcs, points, style="plissado"):
                     # leve, não uma linha escura (era o giro inteiro que desenhava frestas).
                     if abs(x) > 0.999:
                         out = (w * ca + n * sa) * (1 if x > 0 else -1)
-                        nn = (nn + out * (0.1 + 1.3 * Os)).normalized()
+                        nn = (nn + out * (st.get("joint", 0.1) + 1.3 * Os)).normalized()
                     verts.append(q)
                     custom_n.append(nn)
                     vattr.append(max(-1.0, min(1.0, vc + x * hb / h)))
@@ -764,7 +776,7 @@ def main():
     else:
         spine = make_spine(points)
     mod = spine.modifiers.new("Lamina", "NODES")
-    mod.node_group = (make_frame_nodes(STEP_BLADE if style in BLADE_STYLES else None)) if v2 else make_nodes()
+    mod.node_group = (make_frame_nodes(BLADE_STYLES[style].get("step", STEP_BLADE) if style in BLADE_STYLES else None)) if v2 else make_nodes()
 
     me = evaluated_mesh(spine)
     if v2:

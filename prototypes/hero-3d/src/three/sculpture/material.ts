@@ -88,6 +88,7 @@ attribute float aHalf;
 attribute float aClear;
 attribute vec3 aN;
 varying vec3 vGrooveDir;
+varying float vGrHalf;
 uniform float uTwistA;
 uniform float uWaveWide;
 #define WAVE_SLOTS ${WAVE_SLOTS}
@@ -180,6 +181,7 @@ vGrooveDir = normalMatrix * (wvW * cos(wvA) + wvN * sin(wvA));
 vFray = wvFr;
 // Coordenada de fibra com número inteiro de repetições por volta: sem costura em u=1→0.
 vFiberU = aRib.x * max(1.0, floor(wvL * 0.16 + 0.5));
+vGrHalf = aHalf;
 `;
 
 const NORMAL_FLOW = /* glsl */ `
@@ -220,6 +222,7 @@ uniform vec3 uFrayEdge;
 varying vec3 vRib;
 varying float vFlowK;
 varying vec3 vGrooveDir;
+varying float vGrHalf;
 varying float vFiberU;
 varying float vFray;
 varying float vEdgeK;
@@ -241,7 +244,19 @@ const PREMIUM_COLOR = /* glsl */ `
 const PREMIUM_ROUGHNESS = /* glsl */ `
 #include <roughnessmap_fragment>
 #ifdef FIORBE_PREMIUM
+  #ifdef FIORBE_GROOVE_PHYS
+  // Antisserrilhado especular geométrico: onde a normal muda mais rápido que o pixel
+  // consegue mostrar (bordas finas vistas de topo, lâminas de perfil no redemoinho), o
+  // realce piscava entre claro e escuro. A rugosidade sobe com a variação da normal no
+  // pixel, e o polimento da borda some quando a borda fica menor que ~1 px.
+  vec3 saN = normalize(vNormal);
+  float saVar = dot(fwidth(saN), vec3(1.0));
+  float saEdgeVis = 1.0 - smoothstep(0.35, 0.9, fwidth(vEdgeK));
+  roughnessFactor = mix(roughnessFactor, 0.1, vEdgeK * saEdgeVis);
+  roughnessFactor = max(roughnessFactor, clamp(saVar * 0.6, 0.0, 0.55));
+  #else
   roughnessFactor = mix(roughnessFactor, 0.1, vEdgeK);
+  #endif
 #endif
 `;
 
@@ -291,14 +306,26 @@ if (uFray > 0.5 && vFray > 0.004) {
  */
 const NORMAL_MAPS = /* glsl */ `
 {
+  #ifdef FIORBE_GROOVE_PHYS
+  // Passo FÍSICO constante (ranhuras por unidade de metal, não por largura da faixa):
+  // nas faixas largas da coroa o passo por largura dobrava e as ranhuras grossas
+  // viravam estrias escuras. Referência: meia-largura 0,4 = mesmo passo de antes.
+  float grX = (vRib.y * 0.5 + 0.5) * vGrHalf / 0.4;
+  #else
   float grX = vRib.y * 0.5 + 0.5;
+  #endif
   float grW = max(fwidth(grX), 1e-5);
   float grD = 0.0;
   // (frequência, amplitude, fase)
   #ifdef FIORBE_PREMIUM
   // Escovado mais fino e mais presente: linhas extremamente finas que aparecem nos realces.
   const int GR_N = 4;
+  #ifdef FIORBE_GROOVE_PHYS
+  // V2.2: componentes grossas mais rasas (eram elas que liam como cortes) e a fina domina.
+  vec3 grT[GR_N] = vec3[GR_N](vec3(36.0, 0.24, 0.0), vec3(9.0, 0.08, 1.3), vec3(71.0, 0.3, 2.1), vec3(143.0, 0.26, 0.7));
+  #else
   vec3 grT[GR_N] = vec3[GR_N](vec3(36.0, 0.5, 0.0), vec3(9.0, 0.22, 1.3), vec3(71.0, 0.32, 2.1), vec3(143.0, 0.22, 0.7));
+  #endif
   float grDepth = GROOVE_DEPTH * 1.9;
   #else
   const int GR_N = 3;
@@ -333,6 +360,8 @@ diffuseColor.a *= fyCov;
 export interface SculptureMaterialOptions {
   /** Metal premium (Blender V2): prata azulada, bordas polidas, escovado fino. */
   premium?: boolean;
+  /** Acabamento V2.2: escovado com passo físico constante e bordas sem serrilhado. */
+  finish22?: boolean;
 }
 
 export function createSculptureMaterial(uniforms: SculptureUniforms, opts: SculptureMaterialOptions = {}): MeshPhysicalMaterial {
@@ -358,6 +387,7 @@ export function createSculptureMaterial(uniforms: SculptureUniforms, opts: Sculp
     material.anisotropy = 0.8;
     material.clearcoat = 0.12;
     material.envMapIntensity = 1.3;
+    if (opts.finish22) material.defines.FIORBE_GROOVE_PHYS = "";
   }
 
   material.onBeforeCompile = (shader) => {
@@ -374,6 +404,6 @@ export function createSculptureMaterial(uniforms: SculptureUniforms, opts: Sculp
       .replace("#include <normal_fragment_maps>", NORMAL_MAPS)
       .replace("#include <opaque_fragment>", FRAGMENT_OUT);
   };
-  material.customProgramCacheKey = () => (opts.premium ? "fiorbe-ribbon-v8-premium" : "fiorbe-ribbon-v8");
+  material.customProgramCacheKey = () => (opts.premium ? (opts.finish22 ? "fiorbe-ribbon-v9-premium22" : "fiorbe-ribbon-v9-premium") : "fiorbe-ribbon-v9");
   return material;
 }
