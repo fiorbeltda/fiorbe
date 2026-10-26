@@ -18,7 +18,9 @@ const sample = (secs) => p.evaluate((s) => new Promise((res) => {
 }), secs);
 const stats = (d) => {
   const s = [...d].sort((a, b) => a - b); const q = (x) => s[Math.min(s.length - 1, Math.floor(x * s.length))];
-  return `med ${q(0.5).toFixed(1)} · p95 ${q(0.95).toFixed(1)} · p99 ${q(0.99).toFixed(1)} · >20ms ${((d.filter((v) => v > 20).length / d.length) * 100).toFixed(1)}% · máx ${s.at(-1).toFixed(0)} ms (${d.length} quadros)`;
+  // Com vsync a 60 Hz um quadro "perdido" mede ~33,3 ms: > 16,7 (com folga de jitter: > 18) e > 33,3 (> 34).
+  const pct = (lim) => ((d.filter((v) => v > lim).length / d.length) * 100).toFixed(1);
+  return `med ${q(0.5).toFixed(1)} · p95 ${q(0.95).toFixed(1)} · >16,7: ${pct(18)}% · >33,3: ${pct(34)}% · máx ${s.at(-1).toFixed(0)} ms (${d.length} quadros)`;
 };
 const res = {};
 res["idle+onda"] = stats(await sample(5));

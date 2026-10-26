@@ -2,6 +2,19 @@
 
 > Registro **técnico** das rodadas (decisões, arquitetura, medições). Status e aprovações ficam no painel de `docs/fiorbe/ESTADO.md`; plano de cada componente em `docs/fiorbe/tarefas/`.
 
+## PERF-001 — reflexo do piso com 7 toques (26/10/2026) — descartado
+
+Experimento isolado (`?reflexo=7`, 7 toques cobrindo a mesma extensão ±len e o mesmo perfil gaussiano) contra o padrão de 9 toques, V2.3, 1440×900, DPR 1, tier alto, alternado na mesma sessão.
+| Medida | 9 toques (atual) | 7 toques |
+|---|---|---|
+| GPU sincronizada (`bench-ab`, 2 séries × 3) | 17,6–17,7 / 17,4–18,6 ms | 17,0–17,7 / 17,2–18,3 ms (≈ −0,2 ms, dentro do ruído) |
+| Quadros reais perdidos (>16,7 ms), série 1 | onda 0,3% · cursor 3,0% · arraste 1,2% · rolagem 2,6% | onda 6,5% · cursor 11,2% · arraste 4,1% · rolagem 0,8% |
+| Série 2 | onda 0% · cursor 4,3% · arraste 7,2% · rolagem 2,6% | onda 0% · cursor 0% · arraste 2,3% · rolagem 0,4% |
+| Visual (DPR 2, congelado) | — | lâmina central, redemoinho, figura e trilhas indistinguíveis |
+| Movimento (picos de variação entre quadros, onda) | 143–354 | 230–439 (cintila um pouco mais) |
+**Decisão: descartado**, código original preservado. O ganho não se reproduz (a variação entre séries da mesma versão é maior que a diferença entre versões) e a estabilidade em movimento piora levemente. Condições: Chrome do usuário aberto (picos esporádicos de 50–667 ms são do ambiente), headless com GPU real. Mantida só a melhoria do `scripts\validacao-perf.mjs` (proporções > 16,7 e > 33,3 ms).
+**Alternativas, não implementadas:** (a) reflexo do piso em 1/3 da resolução só no tier alto em telas ≥ 1440 (estimado −0,5 a −1 ms; risco: reflexo mais macio, já aprovado no Ciclo 02); (b) não redesenhar a parede do fundo no alvo de reflexo (ganho pequeno, perde profundidade no reflexo); (c) qualidade adaptativa que desce ao tier médio abaixo de ~55 fps (ganho real em máquinas lentas; muda o comportamento global — exigiria decisão). Comparação `captures\perf-001\comparacao-reflexo-9x7.png`.
+
 ## Validação final integrada (26/10/2026)
 
 Auditoria do Hero inteiro na V2.3 (referência artística; forma C segue padrão técnico). Não é um novo ciclo: só duas correções localizadas.
