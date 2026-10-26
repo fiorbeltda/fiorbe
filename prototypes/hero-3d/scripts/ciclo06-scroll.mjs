@@ -13,7 +13,7 @@ const b = await chromium.launch({ headless: true, args: ["--use-angle=d3d11", "-
 const p = await b.newPage({ viewport: { width: w, height: h } });
 const errors = [];
 p.on("pageerror", (e) => errors.push(e.message));
-await p.goto(`http://localhost:3100/?debug&${q}`, { waitUntil: "networkidle", timeout: 90000 });
+await p.goto(`${process.env.BASE ?? "http://localhost:3100/"}?debug&${q}`, { waitUntil: "networkidle", timeout: 90000 });
 await p.waitForSelector('canvas[data-status="live"]', { timeout: 60000 });
 await p.addStyleTag({ content: "output{display:none!important}" });
 await p.waitForTimeout(1200);

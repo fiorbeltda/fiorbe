@@ -1,0 +1,338 @@
+/*
+ * DS-001A — acabamento das três direções editoriais (exploração, /editorial/*).
+ * Sobrescreve só tipografia, cor e contêineres da interface do Hero; posições do Ciclo 01
+ * (coluna editorial, palco, faixa) são herdadas. Fontes: --ed-display, --ed-text, --ed-mono
+ * (definidas na rota; candidatas, não decisões de marca).
+ */
+.root {
+  font-family: var(--ed-text, var(--font-sans));
+}
+
+.em {
+  font-style: normal;
+}
+
+/* Faixa inferior editorial: sem caixa nem ícones; a posição vem do Hero. */
+.root .band {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  backdrop-filter: none;
+  padding: 0;
+  height: auto;
+  align-content: end;
+}
+
+.bandItem {
+  margin: 0;
+}
+
+.bandKey,
+.bandValue {
+  margin: 0;
+}
+
+/* ============ A — Editorial minimalista ============ */
+.a .title {
+  font-family: var(--ed-display);
+  font-weight: 400;
+  font-size: clamp(56px, 5.6vw, 104px);
+  line-height: 0.96;
+  letter-spacing: -0.015em;
+  max-width: clamp(340px, 34vw, 640px);
+  background: none;
+  color: #f3f6fb;
+}
+
+.a .em {
+  font-style: italic;
+  color: #9cc3ff;
+}
+
+.a .eyebrow {
+  letter-spacing: 0.22em;
+  font-weight: 500;
+  color: #8ea4c2;
+}
+
+.a .eyebrow::before {
+  background: #8ea4c2;
+  width: 28px;
+  height: 1px;
+}
+
+.a .lede {
+  margin-top: clamp(20px, 3vh, 30px);
+  max-width: clamp(320px, 27vw, 440px);
+  color: #b8c4d4;
+}
+
+/* CTA principal claro (sem azul saturado: a escultura já é a cor); secundário vira link com status. */
+.a .primary {
+  background: #eef3fa;
+  color: #071222;
+  box-shadow: none;
+}
+
+.a .primary:hover {
+  background: #fff;
+  box-shadow: 0 0 0 4px rgb(238 243 250 / 0.12);
+}
+
+.a .primary:active {
+  background: #dfe7f2;
+  box-shadow: none;
+}
+
+.a .secondary {
+  border-color: transparent;
+  background: none;
+  padding-inline: 8px;
+  gap: 10px;
+}
+
+.a .secondary:hover {
+  border-color: transparent;
+  background: none;
+  text-decoration: underline;
+  text-underline-offset: 6px;
+  text-decoration-thickness: 1px;
+}
+
+.a .secondaryStatus {
+  font-weight: 400;
+  font-size: 0.82em;
+  color: #8ea4c2;
+}
+
+.a .headerCta {
+  border-color: rgb(200 215 235 / 0.35);
+  box-shadow: none;
+  background: none;
+}
+
+.a .wordmark {
+  letter-spacing: 0.24em;
+  font-weight: 500;
+}
+
+/* Faixa A: três índices numerados sobre um fio, sem caixas. */
+.a .band {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-top: 1px solid rgb(160 185 215 / 0.18);
+  padding-top: 18px;
+  height: auto;
+  bottom: 6%;
+}
+
+.a .bandItem {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+}
+
+.a .bandKey {
+  font-family: var(--ed-display);
+  font-style: italic;
+  font-size: 20px;
+  color: #6f8fb8;
+}
+
+.a .bandValue {
+  font-size: 14px;
+  color: #c3cfdd;
+}
+
+/* ============ B — Contraste conceitual ============ */
+.b .title {
+  font-family: var(--ed-display);
+  font-weight: 400;
+  font-size: clamp(36px, 3.15vw, 60px);
+  line-height: 1.06;
+  letter-spacing: -0.02em;
+  max-width: clamp(340px, 34vw, 640px);
+  background: none;
+  color: #b7c5d8;
+  text-wrap: balance;
+}
+
+.b .em {
+  display: block;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(90deg, #ffffff 0%, #bfe6ff 60%, #7be3cb 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.b .eyebrow {
+  font-family: var(--ed-display);
+  font-stretch: 125%;
+  letter-spacing: 0.18em;
+  color: #5aa2ff;
+}
+
+.b .lede {
+  max-width: clamp(320px, 30vw, 520px);
+}
+
+.b .wordmark {
+  font-family: var(--ed-display);
+  font-stretch: 125%;
+  letter-spacing: 0.12em;
+  font-weight: 600;
+}
+
+/* Faixa B: linha única de pares rótulo/valor, separados por fios verticais. */
+.b .band {
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  justify-content: start;
+  column-gap: 0;
+  bottom: 6%;
+}
+
+.b .bandItem {
+  padding: 2px 36px;
+  border-left: 1px solid rgb(160 185 215 / 0.22);
+}
+
+.b .bandItem:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.b .bandKey {
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #7f93ad;
+  margin-bottom: 6px;
+}
+
+.b .bandValue {
+  font-size: 15px;
+  color: #e3eaf3;
+}
+
+/* ============ C — Engenharia e confiança ============ */
+.c .title {
+  font-family: var(--ed-display);
+  font-weight: 600;
+  font-size: clamp(38px, 3.4vw, 64px);
+  line-height: 1.04;
+  letter-spacing: -0.03em;
+  max-width: clamp(340px, 34vw, 640px);
+  text-wrap: balance;
+  background: none;
+  color: #f3f6fb;
+}
+
+.c .em {
+  display: block;
+  color: #8fb8ff;
+}
+
+.c .eyebrow {
+  font-family: var(--ed-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 500;
+  color: #6fa8ff;
+}
+
+.c .eyebrow::before {
+  width: 10px;
+  height: 10px;
+  background: none;
+  border: 1px solid #6fa8ff;
+}
+
+.c .lede {
+  max-width: clamp(320px, 30vw, 520px);
+}
+
+/* Controles de canto reto discreto (6 px): linguagem de instrumento, não de pílula. */
+.c .primary,
+.c .secondary,
+.c .headerCta {
+  border-radius: 6px;
+}
+
+.c .primary {
+  background: #1f63f2;
+  box-shadow: 0 0 0 1px rgb(120 170 255 / 0.35) inset;
+}
+
+.c .headerCta {
+  box-shadow: none;
+  border-color: rgb(110 160 240 / 0.55);
+}
+
+.c .wordmark {
+  font-family: var(--ed-display);
+  letter-spacing: 0.2em;
+  font-weight: 600;
+}
+
+/* Faixa C: ficha técnica em três colunas, rótulos em mono. */
+.c .band {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-top: 1px solid rgb(110 140 190 / 0.3);
+  padding-top: 16px;
+  bottom: 6%;
+}
+
+.c .bandItem + .bandItem {
+  border-left: 1px solid rgb(110 140 190 / 0.22);
+  padding-left: 24px;
+}
+
+.c .bandKey {
+  font-family: var(--ed-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #7f93ad;
+  margin-bottom: 6px;
+}
+
+.c .bandValue {
+  font-size: 15px;
+  color: #e3eaf3;
+}
+
+/* ============ Layout empilhado e celular ============ */
+@media (max-width: 1023px) {
+  .root .band {
+    grid-template-columns: 1fr !important;
+    row-gap: 14px;
+  }
+  .b .bandItem,
+  .c .bandItem + .bandItem {
+    padding: 0;
+    border-left: 0;
+  }
+  .a .title {
+    font-size: clamp(44px, 9vw, 72px);
+    max-width: none;
+  }
+  .b .title,
+  .c .title {
+    max-width: none;
+  }
+}
+
+@media (max-width: 400px) {
+  .a .title {
+    font-size: 44px;
+  }
+  .b .title,
+  .c .title {
+    font-size: 34px;
+  }
+}

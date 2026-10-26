@@ -6,7 +6,7 @@ const [prefix = "antes", q = "forma=blender2-v23"] = process.argv.slice(2);
 const out = (f) => fileURLToPath(new URL(`../captures/ciclo06/${prefix}-${f}.png`, import.meta.url));
 const b = await chromium.launch({ headless: true, args: ["--use-angle=d3d11", "--enable-gpu", "--ignore-gpu-blocklist"] });
 const p = await b.newPage({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2 });
-await p.goto(`http://localhost:3100/?debug&${q}`, { waitUntil: "networkidle", timeout: 90000 });
+await p.goto(`${process.env.BASE ?? "http://localhost:3100/"}?debug&${q}`, { waitUntil: "networkidle", timeout: 90000 });
 await p.waitForSelector('canvas[data-status="live"]', { timeout: 60000 });
 await p.addStyleTag({ content: "output{display:none!important} nextjs-portal{display:none!important}" });
 await p.waitForTimeout(1200);
