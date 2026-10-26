@@ -232,6 +232,8 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
       // Ciclo 02 (piso e reflexos): padrão na V2.3, a referência artística; as outras formas
       // ficam como estavam. ?piso=c02 liga em qualquer forma, ?piso=atual desliga.
       floorC02: params.get("piso") === "c02" || (params.get("piso") !== "atual" && formParam === "blender2-v23"),
+      // Ciclo 03 (figura humana): idem — padrão na V2.3; ?figura=c03 liga, ?figura=atual desliga.
+      figureC03: params.get("figura") === "c03" || (params.get("figura") !== "atual" && formParam === "blender2-v23"),
     },
     reflectionGeometry ? { geometry: reflectionGeometry, material } : null,
   );
@@ -562,6 +564,16 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
           const v = new Vector3(wx! + x, fy + up, wz!).applyMatrix4(set.group.matrixWorld).project(camera);
           return [Math.round((v.x * 0.5 + 0.5) * window.innerWidth), Math.round((0.5 - v.y * 0.5) * window.innerHeight)];
         });
+      },
+      /** Pés, quadril e cabeça da figura → pixel CSS na tela (recortes de close). */
+      figureToScreen() {
+        const pr = set.probe() as Record<string, number[]>;
+        const out: Record<string, number[]> = {};
+        for (const k of ["footL", "footR", "hips", "head"]) {
+          const v = new Vector3(...(pr[k] as [number, number, number])).project(camera);
+          out[k] = [Math.round((v.x * 0.5 + 0.5) * window.innerWidth), Math.round((0.5 - v.y * 0.5) * window.innerHeight)];
+        }
+        return out;
       },
       waves: () => waves?.snapshot() ?? [],
       /** Congela só as ondas e avança o tempo delas (capturas determinísticas). */

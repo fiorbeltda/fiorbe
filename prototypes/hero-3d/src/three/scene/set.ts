@@ -48,6 +48,8 @@ export interface SetOptions {
   compact?: boolean;
   /** Acabamento do piso do Ciclo 02 (reflexo em traços verticais, Fresnel estável, trilhas filtradas). */
   floorC02?: boolean;
+  /** Figura do Ciclo 03 (silhueta, contrapposto, contraluz, sombra de contato e reflexo que esmaece). */
+  figureC03?: boolean;
 }
 
 export interface SculptureSet {
@@ -163,14 +165,15 @@ export function createSculptureSet(opts: SetOptions, reflectionSource: { geometr
   disposables.push(glowGeo);
 
   // --- Figura humana com esqueleto (≈14,5% da altura da escultura, como na referência) ---
-  const rig = createFigureRig();
+  const c03 = Boolean(opts.figureC03);
+  const rig = createFigureRig({ c03 });
   disposables.push(rig.geometry, rig.material);
   rig.root.scale.setScalar(personH);
   rig.root.position.set(px, F, pz);
   // De costas para a câmera, girada em direção ao centro da escultura.
   rig.root.rotation.y = 0.42;
   group.add(rig.root);
-  const figureMotion = new FigureMotion(rig, opts.reducedMotion);
+  const figureMotion = new FigureMotion(rig, opts.reducedMotion, c03);
 
   // Sombra de contato sob os pés.
   const contactTex = radialTexture([
@@ -179,20 +182,46 @@ export function createSculptureSet(opts: SetOptions, reflectionSource: { geometr
     [1, "rgba(255,255,255,0)"],
   ]);
   disposables.push(contactTex);
-  const contactMat = track(new MeshBasicMaterial({ color: 0x000000, alphaMap: contactTex, transparent: true, opacity: 0.75, depthWrite: false }), 0.75);
+  // Ciclo 03: a elipse larga (≈ 3 pés) virava, na vista rasante, uma linha escura comprida que
+  // lia como risco. Agora justa sob os pés e mais densa no centro: ancora sem desenhar.
+  const contactAlpha = c03 ? 0.85 : 0.75;
+  const contactMat = track(new MeshBasicMaterial({ color: 0x000000, alphaMap: contactTex, transparent: true, opacity: contactAlpha, depthWrite: false }), contactAlpha);
   const contact = new Mesh(glowGeo, contactMat);
   contact.rotation.x = -Math.PI / 2;
-  contact.scale.set(personH * 0.42, personH * 0.22, 1);
+  if (c03) contact.scale.set(personH * 0.18, personH * 0.2, 1);
+  else contact.scale.set(personH * 0.42, personH * 0.22, 1);
   contact.position.set(px, F + 0.002, pz);
   contact.renderOrder = 2;
   group.add(contact);
+
+  // Esmaecimento do reflexo da figura (Ciclo 03): linha do chão e altura da figura, em mundo.
+  const figReflUniforms = { uFigFloorY: { value: 0 }, uFigLen: { value: 1 } };
+  const headWorld = new Vector3();
 
   // Reflexo da figura: mesma geometria e MESMO esqueleto, espelhado no chão.
   let figureReflection: SkinnedMesh | null = null;
   if (opts.reflections) {
     // No piso cinematográfico a silhueta refletida precisa tapar a luz de fundo refletida.
-    const reflAlpha = cinematic ? 0.95 : 0.6;
+    const reflAlpha = cinematic ? (c03 ? 1 : 0.95) : 0.6;
     const reflMat = track(new MeshBasicMaterial({ color: new Color("#04070e"), transparent: true, opacity: reflAlpha, depthWrite: false }), reflAlpha);
+    // Ciclo 03: o reflexo era uma silhueta de opacidade constante até a cabeça. Denso junto aos
+    // pés e esmaecendo com a distância deles (a superfície molhada não devolve tudo).
+    if (c03) {
+      reflMat.onBeforeCompile = (shader) => {
+        shader.uniforms.uFigFloorY = figReflUniforms.uFigFloorY;
+        shader.uniforms.uFigLen = figReflUniforms.uFigLen;
+        shader.vertexShader = shader.vertexShader
+          .replace("#include <common>", "#include <common>\nvarying float vFigY;")
+          .replace("#include <project_vertex>", "#include <project_vertex>\nvFigY = (modelMatrix * vec4(transformed, 1.0)).y;");
+        shader.fragmentShader = shader.fragmentShader
+          .replace("#include <common>", "#include <common>\nvarying float vFigY;\nuniform float uFigFloorY;\nuniform float uFigLen;")
+          .replace(
+            "#include <opaque_fragment>",
+            "diffuseColor.a *= mix(1.0, 0.6, smoothstep(0.2, 1.0, (uFigFloorY - vFigY) / max(uFigLen, 1e-4)));\n#include <opaque_fragment>",
+          );
+      };
+      reflMat.customProgramCacheKey = () => "fiorbe-figure-refl-c03";
+    }
     figureReflection = new SkinnedMesh(rig.geometry, reflMat);
     figureReflection.bindMode = DetachedBindMode;
     figureReflection.bind(rig.skeleton, new Matrix4());
@@ -321,14 +350,18 @@ export function createSculptureSet(opts: SetOptions, reflectionSource: { geometr
       for (const { src, dst } of mirrored) dst.matrixWorld.multiplyMatrices(mirrorMatrix, src.matrixWorld);
       // Ossos já estão em coordenadas de mundo: basta o espelho.
       if (figureReflection) figureReflection.matrixWorld.copy(mirrorMatrix);
+      if (c03) {
+        figReflUniforms.uFigFloorY.value = floorWorldY;
+        figReflUniforms.uFigLen.value = rig.bones.head.getWorldPosition(headWorld).y - floorWorldY;
+      }
     },
     update(dt, weight, paused) {
       figureMotion.update(dt, weight, paused);
       backlight.update(dt, paused);
     },
     probe() {
-      const w = (n: "footL" | "footR" | "head" | "hips") => rig.bones[n].getWorldPosition(new Vector3()).toArray().map((v) => Math.round(v * 1e5) / 1e5);
-      return { footL: w("footL"), footR: w("footR"), head: w("head"), hips: w("hips"), unitPerFigure: personH };
+      const w = (n: "footL" | "footR" | "head" | "hips" | "handL" | "handR") => rig.bones[n].getWorldPosition(new Vector3()).toArray().map((v) => Math.round(v * 1e5) / 1e5);
+      return { footL: w("footL"), footR: w("footR"), head: w("head"), hips: w("hips"), handL: w("handL"), handR: w("handR"), unitPerFigure: personH };
     },
     setOpacity(alpha) {
       group.visible = alpha > 0.001;

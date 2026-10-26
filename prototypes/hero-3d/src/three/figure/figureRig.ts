@@ -28,7 +28,7 @@ export const BONE_NAMES = [
 export type BoneName = (typeof BONE_NAMES)[number];
 
 /** Posição de repouso (espaço da figura) da origem de cada osso + pai. */
-const REST: Record<BoneName, { parent: BoneName | null; at: [number, number, number] }> = {
+const REST_V1: Record<BoneName, { parent: BoneName | null; at: [number, number, number] }> = {
   root: { parent: null, at: [0, 0, 0] },
   hips: { parent: "root", at: [0, 0.52, 0] },
   spine: { parent: "hips", at: [0, 0.6, 0] },
@@ -50,6 +50,26 @@ const REST: Record<BoneName, { parent: BoneName | null; at: [number, number, num
   shinR: { parent: "thighR", at: [-0.056, 0.27, 0.004] },
   footR: { parent: "shinR", at: [-0.056, 0.045, 0] },
 };
+
+/**
+ * Ciclo 03: braços fora do tronco (antes o centro do braço, x = 0,11, ficava dentro do paletó,
+ * raio 0,127 — em contraluz braço e corpo viravam um bloco, sem o vão de luz junto à cintura)
+ * e pernas um pouco mais afastadas (as duas liam como uma coluna só).
+ */
+function restFor(c03: boolean): typeof REST_V1 {
+  if (!c03) return REST_V1;
+  const r = structuredClone(REST_V1);
+  const set = (n: BoneName, x: number) => (r[n].at[0] = x);
+  for (const [side, k] of [["L", 1], ["R", -1]] as const) {
+    set(`upperArm${side}`, k * 0.124);
+    set(`foreArm${side}`, k * 0.134);
+    set(`hand${side}`, k * 0.138);
+    set(`thigh${side}`, k * 0.06);
+    set(`shin${side}`, k * 0.061);
+    set(`foot${side}`, k * 0.061);
+  }
+  return r;
+}
 
 const idx = (n: BoneName) => BONE_NAMES.indexOf(n);
 
@@ -177,7 +197,9 @@ export interface FigureRig {
   material: MeshStandardMaterial;
 }
 
-export function createFigureRig(): FigureRig {
+export function createFigureRig(opts: { c03?: boolean } = {}): FigureRig {
+  const c03 = Boolean(opts.c03);
+  const REST = restFor(c03);
   // --- Esqueleto ---
   const bones = {} as Record<BoneName, Bone>;
   BONE_NAMES.forEach((n) => {
@@ -201,9 +223,25 @@ export function createFigureRig(): FigureRig {
   const b: Builder = { pos: [], nrm: [], si: [], sw: [], ix: [] };
 
   // Paletó + tronco: ombros estruturados, cintura marcada, barra levemente aberta.
+  // Ciclo 03: paletó em V mais claro (ombro um pouco caído, cintura marcada, barra menos larga).
+  const torso = c03
+    ? [
+        { y: 0.84, cx: 0, cz: 0.002, rx: 0.038, rz: 0.035 },
+        { y: 0.83, cx: 0, cz: 0.004, rx: 0.064, rz: 0.056 },
+        { y: 0.815, cx: 0, cz: 0.004, rx: 0.1, rz: 0.063 },
+        { y: 0.798, cx: 0, cz: 0.004, rx: 0.12, rz: 0.068 },
+        { y: 0.775, cx: 0, cz: 0.004, rx: 0.123, rz: 0.069 },
+        { y: 0.74, cx: 0, cz: 0.002, rx: 0.113, rz: 0.07 },
+        { y: 0.67, cx: 0, cz: 0.002, rx: 0.097, rz: 0.064 },
+        { y: 0.6, cx: 0, cz: 0, rx: 0.087, rz: 0.058 },
+        { y: 0.53, cx: 0, cz: 0, rx: 0.093, rz: 0.06 },
+        { y: 0.47, cx: 0, cz: 0.002, rx: 0.1, rz: 0.064 },
+        { y: 0.445, cx: 0, cz: 0.003, rx: 0.102, rz: 0.065 },
+      ]
+    : null;
   loft(
     b,
-    [
+    torso ?? [
       // Caimento do ombro (trapézio): antes ia do pescoço à largura total em 1,4 cm — ombro quadrado.
       { y: 0.84, cx: 0, cz: 0.002, rx: 0.036, rz: 0.034 },
       { y: 0.83, cx: 0, cz: 0.004, rx: 0.062, rz: 0.056 },
@@ -229,21 +267,35 @@ export function createFigureRig(): FigureRig {
   );
 
   // Pescoço e cabeça (com volume de cabelo atrás/em cima).
+  // Ciclo 03: pescoço um pouco mais cheio e cabeça um fio menor — a cabeça redonda sobre o
+  // pescoço fino lia como um pirulito.
   loft(b, [
-    { y: 0.895, cx: 0, cz: 0.004, rx: 0.027, rz: 0.03 },
-    { y: 0.835, cx: 0, cz: 0.002, rx: 0.031, rz: 0.032 },
+    { y: 0.895, cx: 0, cz: 0.004, rx: c03 ? 0.03 : 0.027, rz: c03 ? 0.032 : 0.03 },
+    { y: 0.835, cx: 0, cz: 0.002, rx: c03 ? 0.035 : 0.031, rz: c03 ? 0.035 : 0.032 },
   ], [[0.9, "head"], [0.85, "neck"]], 0.02, 12, 2, false, false);
   // Cabeça um pouco mais estreita que funda; cabelo curto como volume na nuca e no topo.
-  ellipsoid(b, [0, 0.932, -0.002], [0.043, 0.057, 0.052], "head");
-  ellipsoid(b, [0, 0.948, 0.008], [0.045, 0.045, 0.049], "head");
+  ellipsoid(b, [0, 0.932, -0.002], c03 ? [0.04, 0.054, 0.05] : [0.043, 0.057, 0.052], "head");
+  ellipsoid(b, [0, 0.948, 0.008], c03 ? [0.042, 0.042, 0.047] : [0.045, 0.045, 0.049], "head");
 
   // Braços (manga do paletó) e mãos.
   for (const side of [1, -1] as const) {
     const L = side === 1;
     const s = (n: string) => (n + (L ? "L" : "R")) as BoneName;
+    // Ciclo 03: manga fora do tronco e um pouco mais fina; o vão de luz entre braço e cintura
+    // é o que faz a silhueta ler como gente em contraluz.
+    const arm = c03
+      ? [
+          { y: 0.82, cx: side * 0.112, cz: 0.004, rx: 0.034, rz: 0.038 },
+          { y: 0.78, cx: side * 0.122, cz: 0.004, rx: 0.032, rz: 0.036 },
+          { y: 0.7, cx: side * 0.129, cz: 0.002, rx: 0.029, rz: 0.032 },
+          { y: 0.64, cx: side * 0.133, cz: 0, rx: 0.027, rz: 0.029 },
+          { y: 0.56, cx: side * 0.136, cz: -0.002, rx: 0.025, rz: 0.026 },
+          { y: 0.5, cx: side * 0.138, cz: -0.002, rx: 0.023, rz: 0.025 },
+        ]
+      : null;
     loft(
       b,
-      [
+      arm ?? [
         { y: 0.82, cx: side * 0.104, cz: 0.004, rx: 0.036, rz: 0.04 },
         { y: 0.78, cx: side * 0.11, cz: 0.004, rx: 0.036, rz: 0.038 },
         { y: 0.7, cx: side * 0.114, cz: 0.002, rx: 0.032, rz: 0.034 },
@@ -259,16 +311,30 @@ export function createFigureRig(): FigureRig {
       0.035,
       14,
     );
-    ellipsoid(b, [side * 0.121, 0.452, -0.004], [0.017, 0.044, 0.028], s("hand"), 10);
+    // Mão: era um oval grande ("luva"); Ciclo 03 em proporção de mão.
+    if (c03) ellipsoid(b, [side * 0.139, 0.458, -0.004], [0.014, 0.036, 0.022], s("hand"), 10);
+    else ellipsoid(b, [side * 0.121, 0.452, -0.004], [0.017, 0.044, 0.028], s("hand"), 10);
   }
 
   // Pernas (calça reta) e sapatos.
   for (const side of [1, -1] as const) {
     const L = side === 1;
     const s = (n: string) => (n + (L ? "L" : "R")) as BoneName;
+    // Ciclo 03: pernas afastadas e afinando até o tornozelo — com o vão entre elas a silhueta
+    // deixa de ser uma coluna só.
+    const leg = c03
+      ? [
+          { y: 0.5, cx: side * 0.058, cz: 0, rx: 0.048, rz: 0.054 },
+          { y: 0.4, cx: side * 0.06, cz: 0.002, rx: 0.043, rz: 0.048 },
+          { y: 0.27, cx: side * 0.061, cz: 0.004, rx: 0.035, rz: 0.04 },
+          { y: 0.17, cx: side * 0.061, cz: 0.002, rx: 0.031, rz: 0.036 },
+          { y: 0.09, cx: side * 0.061, cz: 0, rx: 0.028, rz: 0.032 },
+          { y: 0.05, cx: side * 0.061, cz: -0.002, rx: 0.031, rz: 0.036 },
+        ]
+      : null;
     loft(
       b,
-      [
+      leg ?? [
         { y: 0.5, cx: side * 0.054, cz: 0, rx: 0.05, rz: 0.056 },
         { y: 0.4, cx: side * 0.055, cz: 0.002, rx: 0.046, rz: 0.05 },
         { y: 0.27, cx: side * 0.056, cz: 0.004, rx: 0.039, rz: 0.042 },
@@ -288,7 +354,8 @@ export function createFigureRig(): FigureRig {
       false,
       true,
     );
-    ellipsoid(b, [side * 0.056, 0.024, -0.03], [0.03, 0.024, 0.074], s("foot"), 10);
+    if (c03) ellipsoid(b, [side * 0.061, 0.022, -0.03], [0.027, 0.022, 0.07], s("foot"), 10);
+    else ellipsoid(b, [side * 0.056, 0.024, -0.03], [0.03, 0.024, 0.074], s("foot"), 10);
   }
 
   const geometry = new BufferGeometry();
@@ -309,13 +376,15 @@ export function createFigureRig(): FigureRig {
       // Contraluz: a parede de luz fica ATRÁS da figura, então a luz contorna a silhueta —
       // mais no alto (cabeça e ombros) e no lado do núcleo de luz (esquerda da tela), quase
       // nada embaixo. Filete fino pela potência do Fresnel; nada de emissivo chapado.
-      float fgFres = pow(1.0 - clamp(abs(dot(normal, normalize(vViewPosition))), 0.0, 1.0), 3.2);
-      float fgSide = mix(0.55, 1.0, smoothstep(0.1, -0.9, normal.x)) * (0.45 + 0.55 * smoothstep(-0.3, 0.7, normal.y));
-      outgoingLight += vec3(0.5, 0.82, 1.0) * fgFres * fgSide * 0.75;
+      float fgFres = pow(1.0 - clamp(abs(dot(normal, normalize(vViewPosition))), 0.0, 1.0), ${c03 ? "2.6" : "3.2"});
+      float fgSide = mix(${c03 ? "0.7" : "0.55"}, 1.0, smoothstep(0.1, -0.9, normal.x)) * (0.45 + 0.55 * smoothstep(-0.3, 0.7, normal.y));
+      // Ciclo 03: filete um pouco mais largo e presente nos dois lados (cabeça e ombros leem
+      // contra as colunas de luz), sem virar contorno emissivo.
+      outgoingLight += vec3(0.5, 0.82, 1.0) * fgFres * fgSide * ${c03 ? "0.85" : "0.75"};
       #include <opaque_fragment>`,
     );
   };
-  material.customProgramCacheKey = () => "fiorbe-figure-v2";
+  material.customProgramCacheKey = () => (c03 ? "fiorbe-figure-c03" : "fiorbe-figure-v2");
 
   // Vínculo na origem (matriz identidade): as inversas dos ossos ficam no
   // espaço da figura, o que permite reaproveitar o esqueleto no reflexo.

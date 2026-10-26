@@ -56,6 +56,26 @@ const POSE: Partial<Record<BoneName, Quaternion>> = {
   footR: q(0, 4, 0),
 };
 
+/**
+ * Ciclo 03: o mesmo contrapposto, legível nesta escala (≈ 80 px de altura). Peso claro na perna
+ * direita (quadril inclinado, ombros em contra-inclinação), perna esquerda relaxada um pouco à
+ * frente com o joelho solto e o pé aberto, braços levemente afastados do corpo (vão de luz).
+ * Nada teatral: ângulos de poucos graus.
+ */
+const POSE_C03: Partial<Record<BoneName, Quaternion>> = {
+  ...POSE,
+  hips: q(0, 3, 3.6),
+  spine: q(-1, 2, -1.4),
+  chest: q(-1.5, 4, -2.3),
+  upperArmL: q(2, 0, 9),
+  upperArmR: q(1, 0, -8),
+  thighL: q(-6, -6, -3),
+  shinL: q(11, 0, 0),
+  footL: q(-4, -12, 0),
+  thighR: q(0, 2, -1.2),
+  footR: q(0, 6, 0),
+};
+
 function quatTrack(bone: BoneName, times: number[], eulers: Array<[number, number, number]>): QuaternionKeyframeTrack {
   const values: number[] = [];
   eulers.forEach(([x, y, z]) => values.push(...q(x, y, z).toArray()));
@@ -86,9 +106,18 @@ export class FigureMotion {
   private readonly lookYaw = createSpring(5, 1);
   private readonly lookPitch = createSpring(5, 1);
   private nextLook = 3;
+  private ownedReady = false;
   private time = 0;
   private seed = 1;
   private readonly footTargets: Array<{ thigh: Bone; shin: Bone; foot: Bone; local: Vector3; worldQ: Quaternion }> = [];
+  /**
+   * Ciclo 03 — correção: o AnimationMixer só reescreve um osso quando o valor animado MUDA.
+   * Antebraços (pose constante) e cabeça/pescoço com o movimento pausado deixavam de ser
+   * reescritos, e as camadas pós-mixer (oscilação das mãos, olhar) multiplicavam por cima a
+   * cada quadro — o braço "andava" ~8% da altura da figura nos primeiros segundos. Guardamos
+   * o último valor do mixer e o restauramos antes de cada atualização.
+   */
+  private readonly mixerOwned: Array<{ bone: Bone; value: Quaternion }> | null;
 
   // temporários
   private readonly vA = new Vector3();
@@ -102,15 +131,21 @@ export class FigureMotion {
   constructor(
     private readonly rig: FigureRig,
     private readonly reducedMotion: boolean,
+    c03 = false,
   ) {
     this.mixer = new AnimationMixer(rig.root);
     const b = rig.bones;
+    this.mixerOwned = c03
+      ? [b.head, b.neck, b.foreArmL, b.foreArmR].map((bone) => ({ bone, value: new Quaternion() }))
+      : null;
 
     // 1. Pose-base: clip de um quadro.
-    const poseTracks = Object.entries(POSE).map(
+    const poseTracks = Object.entries(c03 ? POSE_C03 : POSE).map(
       ([name, quat]) => new QuaternionKeyframeTrack(`${name}.quaternion`, [0], quat!.toArray()),
     );
-    poseTracks.push(new VectorKeyframeTrack("hips.position", [0], b.hips.position.clone().add(new Vector3(-0.007, -0.004, 0)).toArray()));
+    // Quadril sobre a perna de apoio (a direita); no Ciclo 03 um pouco mais, para o peso ler.
+    const hipShift = c03 ? new Vector3(-0.012, -0.006, 0) : new Vector3(-0.007, -0.004, 0);
+    poseTracks.push(new VectorKeyframeTrack("hips.position", [0], b.hips.position.clone().add(hipShift).toArray()));
     this.mixer.clipAction(new AnimationClip("pose", -1, poseTracks)).play();
 
     // 2. Respiração (duração normalizada 1; o ritmo real vem do timeScale).
@@ -180,7 +215,12 @@ export class FigureMotion {
     const shiftPeriod = 14 * (1 + 0.2 * drift(t, 3.3));
     this.shift.timeScale = live / shiftPeriod;
     this.shift.setEffectiveWeight(weight * (0.55 + 0.45 * (0.5 + 0.5 * drift(t, 5.9))));
+    if (this.mixerOwned && this.ownedReady) for (const o of this.mixerOwned) o.bone.quaternion.copy(o.value);
     this.mixer.update(dt);
+    if (this.mixerOwned) {
+      for (const o of this.mixerOwned) o.value.copy(o.bone.quaternion);
+      this.ownedReady = true;
+    }
 
     // Olhar: novos alvos pequenos em intervalos irregulares; molas criticamente amortecidas.
     if (live) {
