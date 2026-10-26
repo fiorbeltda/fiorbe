@@ -1,12 +1,16 @@
 import { HeroStage } from "./HeroStage";
 import styles from "./Hero.module.css";
+import ed from "./Editorial.module.css";
+import { EDITORIAL, type Direction } from "./editorial";
 
 /**
  * Hero em HTML real (server component), na composição da referência
  * aprovada para este estudo. A escultura é uma camada progressiva por trás.
  * Textos são propostas editoriais ainda não aprovadas.
  */
-export function Hero() {
+export function Hero({ direction }: { direction?: Direction } = {}) {
+  // DS-001A: com `direction`, troca só texto e acabamento (exploração em /editorial/*).
+  if (direction) return <EditorialHero direction={direction} />;
   return (
     <section className={styles.hero} aria-labelledby="hero-title">
       <header className={styles.header}>
@@ -107,6 +111,72 @@ export function Hero() {
           </span>
         </li>
       </ul>
+    </section>
+  );
+}
+
+/** Mesma estrutura, palco e trilhas do Hero; texto, faixa e acabamento de cada direção. */
+function EditorialHero({ direction }: { direction: Direction }) {
+  const c = EDITORIAL[direction];
+  const d = ed[direction];
+  return (
+    <section className={`${styles.hero} ${ed.root} ${d}`} aria-labelledby="hero-title" data-editorial={direction}>
+      <header className={styles.header}>
+        <a href="#" className={`${styles.wordmark} ${ed.wordmark}`} aria-label="FIORBE, início">
+          FIORBE
+        </a>
+        <nav aria-label="Principal" className={`${styles.nav} ${ed.nav}`}>
+          <a href="#produtos">Produtos</a>
+          <a href="#sobre">Sobre</a>
+          <a href="#contato">Contato</a>
+        </nav>
+        <a href="#contato" className={`${styles.headerCta} ${ed.headerCta}`}>
+          {c.headerCta}
+          <Arrow />
+        </a>
+      </header>
+
+      <div className={`${styles.copy} ${ed.copy}`}>
+        <p className={`${styles.eyebrow} ${ed.eyebrow}`}>{c.eyebrow}</p>
+        <h1 id="hero-title" className={`${styles.title} ${ed.title}`}>
+          {c.title.map(([t, em], i) => (em ? <em key={i} className={ed.em}>{t}</em> : <span key={i}>{t}</span>))}
+        </h1>
+        <p className={`${styles.lede} ${ed.lede}`}>{c.lede}</p>
+        <div className={`${styles.actions} ${ed.actions}`}>
+          <a href={c.primary.href} className={`${styles.primary} ${ed.primary}`}>
+            {c.primary.label}
+            <Arrow />
+          </a>
+          <a href={c.secondary.href} className={`${styles.secondary} ${ed.secondary}`}>
+            {c.secondary.label}
+            {c.secondary.status && <span className={ed.secondaryStatus}>{c.secondary.status}</span>}
+          </a>
+        </div>
+        {c.badge && (
+          <p className={`${styles.status} ${ed.status}`}>
+            <span className={styles.dot} aria-hidden="true" />
+            {c.badge}
+          </p>
+        )}
+      </div>
+
+      <svg className={styles.trails} viewBox="0 0 1672 941" preserveAspectRatio="none" aria-hidden="true" data-floor-trails="">
+        <g fill="none" strokeLinecap="round">
+          <path d="M1690 925 C1590 858 1420 806 1200 774 C1010 746 905 726 935 706 C968 688 1090 690 1255 696" stroke="#4fb8ff" strokeWidth="2.2" />
+          <path d="M1690 712 C1610 712 1540 700 1478 684" stroke="#7fd9ff" strokeOpacity="0.55" strokeWidth="1.2" />
+        </g>
+      </svg>
+
+      <HeroStage className={styles.stage} />
+
+      <dl className={`${styles.band} ${ed.band}`} aria-label="Sobre a FIORBE">
+        {c.band.map(([k, v]) => (
+          <div key={k} className={ed.bandItem}>
+            <dt className={ed.bandKey}>{k}</dt>
+            <dd className={ed.bandValue}>{v}</dd>
+          </div>
+        ))}
+      </dl>
     </section>
   );
 }

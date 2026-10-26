@@ -27,6 +27,10 @@ export interface TimelineState {
 
 export class ScrollTimeline {
   private raw = 0;
+  /** Scroll (px) em que a transição começa. 0 no desktop; no layout empilhado, depois de o conteúdo do hero ser lido. */
+  start = 0;
+  /** Início efetivo (limitado a metade do percurso), lido pelo motor. */
+  startScroll = 0;
   readonly state: TimelineState = { progress: 0, heroWeight: 1, recompose: 0, flow: 0, handoff: 0, ruleViewportY: 0 };
 
   constructor(private readonly rule: HTMLElement) {}
@@ -37,7 +41,9 @@ export class ScrollTimeline {
     const vh = window.innerHeight;
     const landing = vh * 0.38;
     const end = Math.max(1, ruleTop + window.scrollY - landing);
-    this.raw = Math.min(1, Math.max(0, window.scrollY / end));
+    const start = Math.min(this.start, end * 0.5);
+    this.startScroll = start;
+    this.raw = Math.min(1, Math.max(0, (window.scrollY - start) / (end - start)));
     this.state.ruleViewportY = ruleTop;
   }
 

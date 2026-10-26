@@ -5,10 +5,26 @@
  */
 .hero {
   --hero-gutter: clamp(20px, 8.25vw, 160px);
+  /* Largura reservada à coluna editorial (a linha de CTAs é o item mais largo). */
+  --copy-reserve: calc(var(--hero-gutter) + 450px);
   position: relative;
   height: 100svh;
   min-height: 760px;
   max-height: 1100px;
+}
+
+/* Véu editorial: assenta o texto sobre a cena sem caixa nem escurecer a escultura —
+   só a área da coluna de texto perde um pouco de luz, e o efeito sai junto com o texto. */
+.hero::before {
+  content: "";
+  position: absolute;
+  z-index: var(--z-content);
+  inset: 0 auto 0 0;
+  width: 62%;
+  pointer-events: none;
+  background:
+    radial-gradient(70% 58% at 22% 46%, rgb(3 7 18 / 0.5), rgb(3 7 18 / 0.22) 55%, transparent 80%);
+  opacity: calc(1 - var(--hero-out, 0) * 1.6);
 }
 
 .header {
@@ -35,14 +51,33 @@
 }
 
 .nav a {
-  color: #d5deea;
+  position: relative;
+  color: #c9d4e3;
   text-decoration: none;
   padding: var(--space-2) 2px;
+  border-radius: 6px;
   transition: color var(--motion-fast) var(--ease-out);
+}
+
+/* Ciclo 06: o hover só clareava o texto (quase imperceptível). Filete fino que cresce do centro. */
+.nav a::after {
+  content: "";
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  bottom: 2px;
+  height: 1px;
+  background: currentColor;
+  transform: scaleX(0);
+  transition: transform var(--motion-base) var(--ease-out);
 }
 
 .nav a:hover {
   color: #fff;
+}
+
+.nav a:hover::after {
+  transform: scaleX(1);
 }
 
 .headerCta {
@@ -53,10 +88,12 @@
   height: clamp(44px, 3.1vw, 52px);
   padding: 0 clamp(20px, 1.8vw, 30px);
   border-radius: 999px;
-  border: 1.5px solid rgb(64 140 255 / 0.75);
+  border: 1px solid rgb(90 155 255 / 0.7);
+  background: rgb(8 16 32 / 0.35);
+  /* Ciclo 06: brilho mais contido (lia neon ao lado da escultura). */
   box-shadow:
-    0 0 18px rgb(47 107 255 / 0.25),
-    inset 0 0 12px rgb(47 107 255 / 0.12);
+    0 0 14px rgb(47 107 255 / 0.16),
+    inset 0 0 10px rgb(47 107 255 / 0.08);
   color: #eef3fa;
   font-size: clamp(14px, 1.02vw, 17px);
   font-weight: 500;
@@ -65,8 +102,8 @@
 }
 
 .headerCta:hover {
-  border-color: rgb(110 180 255);
-  box-shadow: 0 0 26px rgb(47 107 255 / 0.4), inset 0 0 14px rgb(47 107 255 / 0.18);
+  border-color: rgb(130 190 255);
+  box-shadow: 0 0 20px rgb(47 107 255 / 0.28), inset 0 0 12px rgb(47 107 255 / 0.14);
 }
 
 .headerCta svg,
@@ -87,7 +124,8 @@
   width: min(44vw, 820px);
   display: flex;
   flex-direction: column;
-  opacity: calc(1 - var(--hero-out, 0) * 1.6);
+  /* Ciclo 06: sai mais devagar (×1,6 → ×1,15) para acompanhar a recomposição da escultura. */
+  opacity: calc(1 - var(--hero-out, 0) * 1.15);
   transform: translate3d(0, calc(var(--hero-out, 0) * -48px), 0);
   will-change: opacity, transform;
 }
@@ -117,7 +155,8 @@
   line-height: 1.03;
   font-weight: 700;
   letter-spacing: -0.025em;
-  max-width: min(30vw, 580px);
+  /* Piso de 340px: abaixo disso "Tecnologia que" quebra e "que" fica sozinho (5 linhas). */
+  max-width: clamp(340px, 30vw, 580px);
   /* Gradiente sutil da referência: branco no alto, azul-claro no fim. */
   background: linear-gradient(180deg, #ffffff 0%, #ffffff 26%, #d6e7ff 46%, #a5cdff 72%, #7cb4ff 100%);
   -webkit-background-clip: text;
@@ -127,9 +166,11 @@
 
 .lede {
   margin: clamp(16px, 2.4vh, 26px) 0 0;
-  max-width: min(30vw, 560px);
+  max-width: clamp(340px, 30vw, 560px);
   font-size: clamp(16px, 1.26vw, 22px);
   line-height: 1.45;
+  /* Validação final: a 1920 px "prazo." ficava sozinho na última linha. */
+  text-wrap: pretty;
   color: #c3cfdd;
 }
 
@@ -138,6 +179,21 @@
   flex-wrap: nowrap;
   gap: clamp(12px, 1.1vw, 18px);
   margin-top: clamp(22px, 3.6vh, 36px);
+}
+
+/* Ciclo 06: estado pressionado (antes igual ao hover) — afunda 1 px, sem escala nem salto. */
+.headerCta:active,
+.primary:active,
+.secondary:active {
+  transform: translateY(1px);
+  transition-duration: 60ms;
+}
+
+.primary:active {
+  background: linear-gradient(180deg, #1d6af2 0%, #104fdc 100%);
+  box-shadow:
+    0 0 0 1px rgb(110 170 255 / 0.3) inset,
+    0 6px 18px -8px rgb(30 100 255 / 0.6);
 }
 
 .primary,
@@ -151,11 +207,12 @@
   font-size: clamp(15px, 1.08vw, 18px);
   font-weight: 600;
   text-decoration: none;
-  transition: background var(--motion-fast) var(--ease-out), border-color var(--motion-fast) var(--ease-out), box-shadow var(--motion-base) var(--ease-out);
+  transition: background var(--motion-fast) var(--ease-out), border-color var(--motion-fast) var(--ease-out), box-shadow var(--motion-base) var(--ease-out), transform var(--motion-fast) var(--ease-out);
 }
 
 .primary {
-  border-radius: 18px;
+  /* Ciclo 06: pílula como todos os outros controles (era o único retângulo de 18 px). */
+  border-radius: 999px;
   color: #fff;
   background: linear-gradient(180deg, #2d7bff 0%, #1458f0 100%);
   box-shadow:
@@ -173,12 +230,13 @@
 .secondary {
   border-radius: 999px;
   color: #eef3fa;
-  border: 1.5px solid rgb(200 215 235 / 0.5);
-  background: rgb(6 12 24 / 0.3);
+  border: 1px solid rgb(200 215 235 / 0.45);
+  background: rgb(6 12 24 / 0.35);
 }
 
 .secondary:hover {
   border-color: rgb(220 232 250 / 0.85);
+  background: rgb(200 215 235 / 0.06);
 }
 
 .status {
@@ -195,12 +253,13 @@
   color: #c3cfdd;
 }
 
+/* Ciclo 06: estágio de desenvolvimento, não "online agora" — sem brilho, cor de marca (mint). */
 .dot {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
-  background: #2bd4a0;
-  box-shadow: 0 0 8px rgb(43 212 160 / 0.8);
+  background: var(--color-mint);
+  box-shadow: 0 0 0 3px rgb(123 227 203 / 0.12);
 }
 
 .trails {
@@ -223,13 +282,17 @@
   filter: blur(6px);
 }
 
-/* O palco reserva o espaço da escultura: nada se move quando o 3D chega. */
+/* O palco reserva o espaço da escultura: nada se move quando o 3D chega.
+   Começa depois da coluna editorial (nunca sob lede/CTAs); em telas largas, nos 38% da referência. */
 .stage {
   position: absolute;
-  left: 38%;
+  left: max(38%, var(--copy-reserve));
   right: 2%;
   top: 10%;
   height: 62%;
+  /* Controle de movimento: abaixo da linha do piso, alinhado à margem direita da grade. */
+  --controls-right: calc(var(--hero-gutter) - 2vw);
+  --controls-top: calc(100% + clamp(14px, 2.2vh, 24px));
 }
 
 .band {
@@ -240,7 +303,7 @@
   bottom: 4.6%;
   height: clamp(104px, 13vh, 124px);
   margin: 0;
-  padding: 0 clamp(24px, 4vw, 70px);
+  padding: 0 clamp(8px, 1.6vw, 32px);
   list-style: none;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -252,14 +315,14 @@
   border: 1px solid rgb(110 140 190 / 0.22);
   background: rgb(8 16 32 / 0.42);
   backdrop-filter: blur(6px);
-  opacity: calc(1 - var(--hero-out, 0) * 2);
+  opacity: calc(1 - var(--hero-out, 0) * 1.5);
 }
 
 .band li {
   display: flex;
   align-items: flex-start;
   gap: clamp(14px, 1.3vw, 22px);
-  padding: 0 clamp(16px, 2.6vw, 44px);
+  padding: 0 clamp(16px, 2.2vw, 40px);
   font-size: clamp(13px, 0.9vw, 15px);
   line-height: 1.45;
   color: #a9b6c8;
@@ -293,6 +356,29 @@
   color: #8fb0ff;
 }
 
+/* Notebook pequeno / tablet deitado (1024–1279): o enquadramento é limitado pela largura do palco,
+   então a escala da escultura vem de alargá-lo. Margem da grade que encontra 8,25vw em 1280
+   (sem salto), coluna editorial justa e CTAs um pouco mais compactos; o texto continua livre. */
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .hero {
+    --hero-gutter: clamp(20px, min(8.25vw, calc(16.4vw - 104px)), 160px);
+    --copy-reserve: calc(var(--hero-gutter) + 400px);
+  }
+  .stage {
+    right: 1%;
+    --controls-right: calc(var(--hero-gutter) - 1vw);
+  }
+  .actions {
+    gap: 12px;
+  }
+  .primary,
+  .secondary {
+    height: 46px;
+    padding: 0 20px;
+    font-size: 15px;
+  }
+}
+
 /* Tablet e mobile: fluxo empilhado — a escultura nunca fica atrás do texto. */
 @media (max-width: 1023px) {
   .hero {
@@ -318,6 +404,9 @@
   .trails {
     display: none;
   }
+  .hero::before {
+    display: none;
+  }
   .stage {
     position: relative;
     order: 1;
@@ -326,7 +415,10 @@
     top: auto;
     height: 46svh;
     min-height: 300px;
-    margin: 0 calc(var(--hero-gutter) * -1);
+    /* Quase sangrando: a peça não encosta (nem é cortada) nas bordas da tela. */
+    margin: 0 calc(12px - var(--hero-gutter));
+    --controls-right: calc(var(--hero-gutter) - 12px);
+    --controls-top: 12px;
   }
   .copy {
     position: relative;
@@ -335,6 +427,24 @@
     top: auto;
     width: auto;
     max-width: 640px;
+    /* Respiro entre a linha do horizonte e o rótulo. */
+    padding-top: clamp(20px, 3.5svh, 36px);
+    /* Aqui o conteúdo rola embora normalmente; o fade do desktop o apagava antes da leitura. */
+    opacity: 1;
+    transform: none;
+  }
+  /* O reflexo do piso continua sob o texto: um véu horizontal suave (sem caixa) o atenua. */
+  .copy::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    inset: -8px calc(var(--hero-gutter) * -1) -40px;
+    pointer-events: none;
+    background: linear-gradient(180deg, transparent, rgb(3 7 18 / 0.5) 22%, rgb(3 7 18 / 0.5) 70%, transparent);
+    /* Ciclo 05: o véu acabava num corte reto na largura da coluna (≈ 796 px a 940) — a "borda
+       vertical" que parecia estar no reflexo do piso. Esmaece para a direita. */
+    -webkit-mask-image: linear-gradient(90deg, #000 55%, transparent);
+    mask-image: linear-gradient(90deg, #000 55%, transparent);
   }
   .title,
   .lede {
@@ -349,6 +459,7 @@
     height: auto;
     margin-top: var(--space-12);
     padding: var(--space-6);
+    opacity: 1;
     grid-template-columns: 1fr;
     row-gap: var(--space-6);
   }
@@ -379,6 +490,22 @@
   .stage {
     height: 42svh;
     min-height: 280px;
+  }
+}
+
+/* Celular deitado (altura ≤ 500 px): o palco de 300 px mínimos ocupava a tela inteira e a
+   headline ficava toda abaixo da dobra. Palco mais baixo: escultura e início do texto juntos. */
+@media (max-width: 1023px) and (max-height: 500px) {
+  .stage {
+    height: 58svh;
+    min-height: 0;
+  }
+}
+
+/* Celulares estreitos: a 44px "Tecnologia que" não cabe em 300px e a headline vai a 5 linhas. */
+@media (max-width: 400px) {
+  .title {
+    font-size: clamp(36px, 11vw, 44px);
   }
 }
 

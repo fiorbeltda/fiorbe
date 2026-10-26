@@ -49,10 +49,12 @@
   opacity: 0;
 }
 
+/* Posição definida por quem monta o palco (--controls-*): alinhada à grade, longe das bordas. */
 .controls {
   position: absolute;
-  right: 0;
-  top: -4px;
+  right: var(--controls-right, 0);
+  top: var(--controls-top, -4px);
+  z-index: 1;
   display: flex;
   align-items: center;
   gap: var(--space-4);
@@ -73,8 +75,11 @@
   padding: 0 14px;
   border-radius: var(--radius-pill);
   border: 1px solid var(--color-line-strong);
-  background: rgb(6 12 24 / 0.55);
-  color: var(--color-text-2);
+  /* Ciclo 06: sobre o piso claro o texto perdia contraste — vidro com desfoque e texto mais claro. */
+  background: rgb(6 12 24 / 0.6);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  color: #c3cfdd;
   font: inherit;
   font-size: 13px;
   font-weight: 500;
@@ -87,6 +92,16 @@
 .pause:hover {
   color: var(--color-text);
   border-color: #3b4f73;
+}
+
+.pause:active {
+  transform: translateY(1px);
+}
+
+/* Pausado: o estado fica visível (antes só o texto mudava). */
+.pause[aria-pressed="true"] {
+  color: var(--color-text);
+  border-color: rgb(60 198 230 / 0.55);
 }
 
 .debug {

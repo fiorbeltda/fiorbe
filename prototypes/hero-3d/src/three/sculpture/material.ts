@@ -268,6 +268,7 @@ uniform vec3 uRim;
 uniform float uFray;
 uniform sampler2D uFiber;
 uniform vec3 uFrayEdge;
+uniform float uC04Aniso;
 varying vec3 vRib;
 varying float vFlowK;
 varying vec3 vGrooveDir;
@@ -306,8 +307,17 @@ const PREMIUM_COLOR = /* glsl */ `
     #else
   vec3 tint = mix(vec3(0.16, 0.34, 1.0), vec3(0.3, 0.9, 0.88), smoothstep(0.5, 0.92, tA));
   tint = mix(tint, vec3(0.86, 0.92, 1.0), smoothstep(0.6, 0.97, tB) * 0.6);
+      #ifdef FIORBE_C04
+  // Ciclo 04: a lâmina central lia leitosa (teal claro + 14% de prata no metal todo). Mesma
+  // paleta, teal um pouco mais profundo e prata só nas faixas e nas bordas: o metal ganha
+  // contraste entre reflexo e sombra sem mudar de cor.
+  tint = mix(tint, tint * vec3(0.82, 0.92, 0.95), smoothstep(0.5, 0.92, tA) * (1.0 - smoothstep(0.6, 0.97, tB)));
+  diffuseColor.rgb = mix(diffuseColor.rgb, tint, 0.5);
+  diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.8, 0.88, 0.96), 0.07 + 0.5 * vEdgeK);
+      #else
   diffuseColor.rgb = mix(diffuseColor.rgb, tint, 0.45);
   diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.8, 0.88, 0.96), 0.14 + 0.5 * vEdgeK);
+      #endif
     #endif
   #else
   diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.8, 0.88, 0.96), 0.14 + 0.5 * vEdgeK);
@@ -378,6 +388,24 @@ if (uFray > 0.5 && vFray > 0.004) {
  * que gerava os "pentes" escuros nas curvas fechadas.
  */
 const NORMAL_MAPS = /* glsl */ `
+#ifdef FIORBE_C04
+{
+  // Ciclo 04: o referencial do escovado (anisotropia) vinha de getTangentFrame — derivadas de
+  // tela da posição e do UV, CONSTANTES em cada triângulo. A direção do escovado mudava de
+  // triângulo para triângulo e o reflexo anisotrópico desenhava a malha (losangos nas grandes
+  // faces). Referencial analítico e contínuo: largura da fita (vGrooveDir, interpolada por
+  // vértice) e o comprimento perpendicular a ela.
+  vec3 ftB = vGrooveDir - normal * dot(vGrooveDir, normal);
+  if (dot(ftB, ftB) > 1e-10) {
+    ftB = normalize(ftB);
+    vec3 ftT = normalize(cross(ftB, normal));
+    // Mesma proporção que o getTangentFrame produzia com o UV desta malha (eixos escalados pelo
+    // maior): comprimento 1, largura curta (medida com ?vista=tbn). É essa proporção que dá o
+    // brilho da V2.3; agora contínua em vez de constante por triângulo.
+    tbn = mat3(ftT, ftB * uC04Aniso, normal);
+  }
+}
+#endif
 #ifdef FIORBE_EDGE_AA
 {
   // Borda arredondada da lâmina vista de perfil: quando a faixa da borda fica menor que ~1 px,
@@ -445,6 +473,12 @@ diffuseColor.a *= fyCov;
 // Vistas de depuração (?vista=normais | faces): só para diagnóstico.
 #if defined(FIORBE_VIEW_NORMALS)
 outgoingLight = normal * 0.5 + 0.5;
+#elif defined(FIORBE_VIEW_TBN)
+// Ciclo 04 (diagnóstico): R = |tbn[0]|, G = |tbn[1]|, B = alinhamento de tbn[0] com a largura.
+{
+  vec3 dbB = normalize(vGrooveDir - normal * dot(vGrooveDir, normal));
+  outgoingLight = vec3(length(tbn[0]), length(tbn[1]), abs(dot(normalize(tbn[0] + 1e-6), dbB)));
+}
 #elif defined(FIORBE_VIEW_FACES)
 outgoingLight = gl_FrontFacing ? vec3(0.15, 0.7, 0.25) : vec3(0.9, 0.12, 0.1);
 #endif
@@ -462,6 +496,8 @@ export interface SculptureMaterialOptions {
   tint23r?: boolean;
   /** V2.3r: bordas subpixel sombreadas como a face (sem pontos claros/escuros). */
   edgeAA?: boolean;
+  /** Ciclo 04 (V2.3): escovado com referencial contínuo e acabamento do metal refinado. */
+  c04?: boolean;
   /** Depuração: "normais", "faces", "semestrias" (sem microestrias), "wire". */
   view?: string | null;
 }
@@ -493,14 +529,20 @@ export function createSculptureMaterial(uniforms: SculptureUniforms, opts: Sculp
     if (opts.tint23) material.defines.FIORBE_TINT23 = "";
     if (opts.tint23r) material.defines.FIORBE_TINT23R = "";
     if (opts.edgeAA) material.defines.FIORBE_EDGE_AA = "";
+    if (opts.c04) material.defines.FIORBE_C04 = "";
   }
 
   if (opts.view === "normais") material.defines = { ...material.defines, FIORBE_VIEW_NORMALS: "" };
   if (opts.view === "faces") material.defines = { ...material.defines, FIORBE_VIEW_FACES: "" };
+  if (opts.view === "tbn") material.defines = { ...material.defines, FIORBE_VIEW_TBN: "" };
   if (opts.view === "semestrias") material.defines = { ...material.defines, FIORBE_NO_GROOVES: "" };
   if (opts.view === "wire") material.wireframe = true;
+  // Ciclo 04: comprimento do eixo da largura no referencial do escovado (o do comprimento é 1).
+  const c04Aniso = { value: 0.1 };
+  material.userData.c04Aniso = c04Aniso;
   material.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, uniforms);
+    shader.uniforms.uC04Aniso = c04Aniso;
     shader.vertexShader = VERTEX_HEAD + shader.vertexShader
       .replace("#include <beginnormal_vertex>", FLOW_K)
       .replace("#include <defaultnormal_vertex>", NORMAL_FLOW)
@@ -513,6 +555,6 @@ export function createSculptureMaterial(uniforms: SculptureUniforms, opts: Sculp
       .replace("#include <normal_fragment_maps>", NORMAL_MAPS)
       .replace("#include <opaque_fragment>", FRAGMENT_OUT);
   };
-  material.customProgramCacheKey = () => (opts.view ? `v-${opts.view}-` : "") + (opts.premium ? (opts.finish22 ? (opts.tint23r || opts.edgeAA ? `fiorbe-ribbon-v9-premium23r${opts.tint23r ? "t" : ""}${opts.edgeAA ? "e" : ""}` : opts.tint23 ? "fiorbe-ribbon-v9-premium23" : "fiorbe-ribbon-v9-premium22") : "fiorbe-ribbon-v9-premium") : "fiorbe-ribbon-v9");
+  material.customProgramCacheKey = () => (opts.view ? `v-${opts.view}-` : "") + (opts.c04 ? "c04-" : "") + (opts.premium ? (opts.finish22 ? (opts.tint23r || opts.edgeAA ? `fiorbe-ribbon-v9-premium23r${opts.tint23r ? "t" : ""}${opts.edgeAA ? "e" : ""}` : opts.tint23 ? "fiorbe-ribbon-v9-premium23" : "fiorbe-ribbon-v9-premium22") : "fiorbe-ribbon-v9-premium") : "fiorbe-ribbon-v9");
   return material;
 }

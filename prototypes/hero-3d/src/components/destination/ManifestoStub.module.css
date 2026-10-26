@@ -2,7 +2,9 @@
   position: relative;
   z-index: var(--z-content);
   /* Espaço de rolagem onde a transição acontece (sem pin). */
-  margin-top: 62vh;
+  /* Ciclo 06: 62vh deixava ~40% da transição (≈ 450 px a 900 de altura) só com a escultura no
+     escuro, sem texto. Mais curta, a recomposição encosta no manifesto. */
+  margin-top: 38vh;
   padding: 0 var(--gutter) 30vh;
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));

@@ -1,10 +1,10 @@
 // Mede o idle da figura: deslocamento dos pés (deve ser ~0), da cabeça e do quadril.
-// Uso: node scripts/figure-probe.mjs [segundos]
+// Uso: node scripts/figure-probe.mjs [segundos] [query]
 import { chromium } from "playwright-core";
 const secs = Number(process.argv[2] ?? 16);
 const b = await chromium.launch({ headless: true, args: ["--use-angle=d3d11", "--enable-gpu", "--ignore-gpu-blocklist"] });
 const p = await b.newPage({ viewport: { width: 1440, height: 900 } });
-await p.goto("http://localhost:3100/?debug", { waitUntil: "networkidle" });
+await p.goto(`http://localhost:3100/?debug&${process.argv[3] ?? ""}`, { waitUntil: "networkidle" });
 await p.waitForSelector('canvas[data-status="live"]');
 await p.waitForTimeout(800);
 const samples = [];

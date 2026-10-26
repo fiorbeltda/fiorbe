@@ -2,6 +2,111 @@
 
 > Registro **técnico** das rodadas (decisões, arquitetura, medições). Status e aprovações ficam no painel de `docs/fiorbe/ESTADO.md`; plano de cada componente em `docs/fiorbe/tarefas/`.
 
+## HERO-FINAL-001 — consolidação (26/10/2026)
+
+**Forma padrão:** `DEFAULT_FORMA = "blender2-v23"` em `src/three/engine.ts` — sem `?forma`, o protótipo carrega a V2.3 com malha `escultura-v2-v23c.glb` e os acabamentos dos Ciclos 02 (piso), 03 (figura), 04 (metal) e 05 (luz); a interface do Ciclo 06 e a composição do Ciclo 01 valem para todas as formas. `?forma=c | blender2-v22 | blender2-v23r` continuam funcionando (conferido). **Pôster** `src/assets/hero-poster.png` regenerado da V2.3 (`scripts/poster.mjs`); o anterior era da forma C. O pôster contém só a escultura (as luzes aditivas não sobrevivem ao fundo transparente) e o 3D assume com esmaecimento de 900 ms.
+
+**Chaves de comparação ainda presentes** (remover ou congelar na integração de produção): `?forma`, `?piso=c02|atual`, `?figura=c03|atual`, `?escultura=atual|<sufixo>`, `?luz=c05|atual`, `?metal04=0`, `?metal`, `?escovado`, `?ambiente=v1`, `?onda=0`, `?fios=1`, `?clay`, `?vista`, `?lado`, `?pose`, `?gestos`, `?ondadebug`, `?pisodebug`, `?tier`, `?nowebgl`, `?debug` (e o objeto `window.__fiorbe`, só com `?debug`).
+
+**Limitações abertas (não bloqueadoras):** GPU da V2.3 a 1440 na UHD 630 em 17,2–17,7 ms (quadros perdidos de 0–7% na interação; alternativas em PERF-001); Safari real e dispositivos físicos não testados (WebKit/Windows não aplica o peso da fonte variável); pontas do leque pela fresta do redemoinho; serrilhado subpixel; trecho curto só com a escultura na transição (rever com o manifesto definitivo); colunas de luz planas; pôster sem as luzes de fundo.
+
+**Dependências para a landing definitiva:** ver "Contratos para a integração" na validação final — decisões de DS-001/DS-002 (paleta, tipografia, lettering, tokens), seção real com `#flow-rule`, conteúdo do manifesto e das seções, remoção das chaves acima, servir o GLB (3,9 MB) com cache e compressão.
+
+## PERF-001 — reflexo do piso com 7 toques (26/10/2026) — descartado
+
+Experimento isolado (`?reflexo=7`, 7 toques cobrindo a mesma extensão ±len e o mesmo perfil gaussiano) contra o padrão de 9 toques, V2.3, 1440×900, DPR 1, tier alto, alternado na mesma sessão.
+| Medida | 9 toques (atual) | 7 toques |
+|---|---|---|
+| GPU sincronizada (`bench-ab`, 2 séries × 3) | 17,6–17,7 / 17,4–18,6 ms | 17,0–17,7 / 17,2–18,3 ms (≈ −0,2 ms, dentro do ruído) |
+| Quadros reais perdidos (>16,7 ms), série 1 | onda 0,3% · cursor 3,0% · arraste 1,2% · rolagem 2,6% | onda 6,5% · cursor 11,2% · arraste 4,1% · rolagem 0,8% |
+| Série 2 | onda 0% · cursor 4,3% · arraste 7,2% · rolagem 2,6% | onda 0% · cursor 0% · arraste 2,3% · rolagem 0,4% |
+| Visual (DPR 2, congelado) | — | lâmina central, redemoinho, figura e trilhas indistinguíveis |
+| Movimento (picos de variação entre quadros, onda) | 143–354 | 230–439 (cintila um pouco mais) |
+**Decisão: descartado**, código original preservado. O ganho não se reproduz (a variação entre séries da mesma versão é maior que a diferença entre versões) e a estabilidade em movimento piora levemente. Condições: Chrome do usuário aberto (picos esporádicos de 50–667 ms são do ambiente), headless com GPU real. Mantida só a melhoria do `scripts\validacao-perf.mjs` (proporções > 16,7 e > 33,3 ms).
+**Alternativas, não implementadas:** (a) reflexo do piso em 1/3 da resolução só no tier alto em telas ≥ 1440 (estimado −0,5 a −1 ms; risco: reflexo mais macio, já aprovado no Ciclo 02); (b) não redesenhar a parede do fundo no alvo de reflexo (ganho pequeno, perde profundidade no reflexo); (c) qualidade adaptativa que desce ao tier médio abaixo de ~55 fps (ganho real em máquinas lentas; muda o comportamento global — exigiria decisão). Comparação `captures\perf-001\comparacao-reflexo-9x7.png`.
+
+## Validação final integrada (26/10/2026)
+
+Auditoria do Hero inteiro na V2.3 (referência artística; forma C segue padrão técnico). Não é um novo ciclo: só duas correções localizadas.
+
+**Estado real.** Branch `exp/hero-fidelidade`, 10 commits locais à frente de `origin/exp/hero-fidelidade` (`d199bec`), nenhum atrás; `origin/main` (`4d9f930`) só tem os 3 commits de merge dos PRs #1–#3 (conteúdo já contido na branch) — o push futuro da branch é avanço linear, sem conflito. Não commitado: só `prototypes/hero-3d/captures.zip` (do usuário, intocado). Modelos: 10 GLB versionados + `escultura-v2-v23c.glb` (Ciclo 04), todos carregam.
+
+**Corrigido.** (1) 1920 px: palavra órfã ("prazo.") no texto institucional → `text-wrap: pretty`. (2) Celular deitado (844×390, 667×375): o palco com 300 px mínimos ocupava a tela inteira e a headline ficava toda abaixo da dobra → palco 58svh sem mínimo quando a altura ≤ 500 px (empilhado). Ambos só CSS em `Hero.module.css`.
+
+**Triagem.**
+| Nível | Item |
+|---|---|
+| Bloqueador | Nenhum |
+| Importante, não bloqueador | **Orçamento de GPU da V2.3 a 1440 (tier alto, DPR 1, UHD 630): 17,2–17,6 ms**, acima de 16,7 — ociosa ou pausada segura 60 fps; no arraste ~6% dos quadros caem para 33 ms, no cursor ~1,5%, na rolagem ~2%. Forma C (15,9 ms) e V2.3 a 390 px (9,9 ms): 0 quedas. Soma dos acabamentos dos Ciclos 02, 04 e 05 (≈ +0,4 ms cada). Não otimizado aqui (exigiria mexer em ciclos aprovados) — decisão dos fundadores; candidatos: 7 toques no traço do reflexo do piso, ou tier médio automático abaixo de ~55 fps |
+| Importante, não bloqueador | WebKit/Windows (Playwright) não aplica o eixo de peso da Manrope variável: todo texto aparece no peso fino. Safari real (macOS/iOS) suporta fonte variável, mas **não foi testado** — verificar em Safari/iPhone reais antes de publicar; mitigação possível: pesos estáticos |
+| Polimento futuro | Pontas do leque do fundo pela fresta interna do redemoinho; serrilhado de borda subpixel; trecho curto só com a escultura na transição (gesto intencional, avaliar com o manifesto definitivo); colunas de luz planas; wordmark no celular com 22 px de altura (passa pela exceção de espaçamento do critério 2.5.8) |
+
+**Verificado (resultados reais).** Variantes C, V2.2, V2.3 e V2.3r carregam sem erros (Chromium/D3D11). V2.3 sem erros em Firefox e WebKit (Playwright, headless, Windows). 9 viewports (1920×1080 a 360×740) + 844×390 + 667×375 + DPR 2 (1440) + DPR 3 (390) + rotação retrato→paisagem: sem rolagem horizontal, sem erros, headline 2–4 linhas. CLS 0 no carregamento (1440 e 390); maior pintura = pôster em 132–380 ms. Onda 0% = 100%; figura: pés ≤ 0,19%, sem deriva; cursor contextual, arraste, toque, pausa (clique/toque/teclado, `aria-pressed` e estado visual sincronizados), rolagem reversível em 6 larguras; ordem de foco marca → navegação → Conversar → CTAs → Pausar; alvos ≥ 24 px (exceto o caso acima); sem JS (texto + pôster), sem WebGL (pôster, 0 erros), movimento reduzido (quadros idênticos). tsc, eslint (0 erros, 3 avisos antigos), build estático.
+**Desempenho — condições.** Headless Chromium com a GPU real, rAF medido por cenário (mediana/p95/p99/% > 20 ms), 2 séries na V2.3; o Chrome do usuário estava aberto (21 processos) e havia 1,5 GB de RAM livre — números podem estar levemente piores que numa máquina ociosa. Carga até o palco ≈ 3,7–4,0 s em modo de desenvolvimento (não representa produção); heap JS 30–39 MB. **Não testado:** celulares e tablets físicos, Safari real, telas de 120 Hz, build de produção servida com cache.
+
+**Contratos para a integração (HERO-006, não iniciada).** Componentes: `Hero` (server, HTML real), `HeroStage` (client; carrega o motor 3D depois do primeiro paint, pôster como LCP e fallback), motor em `src/three/` (chunk separado, three 0.186.1; nenhuma outra dependência de runtime). Recursos: GLB da forma escolhida (3,9 MB a V2.3c; servir com cache longo e compressão), pôster `src/assets/hero-poster.png` (regerar com `scripts/poster.mjs` se a forma padrão mudar — hoje é da forma C). Requisitos: elemento `#flow-rule` na seção seguinte (destino da transição; hoje no `ManifestoStub`), variáveis CSS `--hero-out` e `--flow-handoff` escritas pelo motor, canvas fixo atrás do conteúdo, `prefers-reduced-motion` respeitado. Parâmetros de URL de comparação (`?forma`, `?piso`, `?figura`, `?escultura`, `?luz`, `?debug`) são do protótipo — remover ou congelar na integração. **Bloqueado por decisões de marca (DS-001):** paleta oficial, tipografia (Manrope é candidata), lettering/wordmark, tokens (DS-002), promoção da V2.3 a padrão, conteúdo real do manifesto e das seções, e-mail público.
+
+**GitHub.** Recomendação: enviar `exp/hero-fidelidade` (avanço linear, sem force push) quando autorizado; `captures/` está no `.gitignore` (evidências ficam locais — `captures.zip` do usuário também não entra); o GLB novo (3,9 MB) entra no histórico. `main` só por PR, com autorização.
+
+Evidências em `captures\validacao-final\`: `validacao-A-hero.png`, `-B-detalhes.png`, `-C-interface.png`, `-D-rolagem.png`, `-E-movimento.png`, `-F-motores-fallback.png`. Scripts: `validacao-browsers.mjs`, `validacao-perf.mjs`, `validacao-sheet.mjs`.
+
+## Ciclo 06 — interface, microinterações e transição (26/10/2026)
+
+Mudanças só em CSS (`Hero.module.css`, `HeroStage.module.css`, `ManifestoStub.module.css`) — **compartilhadas por todas as formas** (a interface é a mesma em C, V2.2, V2.3r e V2.3; nada do 3D mudou). Tipografia, fonte, tamanhos, quebras, wordmark e textos preservados (decisões do DS-001 seguem pendentes; DS-002 e HERO-006 não iniciados).
+
+**Diagnóstico** (DPR 2, estados normal/hover/pressionado/foco: `scripts\ciclo06-ui.mjs`; rolagem em frações do percurso real da timeline: `scripts\ciclo06-scroll.mjs`):
+| Problema | Real? |
+|---|---|
+| CTA principal retângulo de 18 px; todos os outros controles pílula | Sim — linguagem de forma inconsistente |
+| Pressionado = hover em todos os botões | Sim — sem feedback de clique |
+| Hover da navbar quase imperceptível; foco dos links em quadrado de canto vivo | Sim |
+| Ponto verde com brilho no badge lê como "online agora" | Sim (o status é "em desenvolvimento") |
+| "Pausar movimento" com texto apagado sobre reflexo claro; estado pausado só no texto | Sim |
+| "Conversar" com brilho de neon | Leve |
+| **Rolagem desktop: de ~30% a ~70% do percurso (≈ 450 px a 900 de altura) só a escultura no escuro**; o manifesto entrava aos 75% | Sim — efeito colateral da margem de 62vh do manifesto (espaço de rolagem) + saída rápida do texto do hero (×1,6) |
+| Wordmark, rótulo, headline, texto e barra informativa | Sem problema real — não alterados |
+
+**Implementado.** CTA principal em pílula; pressionado afunda 1 px (60 ms, sem escala); navbar com filete que cresce do centro no hover e foco arredondado; "Conversar" com borda de 1 px e brilho contido; CTA secundário com borda de 1 px e leve preenchimento no hover; ponto do badge em mint sem brilho; "Pausar movimento" em vidro com desfoque, texto mais claro e borda ciano quando pausado. Transição: margem do manifesto 62vh → 38vh (só desktop/tablet; celular já tinha 40vh) e saída do texto do hero ×1,6 → ×1,15, barra ×2 → ×1,5 — o trecho vazio cai pela metade e o manifesto entra aos ~60%. Escultura, câmera, timeline e física intocadas.
+**Rejeitado/não feito.** Mover o controle de pausa (posição aprovada no Ciclo 01); pulsação no ponto do badge; trocar fonte/lettering; preencher a transição com conteúdo novo.
+
+**Verificado.** tsc, eslint (0 erros), build; ordem de foco preservada; pausa por clique/toque/teclado com `aria-pressed` e estado visual; rolagem reversível em 6 larguras; sem rolagem horizontal (360–1920); sem JS/WebGL e movimento reduzido ok; 0 erros de console. GPU: rodada com a GPU disputada (todas ≈ 38 ms) — antes e depois iguais na mesma condição; mudanças só de CSS não alteram o WebGL. Folhas `captures\ciclo06\comparacao-A-interface.png` … `-G-responsivo.png`.
+
+**Para a validação final.** A transição ainda tem um trecho curto só com a escultura desenrolando (intencional — é o gesto da marca virando a régua do manifesto). O desfoque do controle de pausa tem custo de composição pequeno, não medido isoladamente.
+
+## Ciclo 01 — composição e hierarquia visual (26/10/2026) — branch `exp/hero-fidelidade`
+
+Variante avaliada: V2.3 (`?forma=blender2-v23`). Escopo: só composição; geometria, materiais, onda, interação, figura e piso intocados.
+
+**Método.** `scripts\ciclo01.mjs` captura cada viewport com ondas e movimento ambiente congelados na mesma fase (`__fiorbe.freeze` + `holdWaves` + `seekLap(0.62)`, só em `?debug`), DPR 1, mouse fora do palco, mais rolagem em % da altura e medidas da interface (JSON). Antes: código de `5cbed68`. Folhas: `scripts\ciclo01-sheet.mjs`; verificações de botão e reversibilidade: `scripts\ciclo01-checks.mjs`. Saídas em `captures\ciclo01\`.
+
+**Diagnóstico (antes).**
+| Viewport | Problema medido |
+|---|---|
+| 1100–1280 (pior a 1100) | Lede e CTA secundário sobre o lóbulo esquerdo da escultura (palco começava em 38% da largura, coluna de texto ia além) |
+| 1440 | Lede encostada no lóbulo; "Pausar movimento" a 29 px da borda, fora da margem da grade (botão em 1411, grade em 1321) e logo abaixo de "Conversar", lendo como parte da navegação |
+| 1024 e 360 | Headline em 5 linhas com "que" isolado (coluna de 307 px / fonte mínima de 44 px em 300 px) |
+| 940, 768, 390, 360 | Botão de movimento colado à borda direita (`right = largura da tela`, borda cortada); horizonte do piso encostado no rótulo |
+| Empilhado (< 1024), rolagem | O fade do hero (`--hero-out`) seguia o scroll global: a 60% da altura o título estava fantasma, CTAs e a faixa informativa já invisíveis — **a faixa nunca era legível no celular**; a escultura em recomposição passava por cima do texto (parallax 0,42 a arrastava para trás dele) |
+| 1280 / 1100 | Títulos da faixa inferior em 2 linhas (recuo interno de 96 px) |
+| Desktop, rolagem | Aos ~60% a escultura fica sozinha numa tela vazia — momento da transição aprovada; mantido, registrado para o Ciclo 06 |
+
+**Mudanças.**
+1. `Hero.module.css` — palco em `left: max(38%, margem + 450px)`: a coluna editorial nunca fica sobre a escultura. Custo assumido: escultura ~2,5% menor a 1440, ~9% a 1280, ~19% a 1100 (largura é o limite do enquadramento). Testado `+470px`: escultura pequena demais a 1100.
+2. Véu editorial: gradiente radial `rgb(3 7 18 / 0.5 → 0)` só atrás da coluna de texto (pseudo-elemento, `pointer-events: none`, sai com o texto). No empilhado, um véu horizontal sob a headline atenua o reflexo.
+3. Controle de movimento posicionado por variáveis (`--controls-right/top`, definidas por quem monta o palco): desktop abaixo da linha do piso, alinhado à margem direita da grade; empilhado no canto superior do palco, alinhado à margem. Visual do botão inalterado.
+4. Headline e lede com piso de 340 px de largura; fonte da headline `clamp(36px, 11vw, 44px)` só abaixo de 400 px. Conteúdo textual intacto.
+5. Faixa inferior com menos recuo interno.
+6. Empilhado: palco a 12 px das bordas (a peça não encosta); respiro entre horizonte e rótulo.
+7. `scrollTimeline.ts` + `engine.ts` — só no empilhado: texto e faixa sem fade (rolam normalmente); palco sem parallax; a transição começa quando o fim do hero sobe até 45% da altura; a escultura entra **por baixo** (o palco já saiu por cima, então a troca de trajetória acontece fora da tela nos dois sentidos) com eixo óptico no centro (o lens shift do palco distante a deixava em viés). Desktop: `start = 0`, parallax 0,42 — idêntico ao anterior (conferido em captura).
+
+**Verificado.** `tsc` e `eslint` sem erros (3 avisos antigos em arquivos não tocados); `next build` ok (rota estática); 0 erros de console em 9 viewports; sem rolagem horizontal de 360 a 1920; ordem de Tab preservada (… → CTAs → Pausar); botão de movimento recebe o clique no centro (nada por cima) e alterna por clique, toque (390) e Enter; descer até depois da transição e voltar ao topo restaura o quadro (diferença restante = anel de foco do botão); sem JS, sem WebGL e movimento reduzido ok; cursor contextual, arraste e pausa ok (`poke-test`, `drag-seq`). GPU 1440 (bench alternado, 3 rodadas): V2.3 16,4 / 18,0 / 16,7 ms; C 17,3 / 18,4 / 16,3 ms — dentro da faixa anterior (≈16,6–16,8); as mudanças não alteram custo por pixel.
+
+**Refinamento final 1024–1279 px (26/10/2026).** Revisão dos fundadores: a escultura ficou pequena e baixa entre 1024 e 1200, com vazio no canto superior direito. Causa: o enquadramento é limitado pela **largura** do palco (a altura sobra), então só alargar o palco devolve escala. Alternativas exploradas por injeção de CSS nas mesmas condições (`scripts\ciclo01-variants.mjs`): v1 margem da grade `min(8,25vw, 16,4vw − 104px)` (encontra 8,25vw em 1280, sem salto) + coluna reservada em 400 px + CTAs 46 px/20 px + palco a 1% da borda; v2 = v1 com sangria de 4% à direita — **descartada**, corta a figura humana na borda; v3 = v1 com coluna de 380 px — **descartada**, o lóbulo encosta em "Ver o Motor Fiscal" a 1024. **Adotada a v1**, só em `@media (min-width: 1024px) and (max-width: 1279px)`; o controle de movimento acompanha (`gutter − 1vw`). Palco: 1024 470 → 550 px (+17%), 1100 537 → 613 (+14%), 1200 627 → 695 (+11%); comparado ao estado anterior ao Ciclo 01, ainda 3–10% menor — o máximo sem tocar o texto. 1280/1440 e o empilhado ficaram com medidas idênticas. Mobile 390/360: rolagem completa sem defeitos (CTA principal no fim da 1ª tela e inteiro na 1ª rolagem; secundário, faixa e entrada da escultura por baixo corretos) — nada alterado. GPU a 1100 (A/B alternado na mesma página): 12,3 / 12,1 / 13,1 ms contra 11,7 / 12,7 / 11,6 ms (+≈0,5 ms, proporcional à área maior). Folha `captures\ciclo01b\comparacao-1024-1280.png`; rolagem 360 em `captures\ciclo01b\rolagem-360.png`.
+
+**Limitações.** Entre 1024 e 1279 a escultura segue um pouco menor que antes do ciclo (ver refinamento). Em 940 uma linha do reflexo do piso cruza a headline (atenuada; causa no piso → Ciclo 02). A trilha de luz do piso passa por trás do botão de movimento no desktop. A headline segue em 4 linhas no desktop: 3 linhas exigiriam ~690 px de coluna e a devolveriam para cima da escultura. Não medido: celulares reais, Safari/Firefox, DPR 2.
+
+---
+
 ## Rodada 4 — figura humana (22/10/2026) — branch `exp/hero-fidelidade`
 
 **Pesquisa e decisão.** Opção de asset com licença limpa encontrada: Quaternius Universal Animation Library (CC0, glTF, 120+ animações). Descartada para esta cena porque o personagem é um manequim nu e liso — exatamente a leitura que o usuário quer evitar — e vesti-lo exigiria modelagem em Blender (indisponível nesta sessão). Os personagens dos exemplos do three.js (Soldier, Michelle) têm origem Mixamo e licença não confirmada. Escolha: **figura construída em código com esqueleto real** (`src/three/figure/figureRig.ts`): 20 ossos, `SkinnedMesh` com pesos misturados nas articulações, silhueta de terno (ombros estruturados, paletó com barra, calça reta, sapatos), ~7,6 cabeças de proporção. Nenhum download. A arquitetura aceita trocar por um GLB rigado (mocap) depois sem mudar o resto.

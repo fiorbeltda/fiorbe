@@ -56,11 +56,24 @@ export interface EngineOptions {
  * lâmina esculpida — `escultura-v2[sufixo].glb`) ou ?forma=blender-teste (prova de
  * integração): carrega o GLB antes de criar o motor. Qualquer outra forma: null.
  */
+/**
+ * Forma padrão do protótipo (HERO-FINAL-001): a Blender V2.3 refinada nos Ciclos 01–06.
+ * As outras continuam acessíveis por ?forma= (c, blender2-v22, blender2-v23r, ...).
+ */
+export const DEFAULT_FORMA = "blender2-v23";
+const formaFrom = (params: URLSearchParams) => params.get("forma") || DEFAULT_FORMA;
+
 export async function preloadSculpture(): Promise<BufferGeometry | null> {
-  const forma = new URLSearchParams(window.location.search).get("forma") ?? "";
+  const params = new URLSearchParams(window.location.search);
+  const forma = formaFrom(params);
   const v2 = /^blender2([a-z0-9-]*)$/.exec(forma);
   if (forma !== "blender" && forma !== "blender-teste" && !v2) return null;
   const { loadBlenderGeometry } = await import("./sculpture/blenderSculpture");
+  // ?escultura=<sufixo>: outro GLB com a mesma forma (material, piso e figura iguais) — comparação.
+  // Ciclo 04: a V2.3 usa a malha refinada (v23c); ?escultura=atual volta à malha anterior.
+  const esc = params.get("escultura");
+  const glb = esc === "atual" ? null : /^[a-z0-9-]+$/.exec(esc ?? "")?.[0] ?? (forma === "blender2-v23" ? "v23c" : null);
+  if (v2 && glb) return loadBlenderGeometry(`/models/escultura-v2-${glb}.glb`);
   if (v2) return loadBlenderGeometry(`/models/escultura-v2${v2[1]}.glb`);
   return loadBlenderGeometry(forma === "blender" ? "/models/escultura.glb" : "/models/teste.glb");
 }
@@ -125,7 +138,7 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
   const useKnot = params.get("geo") === "knot";
   const uniforms = createSculptureUniforms();
   // ?forma=v32 | a | b — variantes da escultura preservadas para comparação.
-  const formParam = params.get("forma");
+  const formParam = formaFrom(params);
   const form = isFormName(formParam) ? formParam : DEFAULT_FORM;
   const blender = opts.sculpture ? buildFromBlender(opts.sculpture) : null;
   const monument = useKnot ? null : (blender ?? createMonumentGeometry(profile.geometry, form));
@@ -154,8 +167,13 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
     tint23: tinted && /^blender2-v2[3-9]/.test(formParam ?? ""),
     tint23r: tinted && formParam === "blender2-v23r",
     edgeAA: formParam === "blender2-v23r",
+    // Ciclo 04: padrão na V2.3; ?escultura=atual (malha e metal anteriores) ou ?metal04=0 desligam.
+    c04: formParam === "blender2-v23" && params.get("escultura") !== "atual" && params.get("metal04") !== "0",
     view: params.get("vista"),
   });
+  // Depuração do Ciclo 04: ?escovado=<razão> sobrepõe o eixo da largura do escovado (padrão 0,1).
+  const brushParam = params.get("escovado");
+  if (brushParam !== null && Number.isFinite(Number(brushParam))) material.userData.c04Aniso.value = Number(brushParam);
   const premiumEnv = premium ? createPremiumEnvironment(renderer) : null;
   if (premiumEnv) material.envMap = premiumEnv.texture;
   // Lâmina com espessura é um sólido fechado: só as faces externas (metade do preenchimento).
@@ -229,6 +247,13 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
       cinematic: params.get("ambiente") !== "v1",
       sculpture: mesh,
       compact,
+      // Ciclo 02 (piso e reflexos): padrão na V2.3, a referência artística; as outras formas
+      // ficam como estavam. ?piso=c02 liga em qualquer forma, ?piso=atual desliga.
+      floorC02: params.get("piso") === "c02" || (params.get("piso") !== "atual" && formParam === "blender2-v23"),
+      // Ciclo 03 (figura humana): idem — padrão na V2.3; ?figura=c03 liga, ?figura=atual desliga.
+      figureC03: params.get("figura") === "c03" || (params.get("figura") !== "atual" && formParam === "blender2-v23"),
+      // Ciclo 05 (arquitetura e luz): idem — padrão na V2.3; ?luz=c05 liga, ?luz=atual desliga.
+      lightC05: params.get("luz") === "c05" || (params.get("luz") !== "atual" && formParam === "blender2-v23"),
     },
     reflectionGeometry ? { geometry: reflectionGeometry, material } : null,
   );
@@ -294,6 +319,8 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
   const stageDoc = { cx: 0, cy: 0, w: 0, h: 0 };
   /** Deslocamento do horizonte em px (lens shift); toda conversão tela→mundo usa o mesmo valor. */
   let horizonShift = 0;
+  /** Fração do scroll que o palco acompanha (parallax). */
+  let stageParallax = 0.42;
   const worldX = (sx: number) => (sx - width / 2) * worldPerPx;
   const worldY = (sy: number) => -(sy - height / 2 - horizonShift) * worldPerPx;
 
@@ -309,6 +336,14 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
     stageDoc.cy = r.top + window.scrollY + r.height / 2;
     stageDoc.w = r.width;
     stageDoc.h = r.height;
+    // Layout empilhado: texto e faixa ficam abaixo do palco. A peça rola junto com o palco
+    // (sem parallax, que a arrastava para trás do texto) e a transição só começa quando o
+    // fim do hero já subiu até perto do meio da tela — antes, CTAs e faixa sumiam antes de serem lidos.
+    const stacked = window.innerWidth < 1024;
+    const heroEl = stage.closest("section");
+    const heroBottom = heroEl ? heroEl.getBoundingClientRect().bottom + window.scrollY : 0;
+    timeline.start = stacked ? Math.max(0, heroBottom - height * 0.45) : 0;
+    stageParallax = stacked ? 1 : 0.42;
   }
 
   let paused = false;
@@ -366,25 +401,36 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
     const scrollY = window.scrollY;
     const k = t.recompose * motion;
     // Parallax: o palco sobe mais devagar que a página.
-    const stageCy = stageDoc.cy - scrollY * (motion ? 0.42 : 1);
+    const stageCy = stageDoc.cy - scrollY * (motion ? stageParallax : 1);
     const stageBottom = stageCy + stageDoc.h / 2;
+    // Layout empilhado: quando a transição começa o palco já saiu por cima e o texto ainda
+    // está na tela. Vindo de cima, a peça atravessaria o conteúdo; ela entra por baixo,
+    // depois da faixa. A troca de trajeto acontece com a peça fora da tela nos dois lados.
+    const rise = motion === 1 && k > 0 && stageParallax === 1 && stageDoc.cy + stageDoc.h / 2 < timeline.startScroll;
     // Horizonte na altura dos olhos, pouco acima da base (lens shift, sem inclinar a câmera).
-    horizonShift = stageBottom - stageDoc.h * HORIZON_ABOVE_BASE - height / 2;
+    // Na subida o eixo fica no centro: com o palco longe, acima, a peça seria vista em viés.
+    horizonShift = rise ? 0 : stageBottom - stageDoc.h * HORIZON_ABOVE_BASE - height / 2;
     camera.setViewOffset(width, height, 0, -horizonShift, width, height);
 
     const fit = Math.min(stageDoc.w / sculptureW, stageDoc.h / (box.max.y - floorLocal)) * worldPerPx;
     const scale = fit * (1 - 0.42 * k);
-    // Estado 01: base da escultura apoiada na base do palco, centrada na horizontal.
-    const restX = worldX(stageDoc.cx) - sculptureCx * fit;
-    const restY = worldY(stageBottom) - floorLocal * fit;
-    // Estados 03–04: migra para o centro superior da tela.
-    const dx = (width * 0.5 - stageDoc.cx) * k * worldPerPx;
-    const dy = -(height * 0.3 - stageCy) * k * 0.75 * worldPerPx;
-    scrollRig.position.set(restX + dx, restY + dy, 0);
+    if (rise) {
+      const fromCy = height + stageDoc.h * 0.6;
+      const cy = fromCy + (height * 0.42 - fromCy) * k;
+      scrollRig.position.set(worldX(width / 2) - sculptureCx * scale, worldY(cy) - ((box.max.y + floorLocal) / 2) * scale, 0);
+    } else {
+      // Estado 01: base da escultura apoiada na base do palco, centrada na horizontal.
+      const restX = worldX(stageDoc.cx) - sculptureCx * fit;
+      const restY = worldY(stageBottom) - floorLocal * fit;
+      // Estados 03–04: migra para o centro superior da tela.
+      const dx = (width * 0.5 - stageDoc.cx) * k * worldPerPx;
+      const dy = -(height * 0.3 - stageCy) * k * 0.75 * worldPerPx;
+      scrollRig.position.set(restX + dx, restY + dy, 0);
+    }
     scrollRig.scale.setScalar(scale);
     scrollRig.rotation.set(0.38 * k, 1.1 * k, -0.12 * k);
     // O cenário só faz sentido com a peça em repouso: sai logo no início da rolagem.
-    set.setOpacity(motion ? 1 - Math.min(1, k / 0.22) : 1);
+    set.setOpacity(rise ? 0 : motion ? 1 - Math.min(1, k / 0.22) : 1);
 
     // --- Fluxos (estado 04/05): alvo em coordenadas de mundo ---
     const margin = Math.max(20, Math.min(96, width * 0.066));
@@ -539,10 +585,25 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
           return [Math.round((v.x * 0.5 + 0.5) * window.innerWidth), Math.round((0.5 - v.y * 0.5) * window.innerHeight)];
         });
       },
+      /** Pés, quadril e cabeça da figura → pixel CSS na tela (recortes de close). */
+      figureToScreen() {
+        const pr = set.probe() as Record<string, number[]>;
+        const out: Record<string, number[]> = {};
+        for (const k of ["footL", "footR", "hips", "head"]) {
+          const v = new Vector3(...(pr[k] as [number, number, number])).project(camera);
+          out[k] = [Math.round((v.x * 0.5 + 0.5) * window.innerWidth), Math.round((0.5 - v.y * 0.5) * window.innerHeight)];
+        }
+        return out;
+      },
       waves: () => waves?.snapshot() ?? [],
       /** Congela só as ondas e avança o tempo delas (capturas determinísticas). */
       holdWaves(hold: boolean) {
         holdWaves = hold;
+      },
+      /** Congela o movimento ambiente sem mexer no botão de pausa (capturas comparáveis). */
+      freeze(on: boolean, at = 2) {
+        paused = on;
+        if (on) idleTime = at;
       },
       stepWaves(seconds: number) {
         waves?.advance(seconds);
