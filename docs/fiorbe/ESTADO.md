@@ -3,18 +3,19 @@
 > **Fonte canônica do status.** Atualizar ao fim de TODA tarefa: painel, mapa de componentes e ficha da tarefa (`docs/fiorbe/tarefas/`). Sempre registrar qual é o **próximo objetivo**.
 > Implementado ≠ aprovado. Commit ≠ aprovação. Não usar porcentagens de progresso.
 
-**Última atualização:** 23/10/2026
+**Última atualização:** 26/10/2026
 
 ## Painel
 
 | Campo | Situação |
 |---|---|
 | **Objetivo principal** | Concluir a landing page institucional da FIORBE (`/` e `/produtos/motor-fiscal`) no nível de qualidade definido em `CLAUDE.md`. |
-| **Etapa atual** | Hero Experience — protótipo isolado em `E:\dev\fiorbe\prototypes\hero-3d` (antecede as etapas 02–05 do plano). Etapa 01 (Design System) em revisão em paralelo. |
-| **Componentes em desenvolvimento** | `HERO-003` — Cenário: ambiente cinematográfico V2, padrão em todas as formas, anterior em `?ambiente=v1` ([ficha](tarefas/HERO-003.md)) · `RIB-001` — Escultura viva (Blender V2: lâmina esculpida com leques de lamelas, `?forma=blender2`; padrão segue forma C; V1 em `?forma=blender`) ([ficha](tarefas/RIB-001.md)) · `FIG-001` — Figura humana (v1, aguardando revisão) ([ficha](tarefas/FIG-001.md)) |
-| **Tarefa ativa** | `RIB-001` V2.3r — correção das 4 regiões marcadas — aguardando avaliação; nada aprovado |
-| **Próximo objetivo** | Avaliar a V2.3r corrigida (`captures\regioes-antes-depois.png`) e decidir se vira padrão; depois experiência completa do hero e próximas seções da landing. |
-| **Branch / último checkpoint** | `exp/hero-fidelidade` · ver Log (último enviado ao GitHub: `2b4ed80`; commits locais posteriores não enviados). `main` está em `d498026`. Remoto: `origin` = https://github.com/fiorbeltda/fiorbe (privado), as duas branches enviadas em 22/10/2026 com autorização. Merge em `main` continua exigindo autorização. |
+| **Etapa atual** | Hero Experience — protótipo isolado em `E:\dev\fiorbe\prototypes\hero-3d` (antecede as etapas 02–05 do plano), em **refinamento por ciclos** (ver "Ciclos de refinamento do Hero"). Etapa 01 (Design System) em revisão em paralelo. |
+| **Componentes em desenvolvimento** | `HERO-003` — Cenário: ambiente cinematográfico V2, padrão em todas as formas, anterior em `?ambiente=v1` ([ficha](tarefas/HERO-003.md)) · `RIB-001` — Escultura viva (referência artística: Blender V2.3, `?forma=blender2-v23`; variante experimental V2.3r em `?forma=blender2-v23r`; padrão segue forma C) ([ficha](tarefas/RIB-001.md)) · `FIG-001` — Figura humana (v1, aguardando revisão) ([ficha](tarefas/FIG-001.md)) |
+| **Referência artística do Hero** | **Blender V2.3** (`?forma=blender2-v23`), preferida visualmente pelos fundadores. V2.3r corrigida (`?forma=blender2-v23r`) preservada como **variante experimental** — fonte de soluções técnicas para aproveitamento seletivo (normais de borda robustas, abertura mínima das frestas, AA de borda subpixel, reflexo do piso sem barras). **Forma C continua padrão** por enquanto. Nada disso é aprovação visual formal. |
+| **Tarefa ativa** | **Ciclo 01 — Composição e Hierarquia Visual** (1º de 6 ciclos de refinamento do Hero), iniciado em 26/10/2026; nada aprovado |
+| **Próximo objetivo** | Executar o Ciclo 01 tendo a V2.3 como referência; ao concluir, revisão visual do usuário e passagem ao Ciclo 02 (piso e reflexos). |
+| **Branch / último checkpoint** | `exp/hero-fidelidade` em `d199bec`, **sincronizada com `origin/exp/hero-fidelidade`** (conferido em 26/10/2026; nenhum commit local pendente de envio). `main` está em `d498026` (local = `origin/main`). Remoto: `origin` = https://github.com/fiorbeltda/fiorbe (privado). Merge em `main` continua exigindo autorização. |
 | **Servidor local** | `npm run dev` em `E:\dev\fiorbe\prototypes\hero-3d` → http://localhost:3100 (`?debug` mostra fps/qualidade) |
 
 ### Aprovado pelo usuário
@@ -44,6 +45,20 @@
 - Asset rigado externo para a figura: só com aprovação explícita (arquivo, origem, licença, tamanho).
 - Desempenho do hero (Intel UHD 630): alto/1440/DPR 1 ≈ 17,8–19,2 ms; **DPR 2 ≈ 38–41 ms** (risco em telas retina com GPU integrada). Cena limitada por preenchimento.
 
+## Ciclos de refinamento do Hero
+
+Iniciados em 26/10/2026. Referência artística: Blender V2.3. Padrão do protótipo: forma C. **Nenhuma etapa visual foi formalmente aprovada até aqui.**
+
+| Ciclo | Tema | Situação |
+|---|---|---|
+| 01 | Composição e hierarquia visual | **Em andamento** |
+| 02 | Piso e reflexos | Não iniciado |
+| 03 | Figura humana | Não iniciado |
+| 04 | Escultura metálica | Não iniciado |
+| 05 | Arquitetura e iluminação | Não iniciado |
+| 06 | Interface e microinterações | Não iniciado |
+| — | Validação final do Hero | Após o Ciclo 06 |
+
 ## Mapa do projeto: PROJETO → ÁREA → COMPONENTE
 
 Legenda — **Implementação:** Não iniciado · Em andamento · Implementado · Bloqueado. **Aprovação:** — · Aguardando revisão · Ajustes pedidos · Aprovado.
@@ -57,7 +72,7 @@ Legenda — **Implementação:** Não iniciado · Em andamento · Implementado �
 | Hero Experience | HERO-002 | Escultura 3D (geometria e material) | 04 | Implementado (protótipo) | Aguardando revisão | `HERO_PROTOTIPO.md` |
 | Hero Experience | HERO-003 | Cenário: chão, reflexo, sombras, luz, atmosfera, trilhas | 04 | Implementado (ambiente cinematográfico V2) | Base da luz aprovada; V2 aguardando revisão | [tarefas/HERO-003.md](tarefas/HERO-003.md) |
 | Hero Experience | FIG-001 | Figura humana tridimensional | 04 | Em andamento (v1 implementada) | Aguardando revisão | [tarefas/FIG-001.md](tarefas/FIG-001.md) |
-| Hero Experience | RIB-001 | Escultura viva: onda, desfiar/recompor, hover, atmosfera, otimização | 04–05 | Em andamento (Blender V2 + onda contínua calibrada) | Conceito e cursor B aprovados; visual aguardando revisão | [tarefas/RIB-001.md](tarefas/RIB-001.md) |
+| Hero Experience | RIB-001 | Escultura viva: onda, desfiar/recompor, hover, atmosfera, otimização | 04–05 | Em andamento (V2.3 = referência artística; V2.3r experimental; padrão forma C) | Conceito e cursor B aprovados; V2.3 preferida pelos fundadores (não é aprovação formal); visual aguardando revisão | [tarefas/RIB-001.md](tarefas/RIB-001.md) |
 | Hero Experience | HERO-004 | Interação e física (cursor, arraste, inércia) | 04 | Implementado (protótipo) | Aguardando revisão | `HERO_PROTOTIPO.md` |
 | Hero Experience | HERO-005 | Transição de scroll | 05 | Implementado (protótipo técnico) | Aguardando revisão | `HERO_PROTOTIPO.md` |
 | Hero Experience | HERO-006 | Integração do hero ao site definitivo | 02–05 | Não iniciado (depende de DS-002) | — | — |
@@ -104,6 +119,7 @@ Componentes ganham ficha em `tarefas/` quando entram em desenvolvimento. Correç
 | 22/10/2026 | HERO-001..005 | Rodada de fidelidade à referência (8 ciclos comparativos) na branch `exp/hero-fidelidade`; commit `517b62f` | Visual pendente |
 | 22/10/2026 | FIG-001 | Figura v1: esqueleto, idle em camadas, IK, integração de luz; commit `763b72a` | Visual pendente |
 | 22/10/2026 | Gestão | Painel central, hierarquia de componentes, fichas em `tarefas/`, skill `/fiorbe-status` | Pedido do usuário |
+| 26/10/2026 | Gestão / HERO | Contexto atualizado antes dos ciclos: GitHub sincronizado até `d199bec` (painel corrigido); V2.3 definida como referência artística do Hero; V2.3r preservada como variante experimental para aproveitamento técnico seletivo; forma C segue padrão; plano de 6 ciclos de refinamento registrado e **Ciclo 01 — Composição e Hierarquia Visual** iniciado. Só documentação | Decisões do usuário; nenhuma aprovação visual |
 | 23/10/2026 | RIB-001 | **Escolha dos fundadores:** a Blender V2.3 (`?forma=blender2-v23`, geometria `f523f47`, cor azul/teal/prata de `ecfa1c8`) foi selecionada como referência visual favorita desta rodada. A V2.3r continua disponível para comparação. Não é aprovação definitiva do hero; a forma padrão do protótipo continua a C. Publicado em `origin/exp/hero-fidelidade` | Preferência registrada |
 | 23/10/2026 | RIB-001 / HERO-003 | V2.3r, 4 regiões marcadas: pente claro/escuro nas lâminas de perfil (sinal da normal da borda instável → orientação robusta), pontilhado nas frestas quase fechadas (abertura mínima 0,22), borda subpixel filtrada no shader; reflexo do piso sem barras brancas (destaques só do detalhe, compressão dos altos, molhado em manchas). Comparação `captures\regioes-antes-depois.png` | Aguardando avaliação |
 | 23/10/2026 | RIB-001 | V2.3r (`?forma=blender2-v23r`): lâmina central em teal/azul saturados (sem aspecto leitoso), vazio da coroa reaberto (arco esquerdo afina e recua perto da coroa), redemoinho com torção alternando face/borda e leque menos aberto. Interação e onda ok, custo igual. Comparação `captures\v23r-consolidacao.png` | Aguardando aprovação |
