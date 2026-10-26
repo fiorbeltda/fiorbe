@@ -169,6 +169,8 @@
   max-width: clamp(340px, 30vw, 560px);
   font-size: clamp(16px, 1.26vw, 22px);
   line-height: 1.45;
+  /* Validação final: a 1920 px "prazo." ficava sozinho na última linha. */
+  text-wrap: pretty;
   color: #c3cfdd;
 }
 
@@ -488,6 +490,15 @@
   .stage {
     height: 42svh;
     min-height: 280px;
+  }
+}
+
+/* Celular deitado (altura ≤ 500 px): o palco de 300 px mínimos ocupava a tela inteira e a
+   headline ficava toda abaixo da dobra. Palco mais baixo: escultura e início do texto juntos. */
+@media (max-width: 1023px) and (max-height: 500px) {
+  .stage {
+    height: 58svh;
+    min-height: 0;
   }
 }
 

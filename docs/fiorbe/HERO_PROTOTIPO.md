@@ -2,6 +2,31 @@
 
 > Registro **técnico** das rodadas (decisões, arquitetura, medições). Status e aprovações ficam no painel de `docs/fiorbe/ESTADO.md`; plano de cada componente em `docs/fiorbe/tarefas/`.
 
+## Validação final integrada (26/10/2026)
+
+Auditoria do Hero inteiro na V2.3 (referência artística; forma C segue padrão técnico). Não é um novo ciclo: só duas correções localizadas.
+
+**Estado real.** Branch `exp/hero-fidelidade`, 10 commits locais à frente de `origin/exp/hero-fidelidade` (`d199bec`), nenhum atrás; `origin/main` (`4d9f930`) só tem os 3 commits de merge dos PRs #1–#3 (conteúdo já contido na branch) — o push futuro da branch é avanço linear, sem conflito. Não commitado: só `prototypes/hero-3d/captures.zip` (do usuário, intocado). Modelos: 10 GLB versionados + `escultura-v2-v23c.glb` (Ciclo 04), todos carregam.
+
+**Corrigido.** (1) 1920 px: palavra órfã ("prazo.") no texto institucional → `text-wrap: pretty`. (2) Celular deitado (844×390, 667×375): o palco com 300 px mínimos ocupava a tela inteira e a headline ficava toda abaixo da dobra → palco 58svh sem mínimo quando a altura ≤ 500 px (empilhado). Ambos só CSS em `Hero.module.css`.
+
+**Triagem.**
+| Nível | Item |
+|---|---|
+| Bloqueador | Nenhum |
+| Importante, não bloqueador | **Orçamento de GPU da V2.3 a 1440 (tier alto, DPR 1, UHD 630): 17,2–17,6 ms**, acima de 16,7 — ociosa ou pausada segura 60 fps; no arraste ~6% dos quadros caem para 33 ms, no cursor ~1,5%, na rolagem ~2%. Forma C (15,9 ms) e V2.3 a 390 px (9,9 ms): 0 quedas. Soma dos acabamentos dos Ciclos 02, 04 e 05 (≈ +0,4 ms cada). Não otimizado aqui (exigiria mexer em ciclos aprovados) — decisão dos fundadores; candidatos: 7 toques no traço do reflexo do piso, ou tier médio automático abaixo de ~55 fps |
+| Importante, não bloqueador | WebKit/Windows (Playwright) não aplica o eixo de peso da Manrope variável: todo texto aparece no peso fino. Safari real (macOS/iOS) suporta fonte variável, mas **não foi testado** — verificar em Safari/iPhone reais antes de publicar; mitigação possível: pesos estáticos |
+| Polimento futuro | Pontas do leque do fundo pela fresta interna do redemoinho; serrilhado de borda subpixel; trecho curto só com a escultura na transição (gesto intencional, avaliar com o manifesto definitivo); colunas de luz planas; wordmark no celular com 22 px de altura (passa pela exceção de espaçamento do critério 2.5.8) |
+
+**Verificado (resultados reais).** Variantes C, V2.2, V2.3 e V2.3r carregam sem erros (Chromium/D3D11). V2.3 sem erros em Firefox e WebKit (Playwright, headless, Windows). 9 viewports (1920×1080 a 360×740) + 844×390 + 667×375 + DPR 2 (1440) + DPR 3 (390) + rotação retrato→paisagem: sem rolagem horizontal, sem erros, headline 2–4 linhas. CLS 0 no carregamento (1440 e 390); maior pintura = pôster em 132–380 ms. Onda 0% = 100%; figura: pés ≤ 0,19%, sem deriva; cursor contextual, arraste, toque, pausa (clique/toque/teclado, `aria-pressed` e estado visual sincronizados), rolagem reversível em 6 larguras; ordem de foco marca → navegação → Conversar → CTAs → Pausar; alvos ≥ 24 px (exceto o caso acima); sem JS (texto + pôster), sem WebGL (pôster, 0 erros), movimento reduzido (quadros idênticos). tsc, eslint (0 erros, 3 avisos antigos), build estático.
+**Desempenho — condições.** Headless Chromium com a GPU real, rAF medido por cenário (mediana/p95/p99/% > 20 ms), 2 séries na V2.3; o Chrome do usuário estava aberto (21 processos) e havia 1,5 GB de RAM livre — números podem estar levemente piores que numa máquina ociosa. Carga até o palco ≈ 3,7–4,0 s em modo de desenvolvimento (não representa produção); heap JS 30–39 MB. **Não testado:** celulares e tablets físicos, Safari real, telas de 120 Hz, build de produção servida com cache.
+
+**Contratos para a integração (HERO-006, não iniciada).** Componentes: `Hero` (server, HTML real), `HeroStage` (client; carrega o motor 3D depois do primeiro paint, pôster como LCP e fallback), motor em `src/three/` (chunk separado, three 0.186.1; nenhuma outra dependência de runtime). Recursos: GLB da forma escolhida (3,9 MB a V2.3c; servir com cache longo e compressão), pôster `src/assets/hero-poster.png` (regerar com `scripts/poster.mjs` se a forma padrão mudar — hoje é da forma C). Requisitos: elemento `#flow-rule` na seção seguinte (destino da transição; hoje no `ManifestoStub`), variáveis CSS `--hero-out` e `--flow-handoff` escritas pelo motor, canvas fixo atrás do conteúdo, `prefers-reduced-motion` respeitado. Parâmetros de URL de comparação (`?forma`, `?piso`, `?figura`, `?escultura`, `?luz`, `?debug`) são do protótipo — remover ou congelar na integração. **Bloqueado por decisões de marca (DS-001):** paleta oficial, tipografia (Manrope é candidata), lettering/wordmark, tokens (DS-002), promoção da V2.3 a padrão, conteúdo real do manifesto e das seções, e-mail público.
+
+**GitHub.** Recomendação: enviar `exp/hero-fidelidade` (avanço linear, sem force push) quando autorizado; `captures/` está no `.gitignore` (evidências ficam locais — `captures.zip` do usuário também não entra); o GLB novo (3,9 MB) entra no histórico. `main` só por PR, com autorização.
+
+Evidências em `captures\validacao-final\`: `validacao-A-hero.png`, `-B-detalhes.png`, `-C-interface.png`, `-D-rolagem.png`, `-E-movimento.png`, `-F-motores-fallback.png`. Scripts: `validacao-browsers.mjs`, `validacao-perf.mjs`, `validacao-sheet.mjs`.
+
 ## Ciclo 06 — interface, microinterações e transição (26/10/2026)
 
 Mudanças só em CSS (`Hero.module.css`, `HeroStage.module.css`, `ManifestoStub.module.css`) — **compartilhadas por todas as formas** (a interface é a mesma em C, V2.2, V2.3r e V2.3; nada do 3D mudou). Tipografia, fonte, tamanhos, quebras, wordmark e textos preservados (decisões do DS-001 seguem pendentes; DS-002 e HERO-006 não iniciados).
