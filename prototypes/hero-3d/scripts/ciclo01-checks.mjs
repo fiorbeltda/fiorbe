@@ -4,10 +4,10 @@
 import { chromium } from "playwright-core";
 import { fileURLToPath } from "node:url";
 const [q = "forma=blender2-v23"] = process.argv.slice(2);
-const out = (f) => fileURLToPath(new URL(`../captures/ciclo01/${f}`, import.meta.url));
+const out = (f) => fileURLToPath(new URL(`../captures/${process.env.CAPDIR ?? "ciclo01"}/${f}`, import.meta.url));
 const b = await chromium.launch({ headless: true, args: ["--use-angle=d3d11", "--enable-gpu", "--ignore-gpu-blocklist"] });
 const res = {};
-for (const [w, h, touch] of [[1440, 900, false], [1100, 800, false], [940, 900, false], [390, 844, true]]) {
+for (const [w, h, touch] of [[1440, 900, false], [1100, 800, false], [1024, 768, false], [1200, 800, false], [940, 900, false], [390, 844, true]]) {
   const ctx = await b.newContext({ viewport: { width: w, height: h }, hasTouch: touch, isMobile: touch });
   const p = await ctx.newPage();
   const errors = [];

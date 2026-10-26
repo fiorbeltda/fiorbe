@@ -314,6 +314,29 @@
   color: #8fb0ff;
 }
 
+/* Notebook pequeno / tablet deitado (1024–1279): o enquadramento é limitado pela largura do palco,
+   então a escala da escultura vem de alargá-lo. Margem da grade que encontra 8,25vw em 1280
+   (sem salto), coluna editorial justa e CTAs um pouco mais compactos; o texto continua livre. */
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .hero {
+    --hero-gutter: clamp(20px, min(8.25vw, calc(16.4vw - 104px)), 160px);
+    --copy-reserve: calc(var(--hero-gutter) + 400px);
+  }
+  .stage {
+    right: 1%;
+    --controls-right: calc(var(--hero-gutter) - 1vw);
+  }
+  .actions {
+    gap: 12px;
+  }
+  .primary,
+  .secondary {
+    height: 46px;
+    padding: 0 20px;
+    font-size: 15px;
+  }
+}
+
 /* Tablet e mobile: fluxo empilhado — a escultura nunca fica atrás do texto. */
 @media (max-width: 1023px) {
   .hero {

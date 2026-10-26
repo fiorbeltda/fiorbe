@@ -5,7 +5,7 @@ import { chromium } from "playwright-core";
 import { mkdir, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 const [prefix = "antes", q = "forma=blender2-v23"] = process.argv.slice(2);
-const dir = fileURLToPath(new URL("../captures/ciclo01/", import.meta.url));
+const dir = fileURLToPath(new URL(`../captures/${process.env.CAPDIR ?? "ciclo01"}/`, import.meta.url));
 await mkdir(dir, { recursive: true });
 const VIEWS = [
   ["1440x900", 1440, 900],
