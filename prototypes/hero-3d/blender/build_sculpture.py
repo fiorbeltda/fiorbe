@@ -239,6 +239,16 @@ MODELS2 = {
     "fiorbe2-v22": (FIORBE22, "sculpted22"),
     "fiorbe2-v23": (FIORBE23, "sculpted22"),
     "fiorbe2-v23r": (FIORBE23R, "sculpted23r"),
+    # Ciclo 04 — mesma geometria da V2.3 (percurso, larguras, leques intactos); só a execução da
+    # lâmina muda. Variantes para isolar cada correção na comparação:
+    "fiorbe2-v23-n": (FIORBE23, "c04n"),     # normais robustas da borda (da V2.3r)
+    "fiorbe2-v23-nx": (FIORBE23, "c04nx"),   # + face amostrada (sem losangos)
+    "fiorbe2-v23-nxo": (FIORBE23, "c04nxo"), # + abertura mínima da V2.3r (0,22)
+    "fiorbe2-v23-g": (FIORBE23, "c04g"),     # folga mínima entre pontas vizinhas
+    "fiorbe2-v23-gx": (FIORBE23, "c04gx"),   # folga + face amostrada
+    "fiorbe2-v23-x": (FIORBE23, "c04x"),     # só a face amostrada
+    "fiorbe2-v23-xj": (FIORBE23, "c04xj"),   # face amostrada + junta fechada mais discreta
+    "fiorbe2-v23c": (FIORBE23, "c04"),       # escolhida
 }
 
 # Perfil das lâminas V2.1. p: expoente da superelipse da espessura (maior = face mais
@@ -261,6 +271,22 @@ BLADE_STYLES = {
     "sculpted23r": {"p": 6.0, "t_open": 0.19, "t_closed": 0.3, "cup": 1.0, "bow": 0.07, "o_min": 0.22, "fan_lat": True,
                     "joint": 0.04, "robust_normals": True},
 }
+# Ciclo 04 (V2.3): a face de cada lâmina era UM quad de −0,35 a 0,35 da largura; a concavidade
+# (cup/bow) varia através dela, e o metal espelhado mostrava a triangulação desse quad como um
+# padrão de losangos nas grandes superfícies. Amostras extras só na face (bordas iguais).
+BLADE_XS_C04 = [-1.0, -0.965, -0.85, -0.55, -0.2, 0.2, 0.55, 0.85, 0.965, 1.0]
+_S22 = BLADE_STYLES["sculpted22"]
+BLADE_STYLES["c04n"] = {**_S22, "robust_normals": True}
+BLADE_STYLES["c04nx"] = {**_S22, "robust_normals": True, "xs": BLADE_XS_C04}
+BLADE_STYLES["c04nxo"] = {**_S22, "robust_normals": True, "xs": BLADE_XS_C04, "o_min": 0.22}
+BLADE_STYLES["c04g"] = {**_S22, "tip_gap": 0.035}
+BLADE_STYLES["c04gx"] = {**_S22, "tip_gap": 0.035, "xs": BLADE_XS_C04}
+BLADE_STYLES["c04x"] = {**_S22, "xs": BLADE_XS_C04}
+BLADE_STYLES["c04xj"] = {**_S22, "xs": BLADE_XS_C04, "joint": 0.015}
+# Escolhida: só a junta fechada mais discreta (0,04 → 0,015) — as linhas claras entre lâminas
+# fechadas liam como traços desenhados. Os losangos eram do referencial do escovado no shader
+# (FIORBE_C04), não da amostragem: BLADE_XS_C04 (+25% de vértices) ficou desnecessário.
+BLADE_STYLES["c04"] = {**_S22, "joint": 0.015}
 
 
 def blade_ease(O, st):
@@ -632,6 +658,10 @@ def sculpt_blade(frame, arcs, points, style="plissado"):
                 vc0 = -1 + (2 * i + 1) / nB
                 vc = vc0 * (1 + 0.45 * Os)
                 hb = h / nB * (1 - 0.18 * Os)
+                # Ciclo 04: com a abertura pequena as pontas vizinhas ficavam no mesmo lugar e as
+                # paredes da borda das duas lâminas se sobrepunham — disputa de profundidade, vista
+                # como dentes em triângulo ao longo da fresta. Folga mínima e constante.
+                hb *= 1 - st.get("tip_gap", 0.0)
                 ang = e * Os * FAN_ANGLE
                 ca, sa = math.cos(ang), math.sin(ang)
                 base = c + w * (vc * h) + n * (e * e * Os * 0.12 * h - Os * 0.06 * h)
@@ -646,7 +676,8 @@ def sculpt_blade(frame, arcs, points, style="plissado"):
                     ly = side * th + surf
                     return c + (base - c) * lat + w * ((lx * ca - ly * sa) * lat) + n * (lx * sa + ly * ca)
 
-                ring = [(x, 1) for x in BLADE_XS] + [(x, -1) for x in reversed(BLADE_XS)]
+                xs_ = st.get("xs", BLADE_XS)
+                ring = [(x, 1) for x in xs_] + [(x, -1) for x in reversed(xs_)]
                 for x, side in ring:
                     q = pos(x, side)
                     # Normal analítica do perfil: derivada da própria seção (não da malha).
@@ -714,7 +745,8 @@ def sculpt_blade(frame, arcs, points, style="plissado"):
             vattr.append(max(-1.0, min(1.0, v)))
             aattr.append(a)
     if style in BLADE_STYLES:
-        loops = [(i * 2 * len(BLADE_XS), 2 * len(BLADE_XS)) for i in range(LAMELLAE)]
+        nx_ = len(BLADE_STYLES[style].get("xs", BLADE_XS))
+        loops = [(i * 2 * nx_, 2 * nx_) for i in range(LAMELLAE)]
     elif style == "lamelas":
         Mb = len(vb)
         loops = [(i * (2 * Mb + 2), 2 * Mb + 2) for i in range(LAMELLAE)]
@@ -752,6 +784,30 @@ def sculpt_blade(frame, arcs, points, style="plissado"):
             if False:
                 r_, j_ = divmod(idx, S0)
                 print(f"FIORBE ponto u={keys[r_]:.3f} col={j_} blade={j_ // (S0 // LAMELLAE)} y={y_:.0f} z={q.z:.2f}")
+    if custom_n and os.environ.get("FIORBE_NPROBE"):
+        # Diagnóstico (Ciclo 04): salto da normal entre anéis consecutivos na mesma coluna.
+        S0 = len(verts) // R
+        jumps = []
+        for r in range(R):
+            r2 = (r + 1) % R
+            for j in range(S0):
+                d = custom_n[r * S0 + j].angle(custom_n[r2 * S0 + j], 0.0)
+                jumps.append((math.degrees(d), r, j))
+        jumps.sort(reverse=True)
+        nx_ = len(BLADE_STYLES[style].get("xs", BLADE_XS))
+        xs_ = BLADE_STYLES[style].get("xs", BLADE_XS)
+        cols = [(x, 1) for x in xs_] + [(x, -1) for x in reversed(xs_)]
+        big = [t for t in jumps if t[0] > 25]
+        print(f"FIORBE nprobe saltos>25graus={len(big)} de {len(jumps)}")
+        hist = {}
+        for dg, r, j in big:
+            x, side = cols[j % (2 * nx_)]
+            k = (x, side)
+            hist[k] = hist.get(k, 0) + 1
+        print("FIORBE nprobe por coluna(x,lado):", sorted(hist.items(), key=lambda t: -t[1])[:8])
+        for dg, r, j in jumps[:6]:
+            x, side = cols[j % (2 * nx_)]
+            print(f"FIORBE nprobe {dg:.0f}graus u={keys[r]:.3f} lam={j // (2 * nx_)} x={x} lado={side} O={blade_open(periodic_catmull(arcs, open_v, keys[r]), BLADE_STYLES[style]):.3f}")
     me = bpy.data.meshes.new("Lamina2")
     me.from_pydata([tuple(p) for p in verts], [], faces)
     me.update()

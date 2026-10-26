@@ -57,10 +57,16 @@ export interface EngineOptions {
  * integração): carrega o GLB antes de criar o motor. Qualquer outra forma: null.
  */
 export async function preloadSculpture(): Promise<BufferGeometry | null> {
-  const forma = new URLSearchParams(window.location.search).get("forma") ?? "";
+  const params = new URLSearchParams(window.location.search);
+  const forma = params.get("forma") ?? "";
   const v2 = /^blender2([a-z0-9-]*)$/.exec(forma);
   if (forma !== "blender" && forma !== "blender-teste" && !v2) return null;
   const { loadBlenderGeometry } = await import("./sculpture/blenderSculpture");
+  // ?escultura=<sufixo>: outro GLB com a mesma forma (material, piso e figura iguais) — comparação.
+  // Ciclo 04: a V2.3 usa a malha refinada (v23c); ?escultura=atual volta à malha anterior.
+  const esc = params.get("escultura");
+  const glb = esc === "atual" ? null : /^[a-z0-9-]+$/.exec(esc ?? "")?.[0] ?? (forma === "blender2-v23" ? "v23c" : null);
+  if (v2 && glb) return loadBlenderGeometry(`/models/escultura-v2-${glb}.glb`);
   if (v2) return loadBlenderGeometry(`/models/escultura-v2${v2[1]}.glb`);
   return loadBlenderGeometry(forma === "blender" ? "/models/escultura.glb" : "/models/teste.glb");
 }
@@ -154,8 +160,13 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
     tint23: tinted && /^blender2-v2[3-9]/.test(formParam ?? ""),
     tint23r: tinted && formParam === "blender2-v23r",
     edgeAA: formParam === "blender2-v23r",
+    // Ciclo 04: padrão na V2.3; ?escultura=atual (malha e metal anteriores) ou ?metal04=0 desligam.
+    c04: formParam === "blender2-v23" && params.get("escultura") !== "atual" && params.get("metal04") !== "0",
     view: params.get("vista"),
   });
+  // Depuração do Ciclo 04: ?escovado=<razão> sobrepõe o eixo da largura do escovado (padrão 0,1).
+  const brushParam = params.get("escovado");
+  if (brushParam !== null && Number.isFinite(Number(brushParam))) material.userData.c04Aniso.value = Number(brushParam);
   const premiumEnv = premium ? createPremiumEnvironment(renderer) : null;
   if (premiumEnv) material.envMap = premiumEnv.texture;
   // Lâmina com espessura é um sólido fechado: só as faces externas (metade do preenchimento).
