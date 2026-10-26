@@ -4,10 +4,36 @@
 |---|---|
 | Área | Hero Experience |
 | Etapa do plano | 04 (cenário), no protótipo `E:\dev\fiorbe\prototypes\hero-3d` |
-| Implementação | Ambiente cinematográfico V2 implementado (padrão em todas as formas); ambiente anterior preservado em `?ambiente=v1` |
-| Aprovação | Base da luz arquitetônica aprovada como experimental (22/10/2026); ambiente cinematográfico V2 aguardando revisão visual |
+| Implementação | Ambiente cinematográfico V2 (todas as formas) + **acabamento de piso do Ciclo 02** (`uC02`: padrão só na V2.3; `?piso=c02` liga em qualquer forma, `?piso=atual` volta ao anterior). Ambiente v1 em `?ambiente=v1` |
+| Aprovação | Base da luz arquitetônica aprovada como experimental (22/10/2026); Ciclo 02 implementado em 26/10/2026, **aguardando revisão artística** |
 | Branch / checkpoint | `exp/hero-fidelidade` · ver Histórico |
-| Próximo objetivo | Revisão visual do acabamento (`captures\acabamento-comparacao.png`). Com o ambiente fechado, o desenvolvimento passa para a escultura e a interação avançada |
+| Próximo objetivo | Revisão artística do Ciclo 02 (`E:\dev\fiorbe\prototypes\hero-3d\captures\ciclo02\comparacao-*.png`). Ciclo 03 (figura humana) só com nova autorização |
+
+## Ciclo 02 — piso e reflexos (26/10/2026)
+
+**Diagnóstico (etapas `?pisodebug`, `=filtrado`, `=semhl`, `=sombra`; recortes 2–4×).** As correções de piso da V2.3r (destaques por contraste local, compressão dos altos, umidade em manchas — `88db3ac`) já valiam para todas as formas: resolveram as barras dos destaques, não o desfoque base. Causas reais restantes:
+| Sintoma | Causa |
+|---|---|
+| Manchas/bolhas claras, degraus quadrados (regiões A, B) | Desfoque quase todo por mip alto (LOD ≈ 4–5) do alvo em meia resolução — isotrópico e em blocos; um filete claro virava bolha redonda |
+| "Pente" branco borrado sob o redemoinho | Mesmo desfoque + compressão fraca (joelho 0,22) das faixas de luz entre as lâminas |
+| Listras horizontais (aparência de água) | Fresnel calculado com a normal do relevo **fino** (não alongado): na vista rasante `pow(1 − N·V, 5)` amplifica o desvio e a perspectiva o comprime em linhas. O reflexo filtrado não tem listras; o composto tem |
+| "Poeira" de pontos brancos | Brilhos de umidade densos (1,5% das células) e fortes (×1,6), inclusive em células subpixel |
+| Trilha serrilhada, anel chapado | Textura das trilhas lida com `textureLod(…, 0)` (sem mip nem anisotropia); halo próximo em faixa larga e saturada |
+| Linha atrás da headline a 940 px | Junta do concreto no layout empilhado (não é reflexo) |
+| Borda vertical clara à direita (940) | Reflexo da fachada de luz — coerente com as colunas acima; fica para o Ciclo 05 |
+
+**Implementação (só `floor.ts`, sem passe nem textura novos; tudo sob `uC02`).**
+1. Reflexo em **traço vertical**: 9 toques ao longo da vertical da tela, mip baixo (teto 2,6), comprimento `5 + 40·rough + (14 + 80·rough)·away` px — curto junto ao contato e nas poças, longo no concreto áspero e ao longe; toques alternados levemente para os lados (sem "código de barras"); jitter fixo por pixel (estável no tempo).
+2. Fresnel pela normal do plano (o relevo fino segue no difuso e nos brilhos).
+3. Compressão dos altos com joelho 0,15 e ombro mais firme; destaques prateados meio mip acima, limiar de contraste mais alto e com teto.
+4. Brilhos de umidade raros, fracos e só em células ≥ ~1 px.
+5. Trilhas com mip/anisotropia, sem a faixa chapada do halo, cor um pouco menos saturada, halo que se espalha mais no molhado.
+6. Layout empilhado: juntas só na faixa sob o contato.
+Descartado: mais ruído procedural no concreto (criaria manchas evidentes — a variação de rugosidade/umidade já aparece no comprimento dos traços); traço sem largura mínima (lâminas em "código de barras"); traço sem comprimento mínimo junto ao contato (o redemoinho voltava a refletir como pente nítido, espelho).
+
+**Verificado.** Acima da linha do piso a imagem é idêntica (diferença máx. 3–4 níveis); `?piso=atual` = caminho anterior por construção (todas as linhas novas sob `uC02`) → forma C, V2.2 e V2.3r inalteradas. Estabilidade em movimento real (`scripts\ciclo02-motion.mjs`, recorte do piso): onda Δ 5,3–5,8 → 4,1–5,2 e picos 349–874 → 210–683; cursor Δ 6,6–10,7 → 5,2–7,6; arraste equivalente (a peça gira de fato). Consistência carga larga/estreita→alargada/redimensionada/5 s ok (`floor-consistency.mjs`). tsc, eslint (0 erros), build, pausa, reversibilidade, fallbacks e 0 erros de console. GPU (A/B alternado, mesma sessão, 1440, alto): novo 16,9–18,2 ms × anterior 16,6–18,2 (≈ +0–0,4 ms; uma amostra contaminada de 21,8 descartada); tier baixo 10,3–10,9 × 10,1–10,4. Folhas `captures\ciclo02\comparacao-A-geral.png` … `-F-movimento.png`.
+
+**Limitações.** O piso ficou mais contido — se os fundadores quiserem mais brilho prateado, os ganhos dos destaques e da compressão são os controles. Borda vertical do reflexo da fachada (Ciclo 05). Serrilhado claro na base da escultura é da borda do metal (Ciclo 04). Mobile/toque continua sem reflexo (regra anterior).
 
 ## Arquitetura (ambiente cinematográfico V2)
 

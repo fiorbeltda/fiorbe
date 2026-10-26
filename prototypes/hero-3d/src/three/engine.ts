@@ -229,6 +229,9 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
       cinematic: params.get("ambiente") !== "v1",
       sculpture: mesh,
       compact,
+      // Ciclo 02 (piso e reflexos): padrão na V2.3, a referência artística; as outras formas
+      // ficam como estavam. ?piso=c02 liga em qualquer forma, ?piso=atual desliga.
+      floorC02: params.get("piso") === "c02" || (params.get("piso") !== "atual" && formParam === "blender2-v23"),
     },
     reflectionGeometry ? { geometry: reflectionGeometry, material } : null,
   );

@@ -57,6 +57,8 @@ export interface FloorOptions {
   reflections: boolean;
   /** Tela estreita: o chão fica sob o texto — só uma faixa logo abaixo do contato, esmaecendo. */
   compact?: boolean;
+  /** Acabamento do Ciclo 02 (uC02). */
+  c02?: boolean;
   /** Trilhas no espaço do chão (polilinhas x,z) — ver setTrails. */
 }
 
@@ -175,6 +177,7 @@ uniform float uDebug;
 uniform float uContactY;
 uniform float uCompact;
 uniform float uCompactBand;
+uniform float uC02;
 varying vec3 vLocal;
 varying vec3 vWorld;
 
@@ -187,6 +190,28 @@ vec3 refl(vec2 uv, float lod, float spread) {
   c += textureLod(uRefl, uv + vec2(-s.x, 3.4 * s.y), lod + 0.6).rgb * 0.17;
   c += textureLod(uRefl, uv - vec2(-s.x, 3.4 * s.y), lod + 0.6).rgb * 0.17;
   return c;
+}
+
+// Ciclo 02: reflexo de concreto molhado é um TRAÇO vertical (alongado na direção do olhar),
+// não uma bolha. 9 toques ao longo da vertical da tela com mip baixo: o borrão horizontal fica
+// pequeno (detalhe das lâminas preservado) e o vertical cresce com a rugosidade. O mip alto
+// isotrópico anterior (LOD ≈ 4–5 do alvo em meia resolução) gerava manchas redondas em blocos.
+// Jitter fixo por pixel (estável no tempo) desfaz os degraus entre os toques.
+vec3 reflStreak(vec2 uv, float lod, float len, float jit) {
+  vec2 st = vec2(0.0, len / 4.0 / uRes.y);
+  // Toques alternados um pouco para os lados: um traço só vertical transformava as lâminas
+  // refletidas em "código de barras"; com esta largura mínima elas se fundem sem voltar à bolha.
+  float hx = (1.5 + len * 0.07) / uRes.x;
+  vec3 c = vec3(0.0);
+  float wsum = 0.0;
+  for (int i = -4; i <= 4; i++) {
+    float t = float(i) + jit;
+    float w = exp(-t * t / 8.0);
+    float side = mod(float(i), 2.0) < 0.5 ? 1.0 : -1.0;
+    c += textureLod(uRefl, uv + st * t + vec2(side * hx, 0.0), lod).rgb * w;
+    wsum += w;
+  }
+  return c / wsum;
 }
 
 void main() {
@@ -210,6 +235,9 @@ void main() {
   vec2 jw = vec2(0.012) + fwp * 0.75;
   float joint = max(1.0 - smoothstep(0.0, jw.x, jd.x), 1.0 - smoothstep(0.0, jw.y, jd.y));
   joint *= 1.0 - smoothstep(0.035, 0.11, max(fwp.x, fwp.y));
+  // Ciclo 02: no layout empilhado o piso continua sob o texto; uma junta caía bem atrás da
+  // headline (940 px). Ali as juntas ficam só na faixa logo abaixo do contato.
+  if (uC02 > 0.5 && uCompact > 0.5) joint *= 1.0 - smoothstep(0.03, 0.08, uContactY - gl_FragCoord.y / uRes.y);
   // Agregado fino (grão de pedra) perto da câmera; o mip o some ao longe.
   float agg = texture(uNoise, p * 6.3 + vec2(0.13, 0.71)).r;
   agg = clamp((agg - 0.5) * 1.6 + 0.5, 0.0, 1.0);
@@ -234,6 +262,10 @@ void main() {
   vec3 V = normalize(cameraPosition - vWorld);
   float NdV = clamp(dot(N, V), 0.0, 1.0);
   float F = 0.02 + 0.98 * pow(1.0 - NdV, 5.0);
+  // Ciclo 02: na vista rasante pow(1 − N·V, 5) amplifica qualquer desvio da normal; com o relevo
+  // FINO (não alongado) a perspectiva virava isso em listras horizontais no reflexo. O Fresnel
+  // usa só a normal do plano; o relevo fino continua no difuso e nos brilhos.
+  if (uC02 > 0.5) F = 0.02 + 0.98 * pow(1.0 - clamp(V.y, 0.0, 1.0), 5.0);
 
   // --- Reflexo (alvo em meia resolução) ---
   vec3 R = vec3(0.0);
@@ -247,12 +279,25 @@ void main() {
     // Distorção mínima: só um desvio suave e vertical (o desfoque e a rugosidade fazem o resto).
     vec2 off = vec2(0.0, -warp.y) * (0.00015 + 0.0006 * rough) * (0.35 + away);
     float lod = 0.6 + rough * (1.3 + 3.2 * away) + away * 1.9;
+    if (uC02 > 0.5) {
+      // Comprimento do traço (px da tela): curto junto ao contato e nas poças, longo no concreto áspero e ao longe.
+      // Mesmo junto ao contato há um traço mínimo (cresce com a rugosidade): sem ele as lâminas do
+      // redemoinho refletiam como um pente nítido — espelho, não concreto.
+      float len = 5.0 + 40.0 * rough + (14.0 + 80.0 * rough) * away;
+      // Mip só o bastante para cobrir o espaço entre os toques (meia resolução), com teto baixo.
+      float lodC = clamp(max(0.6 + rough * 1.1 + away * 0.8, log2(max(len / 8.0, 1.0)) + 0.2), 0.6, 2.6);
+      float jit = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715)))) - 0.5;
+      R = reflStreak(suv + off, lodC, len, jit);
+    } else
     R = refl(suv + off, lod, 1.0 + (rough * 16.0 + 6.0) * away);
     // Highlights das bordas metálicas: amostra mais nítida que o reflexo difuso, só a parte
     // brilhante, alongada para baixo na tela (o brilho escorre na direção do olhar, como em
     // concreto molhado). Mesmo alvo de reflexo — sem passe novo.
     // Base 0,85: abaixo disso o alvo em meia resolução mostra degraus nas bordas das lâminas.
     float lodH = 0.85 + rough * (0.9 + 2.6 * away) + away * 1.3;
+    // Ciclo 02: meio mip acima — no mip baixo cada borda de lâmina do redemoinho virava um
+    // tracinho prateado e eles se repetiam em fileira.
+    if (uC02 > 0.5) lodH += 0.5;
     vec2 sv = vec2(0.0, (1.5 + 9.0 * away) / uRes.y);
     vec2 hu = suv + off;
     vec3 h = textureLod(uRefl, hu, lodH).rgb;
@@ -264,8 +309,16 @@ void main() {
     float hl = dot(hd, vec3(0.2126, 0.7152, 0.0722));
     // Prateado: o brilho perde parte da saturação azul ao ficar forte.
     Rhl = mix(hd, vec3(hl), 0.4) * smoothstep(0.02, 0.25, hl) * 1.6;
+    // Ciclo 02: só o contraste local claro de verdade vira destaque (limiar mais alto).
+    if (uC02 > 0.5) Rhl = mix(hd, vec3(hl), 0.4) * smoothstep(0.06, 0.32, hl) * 1.3;
     // Luz larga refletida: compressão suave só dos valores altos (escuros e detalhes intactos).
     float rl = dot(R, vec3(0.2126, 0.7152, 0.0722));
+    if (uC02 > 0.5) {
+      // Joelho mais baixo e ombro mais firme: as faixas de luz entre as lâminas (o "pente" sob o
+      // redemoinho) deixam de estourar em branco, mas mantêm gradação. Destaques idem, com teto.
+      R *= 1.0 / (1.0 + 1.7 * max(rl - 0.15, 0.0));
+      Rhl *= 1.0 / (1.0 + 2.5 * hl);
+    } else
     R *= 1.0 / (1.0 + 0.9 * max(rl - 0.22, 0.0));
   }
 
@@ -326,13 +379,28 @@ void main() {
   vec2 gc = floor(gq);
   float gDot = smoothstep(0.42, 0.08, length(fract(gq) - 0.5));
   float glint = smoothstep(0.985, 1.0, fract(sin(dot(gc, vec2(12.9898, 78.233))) * 43758.5453)) * gDot * wet;
+  if (uC02 > 0.5) {
+    // Ciclo 02: eram uma "poeira" uniforme de pontos brancos. Agora raros, discretos e só onde a
+    // célula tem mais de ~1 px (célula subpixel cintila no movimento).
+    vec2 gfw = fwidth(gq);
+    glint *= smoothstep(0.996, 1.0, fract(sin(dot(gc, vec2(39.3468, 11.135))) * 24634.6345)) * (1.0 - smoothstep(0.45, 0.9, max(gfw.x, gfw.y))) * 0.35;
+  }
   col += (R + Rhl) * glint * 1.6;
 
   // --- Trilhas pintadas no piso ---
   vec2 tuv = (p - uTrailRect.xy) * uTrailRect.zw;
+  // Ciclo 02: amostragem com mip e anisotropia (derivadas fora do if); textureLod(…, 0) serrilhava
+  // o traço fino ao longe.
+  vec2 trF = texture(uTrails, tuv).rg;
   if (all(greaterThan(tuv, vec2(0.0))) && all(lessThan(tuv, vec2(1.0)))) {
-    vec2 tr = textureLod(uTrails, tuv, 0.0).rg;
+    vec2 tr = uC02 > 0.5 ? trF : textureLod(uTrails, tuv, 0.0).rg;
     float trHalo = textureLod(uTrails, tuv, 2.0 + rough * 2.5).g;
+    if (uC02 > 0.5) {
+      // Luz embutida no concreto, não neon: núcleo menos estourado, sem a faixa chapada do halo
+      // próximo, cor um pouco menos saturada e halo que se espalha mais no molhado.
+      vec3 tc = mix(uTrailColor, vec3(dot(uTrailColor, vec3(0.2126, 0.7152, 0.0722))), 0.22);
+      col += tc * (tr.r * 1.7 + tr.g * 0.1 + trHalo * mix(0.12, 0.26, rough) * (0.7 + 0.5 * wet)) + vec3(0.55, 0.85, 1.0) * tr.r * tr.r * 0.45;
+    } else
     col += uTrailColor * (tr.r * 2.2 + tr.g * 0.3 + trHalo * mix(0.15, 0.35, rough)) + vec3(0.55, 0.85, 1.0) * tr.r * tr.r * 0.9;
   }
 
@@ -467,6 +535,7 @@ export function createCinematicFloor(o: FloorOptions): CinematicFloor {
       uContactY: { value: 0.3 },
       uCompact: { value: o.compact ? 1 : 0 },
       uCompactBand: { value: 0.16 },
+      uC02: { value: o.c02 ? 1 : 0 },
       // ?pisodebug: alvo do reflexo puro; ?pisodebug=sombra: oclusão (R), sombra da escultura (G), da figura (B).
       uDebug: { value: (() => {
         const d = new URLSearchParams(window.location.search).get("pisodebug");

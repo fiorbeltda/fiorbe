@@ -46,6 +46,8 @@ export interface SetOptions {
   sculpture?: Mesh;
   /** Tela estreita (piso sob o texto). */
   compact?: boolean;
+  /** Acabamento do piso do Ciclo 02 (reflexo em traços verticais, Fresnel estável, trilhas filtradas). */
+  floorC02?: boolean;
 }
 
 export interface SculptureSet {
@@ -227,6 +229,7 @@ export function createSculptureSet(opts: SetOptions, reflectionSource: { geometr
       personH,
       reflections: opts.reflections,
       compact: opts.compact,
+      c02: opts.floorC02,
     });
     disposables.push(floor);
     const fm = floor.material;
