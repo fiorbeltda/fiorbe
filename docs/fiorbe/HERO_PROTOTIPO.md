@@ -2,6 +2,16 @@
 
 > Registro **técnico** das rodadas (decisões, arquitetura, medições). Status e aprovações ficam no painel de `docs/fiorbe/ESTADO.md`; plano de cada componente em `docs/fiorbe/tarefas/`.
 
+## HERO-FINAL-001 — consolidação (26/10/2026)
+
+**Forma padrão:** `DEFAULT_FORMA = "blender2-v23"` em `src/three/engine.ts` — sem `?forma`, o protótipo carrega a V2.3 com malha `escultura-v2-v23c.glb` e os acabamentos dos Ciclos 02 (piso), 03 (figura), 04 (metal) e 05 (luz); a interface do Ciclo 06 e a composição do Ciclo 01 valem para todas as formas. `?forma=c | blender2-v22 | blender2-v23r` continuam funcionando (conferido). **Pôster** `src/assets/hero-poster.png` regenerado da V2.3 (`scripts/poster.mjs`); o anterior era da forma C. O pôster contém só a escultura (as luzes aditivas não sobrevivem ao fundo transparente) e o 3D assume com esmaecimento de 900 ms.
+
+**Chaves de comparação ainda presentes** (remover ou congelar na integração de produção): `?forma`, `?piso=c02|atual`, `?figura=c03|atual`, `?escultura=atual|<sufixo>`, `?luz=c05|atual`, `?metal04=0`, `?metal`, `?escovado`, `?ambiente=v1`, `?onda=0`, `?fios=1`, `?clay`, `?vista`, `?lado`, `?pose`, `?gestos`, `?ondadebug`, `?pisodebug`, `?tier`, `?nowebgl`, `?debug` (e o objeto `window.__fiorbe`, só com `?debug`).
+
+**Limitações abertas (não bloqueadoras):** GPU da V2.3 a 1440 na UHD 630 em 17,2–17,7 ms (quadros perdidos de 0–7% na interação; alternativas em PERF-001); Safari real e dispositivos físicos não testados (WebKit/Windows não aplica o peso da fonte variável); pontas do leque pela fresta do redemoinho; serrilhado subpixel; trecho curto só com a escultura na transição (rever com o manifesto definitivo); colunas de luz planas; pôster sem as luzes de fundo.
+
+**Dependências para a landing definitiva:** ver "Contratos para a integração" na validação final — decisões de DS-001/DS-002 (paleta, tipografia, lettering, tokens), seção real com `#flow-rule`, conteúdo do manifesto e das seções, remoção das chaves acima, servir o GLB (3,9 MB) com cache e compressão.
+
 ## PERF-001 — reflexo do piso com 7 toques (26/10/2026) — descartado
 
 Experimento isolado (`?reflexo=7`, 7 toques cobrindo a mesma extensão ±len e o mesmo perfil gaussiano) contra o padrão de 9 toques, V2.3, 1440×900, DPR 1, tier alto, alternado na mesma sessão.

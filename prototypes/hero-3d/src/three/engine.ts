@@ -56,9 +56,16 @@ export interface EngineOptions {
  * lâmina esculpida — `escultura-v2[sufixo].glb`) ou ?forma=blender-teste (prova de
  * integração): carrega o GLB antes de criar o motor. Qualquer outra forma: null.
  */
+/**
+ * Forma padrão do protótipo (HERO-FINAL-001): a Blender V2.3 refinada nos Ciclos 01–06.
+ * As outras continuam acessíveis por ?forma= (c, blender2-v22, blender2-v23r, ...).
+ */
+export const DEFAULT_FORMA = "blender2-v23";
+const formaFrom = (params: URLSearchParams) => params.get("forma") || DEFAULT_FORMA;
+
 export async function preloadSculpture(): Promise<BufferGeometry | null> {
   const params = new URLSearchParams(window.location.search);
-  const forma = params.get("forma") ?? "";
+  const forma = formaFrom(params);
   const v2 = /^blender2([a-z0-9-]*)$/.exec(forma);
   if (forma !== "blender" && forma !== "blender-teste" && !v2) return null;
   const { loadBlenderGeometry } = await import("./sculpture/blenderSculpture");
@@ -131,7 +138,7 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
   const useKnot = params.get("geo") === "knot";
   const uniforms = createSculptureUniforms();
   // ?forma=v32 | a | b — variantes da escultura preservadas para comparação.
-  const formParam = params.get("forma");
+  const formParam = formaFrom(params);
   const form = isFormName(formParam) ? formParam : DEFAULT_FORM;
   const blender = opts.sculpture ? buildFromBlender(opts.sculpture) : null;
   const monument = useKnot ? null : (blender ?? createMonumentGeometry(profile.geometry, form));
