@@ -2,6 +2,38 @@
 
 > Registro **técnico** das rodadas (decisões, arquitetura, medições). Status e aprovações ficam no painel de `docs/fiorbe/ESTADO.md`; plano de cada componente em `docs/fiorbe/tarefas/`.
 
+## Ciclo 01 — composição e hierarquia visual (26/10/2026) — branch `exp/hero-fidelidade`
+
+Variante avaliada: V2.3 (`?forma=blender2-v23`). Escopo: só composição; geometria, materiais, onda, interação, figura e piso intocados.
+
+**Método.** `scripts\ciclo01.mjs` captura cada viewport com ondas e movimento ambiente congelados na mesma fase (`__fiorbe.freeze` + `holdWaves` + `seekLap(0.62)`, só em `?debug`), DPR 1, mouse fora do palco, mais rolagem em % da altura e medidas da interface (JSON). Antes: código de `5cbed68`. Folhas: `scripts\ciclo01-sheet.mjs`; verificações de botão e reversibilidade: `scripts\ciclo01-checks.mjs`. Saídas em `captures\ciclo01\`.
+
+**Diagnóstico (antes).**
+| Viewport | Problema medido |
+|---|---|
+| 1100–1280 (pior a 1100) | Lede e CTA secundário sobre o lóbulo esquerdo da escultura (palco começava em 38% da largura, coluna de texto ia além) |
+| 1440 | Lede encostada no lóbulo; "Pausar movimento" a 29 px da borda, fora da margem da grade (botão em 1411, grade em 1321) e logo abaixo de "Conversar", lendo como parte da navegação |
+| 1024 e 360 | Headline em 5 linhas com "que" isolado (coluna de 307 px / fonte mínima de 44 px em 300 px) |
+| 940, 768, 390, 360 | Botão de movimento colado à borda direita (`right = largura da tela`, borda cortada); horizonte do piso encostado no rótulo |
+| Empilhado (< 1024), rolagem | O fade do hero (`--hero-out`) seguia o scroll global: a 60% da altura o título estava fantasma, CTAs e a faixa informativa já invisíveis — **a faixa nunca era legível no celular**; a escultura em recomposição passava por cima do texto (parallax 0,42 a arrastava para trás dele) |
+| 1280 / 1100 | Títulos da faixa inferior em 2 linhas (recuo interno de 96 px) |
+| Desktop, rolagem | Aos ~60% a escultura fica sozinha numa tela vazia — momento da transição aprovada; mantido, registrado para o Ciclo 06 |
+
+**Mudanças.**
+1. `Hero.module.css` — palco em `left: max(38%, margem + 450px)`: a coluna editorial nunca fica sobre a escultura. Custo assumido: escultura ~2,5% menor a 1440, ~9% a 1280, ~19% a 1100 (largura é o limite do enquadramento). Testado `+470px`: escultura pequena demais a 1100.
+2. Véu editorial: gradiente radial `rgb(3 7 18 / 0.5 → 0)` só atrás da coluna de texto (pseudo-elemento, `pointer-events: none`, sai com o texto). No empilhado, um véu horizontal sob a headline atenua o reflexo.
+3. Controle de movimento posicionado por variáveis (`--controls-right/top`, definidas por quem monta o palco): desktop abaixo da linha do piso, alinhado à margem direita da grade; empilhado no canto superior do palco, alinhado à margem. Visual do botão inalterado.
+4. Headline e lede com piso de 340 px de largura; fonte da headline `clamp(36px, 11vw, 44px)` só abaixo de 400 px. Conteúdo textual intacto.
+5. Faixa inferior com menos recuo interno.
+6. Empilhado: palco a 12 px das bordas (a peça não encosta); respiro entre horizonte e rótulo.
+7. `scrollTimeline.ts` + `engine.ts` — só no empilhado: texto e faixa sem fade (rolam normalmente); palco sem parallax; a transição começa quando o fim do hero sobe até 45% da altura; a escultura entra **por baixo** (o palco já saiu por cima, então a troca de trajetória acontece fora da tela nos dois sentidos) com eixo óptico no centro (o lens shift do palco distante a deixava em viés). Desktop: `start = 0`, parallax 0,42 — idêntico ao anterior (conferido em captura).
+
+**Verificado.** `tsc` e `eslint` sem erros (3 avisos antigos em arquivos não tocados); `next build` ok (rota estática); 0 erros de console em 9 viewports; sem rolagem horizontal de 360 a 1920; ordem de Tab preservada (… → CTAs → Pausar); botão de movimento recebe o clique no centro (nada por cima) e alterna por clique, toque (390) e Enter; descer até depois da transição e voltar ao topo restaura o quadro (diferença restante = anel de foco do botão); sem JS, sem WebGL e movimento reduzido ok; cursor contextual, arraste e pausa ok (`poke-test`, `drag-seq`). GPU 1440 (bench alternado, 3 rodadas): V2.3 16,4 / 18,0 / 16,7 ms; C 17,3 / 18,4 / 16,3 ms — dentro da faixa anterior (≈16,6–16,8); as mudanças não alteram custo por pixel.
+
+**Limitações.** Entre 1024 e 1200 a escultura ficou menor (escolha consciente: legibilidade > escala). Em 940 uma linha do reflexo do piso cruza a headline (atenuada; causa no piso → Ciclo 02). A trilha de luz do piso passa por trás do botão de movimento no desktop. A headline segue em 4 linhas no desktop: 3 linhas exigiriam ~690 px de coluna e a devolveriam para cima da escultura. Não medido: celulares reais, Safari/Firefox, DPR 2.
+
+---
+
 ## Rodada 4 — figura humana (22/10/2026) — branch `exp/hero-fidelidade`
 
 **Pesquisa e decisão.** Opção de asset com licença limpa encontrada: Quaternius Universal Animation Library (CC0, glTF, 120+ animações). Descartada para esta cena porque o personagem é um manequim nu e liso — exatamente a leitura que o usuário quer evitar — e vesti-lo exigiria modelagem em Blender (indisponível nesta sessão). Os personagens dos exemplos do three.js (Soldier, Michelle) têm origem Mixamo e licença não confirmada. Escolha: **figura construída em código com esqueleto real** (`src/three/figure/figureRig.ts`): 20 ossos, `SkinnedMesh` com pesos misturados nas articulações, silhueta de terno (ombros estruturados, paletó com barra, calça reta, sapatos), ~7,6 cabeças de proporção. Nenhum download. A arquitetura aceita trocar por um GLB rigado (mocap) depois sem mudar o resto.

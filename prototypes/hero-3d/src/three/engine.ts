@@ -294,6 +294,8 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
   const stageDoc = { cx: 0, cy: 0, w: 0, h: 0 };
   /** Deslocamento do horizonte em px (lens shift); toda conversão tela→mundo usa o mesmo valor. */
   let horizonShift = 0;
+  /** Fração do scroll que o palco acompanha (parallax). */
+  let stageParallax = 0.42;
   const worldX = (sx: number) => (sx - width / 2) * worldPerPx;
   const worldY = (sy: number) => -(sy - height / 2 - horizonShift) * worldPerPx;
 
@@ -309,6 +311,14 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
     stageDoc.cy = r.top + window.scrollY + r.height / 2;
     stageDoc.w = r.width;
     stageDoc.h = r.height;
+    // Layout empilhado: texto e faixa ficam abaixo do palco. A peça rola junto com o palco
+    // (sem parallax, que a arrastava para trás do texto) e a transição só começa quando o
+    // fim do hero já subiu até perto do meio da tela — antes, CTAs e faixa sumiam antes de serem lidos.
+    const stacked = window.innerWidth < 1024;
+    const heroEl = stage.closest("section");
+    const heroBottom = heroEl ? heroEl.getBoundingClientRect().bottom + window.scrollY : 0;
+    timeline.start = stacked ? Math.max(0, heroBottom - height * 0.45) : 0;
+    stageParallax = stacked ? 1 : 0.42;
   }
 
   let paused = false;
@@ -366,25 +376,36 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
     const scrollY = window.scrollY;
     const k = t.recompose * motion;
     // Parallax: o palco sobe mais devagar que a página.
-    const stageCy = stageDoc.cy - scrollY * (motion ? 0.42 : 1);
+    const stageCy = stageDoc.cy - scrollY * (motion ? stageParallax : 1);
     const stageBottom = stageCy + stageDoc.h / 2;
+    // Layout empilhado: quando a transição começa o palco já saiu por cima e o texto ainda
+    // está na tela. Vindo de cima, a peça atravessaria o conteúdo; ela entra por baixo,
+    // depois da faixa. A troca de trajeto acontece com a peça fora da tela nos dois lados.
+    const rise = motion === 1 && k > 0 && stageParallax === 1 && stageDoc.cy + stageDoc.h / 2 < timeline.startScroll;
     // Horizonte na altura dos olhos, pouco acima da base (lens shift, sem inclinar a câmera).
-    horizonShift = stageBottom - stageDoc.h * HORIZON_ABOVE_BASE - height / 2;
+    // Na subida o eixo fica no centro: com o palco longe, acima, a peça seria vista em viés.
+    horizonShift = rise ? 0 : stageBottom - stageDoc.h * HORIZON_ABOVE_BASE - height / 2;
     camera.setViewOffset(width, height, 0, -horizonShift, width, height);
 
     const fit = Math.min(stageDoc.w / sculptureW, stageDoc.h / (box.max.y - floorLocal)) * worldPerPx;
     const scale = fit * (1 - 0.42 * k);
-    // Estado 01: base da escultura apoiada na base do palco, centrada na horizontal.
-    const restX = worldX(stageDoc.cx) - sculptureCx * fit;
-    const restY = worldY(stageBottom) - floorLocal * fit;
-    // Estados 03–04: migra para o centro superior da tela.
-    const dx = (width * 0.5 - stageDoc.cx) * k * worldPerPx;
-    const dy = -(height * 0.3 - stageCy) * k * 0.75 * worldPerPx;
-    scrollRig.position.set(restX + dx, restY + dy, 0);
+    if (rise) {
+      const fromCy = height + stageDoc.h * 0.6;
+      const cy = fromCy + (height * 0.42 - fromCy) * k;
+      scrollRig.position.set(worldX(width / 2) - sculptureCx * scale, worldY(cy) - ((box.max.y + floorLocal) / 2) * scale, 0);
+    } else {
+      // Estado 01: base da escultura apoiada na base do palco, centrada na horizontal.
+      const restX = worldX(stageDoc.cx) - sculptureCx * fit;
+      const restY = worldY(stageBottom) - floorLocal * fit;
+      // Estados 03–04: migra para o centro superior da tela.
+      const dx = (width * 0.5 - stageDoc.cx) * k * worldPerPx;
+      const dy = -(height * 0.3 - stageCy) * k * 0.75 * worldPerPx;
+      scrollRig.position.set(restX + dx, restY + dy, 0);
+    }
     scrollRig.scale.setScalar(scale);
     scrollRig.rotation.set(0.38 * k, 1.1 * k, -0.12 * k);
     // O cenário só faz sentido com a peça em repouso: sai logo no início da rolagem.
-    set.setOpacity(motion ? 1 - Math.min(1, k / 0.22) : 1);
+    set.setOpacity(rise ? 0 : motion ? 1 - Math.min(1, k / 0.22) : 1);
 
     // --- Fluxos (estado 04/05): alvo em coordenadas de mundo ---
     const margin = Math.max(20, Math.min(96, width * 0.066));
@@ -543,6 +564,11 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
       /** Congela só as ondas e avança o tempo delas (capturas determinísticas). */
       holdWaves(hold: boolean) {
         holdWaves = hold;
+      },
+      /** Congela o movimento ambiente sem mexer no botão de pausa (capturas comparáveis). */
+      freeze(on: boolean, at = 2) {
+        paused = on;
+        if (on) idleTime = at;
       },
       stepWaves(seconds: number) {
         waves?.advance(seconds);

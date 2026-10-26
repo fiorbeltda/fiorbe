@@ -5,10 +5,26 @@
  */
 .hero {
   --hero-gutter: clamp(20px, 8.25vw, 160px);
+  /* Largura reservada à coluna editorial (a linha de CTAs é o item mais largo). */
+  --copy-reserve: calc(var(--hero-gutter) + 450px);
   position: relative;
   height: 100svh;
   min-height: 760px;
   max-height: 1100px;
+}
+
+/* Véu editorial: assenta o texto sobre a cena sem caixa nem escurecer a escultura —
+   só a área da coluna de texto perde um pouco de luz, e o efeito sai junto com o texto. */
+.hero::before {
+  content: "";
+  position: absolute;
+  z-index: var(--z-content);
+  inset: 0 auto 0 0;
+  width: 62%;
+  pointer-events: none;
+  background:
+    radial-gradient(70% 58% at 22% 46%, rgb(3 7 18 / 0.5), rgb(3 7 18 / 0.22) 55%, transparent 80%);
+  opacity: calc(1 - var(--hero-out, 0) * 1.6);
 }
 
 .header {
@@ -117,7 +133,8 @@
   line-height: 1.03;
   font-weight: 700;
   letter-spacing: -0.025em;
-  max-width: min(30vw, 580px);
+  /* Piso de 340px: abaixo disso "Tecnologia que" quebra e "que" fica sozinho (5 linhas). */
+  max-width: clamp(340px, 30vw, 580px);
   /* Gradiente sutil da referência: branco no alto, azul-claro no fim. */
   background: linear-gradient(180deg, #ffffff 0%, #ffffff 26%, #d6e7ff 46%, #a5cdff 72%, #7cb4ff 100%);
   -webkit-background-clip: text;
@@ -127,7 +144,7 @@
 
 .lede {
   margin: clamp(16px, 2.4vh, 26px) 0 0;
-  max-width: min(30vw, 560px);
+  max-width: clamp(340px, 30vw, 560px);
   font-size: clamp(16px, 1.26vw, 22px);
   line-height: 1.45;
   color: #c3cfdd;
@@ -223,13 +240,17 @@
   filter: blur(6px);
 }
 
-/* O palco reserva o espaço da escultura: nada se move quando o 3D chega. */
+/* O palco reserva o espaço da escultura: nada se move quando o 3D chega.
+   Começa depois da coluna editorial (nunca sob lede/CTAs); em telas largas, nos 38% da referência. */
 .stage {
   position: absolute;
-  left: 38%;
+  left: max(38%, var(--copy-reserve));
   right: 2%;
   top: 10%;
   height: 62%;
+  /* Controle de movimento: abaixo da linha do piso, alinhado à margem direita da grade. */
+  --controls-right: calc(var(--hero-gutter) - 2vw);
+  --controls-top: calc(100% + clamp(14px, 2.2vh, 24px));
 }
 
 .band {
@@ -240,7 +261,7 @@
   bottom: 4.6%;
   height: clamp(104px, 13vh, 124px);
   margin: 0;
-  padding: 0 clamp(24px, 4vw, 70px);
+  padding: 0 clamp(8px, 1.6vw, 32px);
   list-style: none;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -259,7 +280,7 @@
   display: flex;
   align-items: flex-start;
   gap: clamp(14px, 1.3vw, 22px);
-  padding: 0 clamp(16px, 2.6vw, 44px);
+  padding: 0 clamp(16px, 2.2vw, 40px);
   font-size: clamp(13px, 0.9vw, 15px);
   line-height: 1.45;
   color: #a9b6c8;
@@ -318,6 +339,9 @@
   .trails {
     display: none;
   }
+  .hero::before {
+    display: none;
+  }
   .stage {
     position: relative;
     order: 1;
@@ -326,7 +350,10 @@
     top: auto;
     height: 46svh;
     min-height: 300px;
-    margin: 0 calc(var(--hero-gutter) * -1);
+    /* Quase sangrando: a peça não encosta (nem é cortada) nas bordas da tela. */
+    margin: 0 calc(12px - var(--hero-gutter));
+    --controls-right: calc(var(--hero-gutter) - 12px);
+    --controls-top: 12px;
   }
   .copy {
     position: relative;
@@ -335,6 +362,20 @@
     top: auto;
     width: auto;
     max-width: 640px;
+    /* Respiro entre a linha do horizonte e o rótulo. */
+    padding-top: clamp(20px, 3.5svh, 36px);
+    /* Aqui o conteúdo rola embora normalmente; o fade do desktop o apagava antes da leitura. */
+    opacity: 1;
+    transform: none;
+  }
+  /* O reflexo do piso continua sob o texto: um véu horizontal suave (sem caixa) o atenua. */
+  .copy::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    inset: -8px calc(var(--hero-gutter) * -1) -40px;
+    pointer-events: none;
+    background: linear-gradient(180deg, transparent, rgb(3 7 18 / 0.5) 22%, rgb(3 7 18 / 0.5) 70%, transparent);
   }
   .title,
   .lede {
@@ -349,6 +390,7 @@
     height: auto;
     margin-top: var(--space-12);
     padding: var(--space-6);
+    opacity: 1;
     grid-template-columns: 1fr;
     row-gap: var(--space-6);
   }
@@ -379,6 +421,13 @@
   .stage {
     height: 42svh;
     min-height: 280px;
+  }
+}
+
+/* Celulares estreitos: a 44px "Tecnologia que" não cabe em 300px e a headline vai a 5 linhas. */
+@media (max-width: 400px) {
+  .title {
+    font-size: clamp(36px, 11vw, 44px);
   }
 }
 

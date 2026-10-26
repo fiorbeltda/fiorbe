@@ -49,10 +49,12 @@
   opacity: 0;
 }
 
+/* Posição definida por quem monta o palco (--controls-*): alinhada à grade, longe das bordas. */
 .controls {
   position: absolute;
-  right: 0;
-  top: -4px;
+  right: var(--controls-right, 0);
+  top: var(--controls-top, -4px);
+  z-index: 1;
   display: flex;
   align-items: center;
   gap: var(--space-4);

@@ -13,9 +13,9 @@
 | **Etapa atual** | Hero Experience — protótipo isolado em `E:\dev\fiorbe\prototypes\hero-3d` (antecede as etapas 02–05 do plano), em **refinamento por ciclos** (ver "Ciclos de refinamento do Hero"). Etapa 01 (Design System) em revisão em paralelo. |
 | **Componentes em desenvolvimento** | `HERO-003` — Cenário: ambiente cinematográfico V2, padrão em todas as formas, anterior em `?ambiente=v1` ([ficha](tarefas/HERO-003.md)) · `RIB-001` — Escultura viva (referência artística: Blender V2.3, `?forma=blender2-v23`; variante experimental V2.3r em `?forma=blender2-v23r`; padrão segue forma C) ([ficha](tarefas/RIB-001.md)) · `FIG-001` — Figura humana (v1, aguardando revisão) ([ficha](tarefas/FIG-001.md)) |
 | **Referência artística do Hero** | **Blender V2.3** (`?forma=blender2-v23`), preferida visualmente pelos fundadores. V2.3r corrigida (`?forma=blender2-v23r`) preservada como **variante experimental** — fonte de soluções técnicas para aproveitamento seletivo (normais de borda robustas, abertura mínima das frestas, AA de borda subpixel, reflexo do piso sem barras). **Forma C continua padrão** por enquanto. Nada disso é aprovação visual formal. |
-| **Tarefa ativa** | **Ciclo 01 — Composição e Hierarquia Visual** (1º de 6 ciclos de refinamento do Hero), iniciado em 26/10/2026; nada aprovado |
-| **Próximo objetivo** | Executar o Ciclo 01 tendo a V2.3 como referência; ao concluir, revisão visual do usuário e passagem ao Ciclo 02 (piso e reflexos). |
-| **Branch / último checkpoint** | `exp/hero-fidelidade` em `d199bec`, **sincronizada com `origin/exp/hero-fidelidade`** (conferido em 26/10/2026; nenhum commit local pendente de envio). `main` está em `d498026` (local = `origin/main`). Remoto: `origin` = https://github.com/fiorbeltda/fiorbe (privado). Merge em `main` continua exigindo autorização. |
+| **Tarefa ativa** | **Ciclo 01 — Composição e Hierarquia Visual**: implementado e verificado tecnicamente em 26/10/2026; **aguardando avaliação artística dos fundadores**. Comparações em `E:\dev\fiorbe\prototypes\hero-3d\captures\ciclo01\comparacao-*.png` |
+| **Próximo objetivo** | Fundadores avaliarem o Ciclo 01 (aprovar, pedir ajustes ou rejeitar). Só depois disso, e com autorização, iniciar o Ciclo 02 (piso e reflexos). |
+| **Branch / último checkpoint** | `exp/hero-fidelidade` · último checkpoint: commit local do Ciclo 01 (ver Log); `origin/exp/hero-fidelidade` em `d199bec` — commits locais posteriores (`5cbed68` e o do Ciclo 01) **não enviados**. **`origin/main` em `4d9f930`**: PRs #1, #2 e #3 de `exp/hero-fidelidade` foram mergeados no GitHub (o último em 23/10/2026, incluindo `d199bec`); o `main` local segue em `d498026`, desatualizado. Push e merge continuam exigindo autorização. |
 | **Servidor local** | `npm run dev` em `E:\dev\fiorbe\prototypes\hero-3d` → http://localhost:3100 (`?debug` mostra fps/qualidade) |
 
 ### Aprovado pelo usuário
@@ -51,13 +51,17 @@ Iniciados em 26/10/2026. Referência artística: Blender V2.3. Padrão do protó
 
 | Ciclo | Tema | Situação |
 |---|---|---|
-| 01 | Composição e hierarquia visual | **Em andamento** |
-| 02 | Piso e reflexos | Não iniciado |
-| 03 | Figura humana | Não iniciado |
-| 04 | Escultura metálica | Não iniciado |
-| 05 | Arquitetura e iluminação | Não iniciado |
-| 06 | Interface e microinterações | Não iniciado |
-| — | Validação final do Hero | Após o Ciclo 06 |
+| 01 | Composição e hierarquia visual | **Implementado; aguardando avaliação artística** (registro técnico em `HERO_PROTOTIPO.md`, "Ciclo 01") |
+| 02 | Piso e reflexos cinematográficos — highlights excessivos, reflexos artificiais, roughness, distribuição de umidade, textura de concreto, integração | Não iniciado |
+| 03 | Figura humana — anatomia aparente, silhueta, postura, animação, iluminação, contato dos pés, sombra e reflexo | Não iniciado |
+| 04 | Escultura metálica — materialidade, microestrias, bordas, normais, separação das lâminas, redemoinho, metal premium, preservando a V2.3 | Não iniciado |
+| 05 | Arquitetura e iluminação — colunas luminosas, profundidade, atmosfera, contraluz, gradação cromática, coesão cinematográfica | Não iniciado |
+| 06 | Interface e microinterações — wordmark, tipografia, navbar, CTAs, badges, controles, microanimações, transição para a próxima seção | Não iniciado |
+| — | Validação final do Hero — composição, responsividade, acessibilidade, interações, desempenho, comparação com a referência original | Após o Ciclo 06 |
+
+Depois da aprovação do Hero: demais seções da landing. Cada ciclo só começa com autorização.
+
+**Herdado do Ciclo 01 para os próximos:** (Ciclo 02) em 940 px uma linha do reflexo do piso cruza a headline — atenuada pelo véu, a causa é do piso; a trilha de luz passa por trás do botão "Pausar movimento" no desktop. (Ciclo 06) no desktop, aos ~60% da rolagem a escultura fica sozinha numa tela vazia (momento da transição aprovada, preservado). (Escultura/composição) entre 1024 e 1200 px a escultura ficou ~15–20% menor para não invadir a coluna editorial.
 
 ## Mapa do projeto: PROJETO → ÁREA → COMPONENTE
 
@@ -68,7 +72,7 @@ Legenda — **Implementação:** Não iniciado · Em andamento · Implementado �
 | Projeto | PRJ-00 | Auditoria e preparação | 00 | Implementado | **Aprovado** (22/10/2026) | `AUDITORIA_00.md` |
 | Design System | DS-001 | Fundação visual (Camada A: paleta, tipografia, lettering, direção) | 01 | Implementado (2 rodadas) | Aguardando revisão | Canvas + "Decisões pendentes" |
 | Design System | DS-002 | Tokens e componentes no repositório (Camada B) | 01 | Bloqueado por DS-001 | — | — |
-| Hero Experience | HERO-001 | Composição e interface do hero | 02–03 | Implementado (protótipo) | Aguardando revisão | `HERO_PROTOTIPO.md` |
+| Hero Experience | HERO-001 | Composição e interface do hero | 02–03 | Implementado (protótipo; Ciclo 01 de composição em 26/10/2026) | Aguardando revisão (Ciclo 01 aguardando avaliação artística) | `HERO_PROTOTIPO.md` |
 | Hero Experience | HERO-002 | Escultura 3D (geometria e material) | 04 | Implementado (protótipo) | Aguardando revisão | `HERO_PROTOTIPO.md` |
 | Hero Experience | HERO-003 | Cenário: chão, reflexo, sombras, luz, atmosfera, trilhas | 04 | Implementado (ambiente cinematográfico V2) | Base da luz aprovada; V2 aguardando revisão | [tarefas/HERO-003.md](tarefas/HERO-003.md) |
 | Hero Experience | FIG-001 | Figura humana tridimensional | 04 | Em andamento (v1 implementada) | Aguardando revisão | [tarefas/FIG-001.md](tarefas/FIG-001.md) |
@@ -119,6 +123,8 @@ Componentes ganham ficha em `tarefas/` quando entram em desenvolvimento. Correç
 | 22/10/2026 | HERO-001..005 | Rodada de fidelidade à referência (8 ciclos comparativos) na branch `exp/hero-fidelidade`; commit `517b62f` | Visual pendente |
 | 22/10/2026 | FIG-001 | Figura v1: esqueleto, idle em camadas, IK, integração de luz; commit `763b72a` | Visual pendente |
 | 22/10/2026 | Gestão | Painel central, hierarquia de componentes, fichas em `tarefas/`, skill `/fiorbe-status` | Pedido do usuário |
+| 26/10/2026 | HERO-001 (Ciclo 01) | Composição e hierarquia na V2.3, sem tocar geometria, materiais, onda nem interação. **Desktop:** o palco começa depois da coluna editorial (`max(38%, margem + 450px)`) — lede e CTAs deixam de invadir o lóbulo esquerdo em 1024–1280; véu radial sutil atrás do texto; botão "Pausar movimento" sai da zona da navegação (estava desalinhado e colado ao CTA) para o piso, alinhado à margem direita da grade; faixa inferior com menos recuo (títulos numa linha a 1280–1440); headline nunca abaixo de 340px de largura (1024 tinha 5 linhas com "que" isolado). **Empilhado (< 1024):** CTAs e faixa sumiam com o fade do scroll antes de serem lidos — agora rolam normalmente, a transição só começa quando o fim do hero sobe e a escultura entra por baixo, depois da faixa (antes cruzava o texto); palco não encosta mais nas bordas; botão de movimento, que era cortado na borda direita em 940/768/390/360, alinhado à margem; respiro entre o horizonte e o rótulo; véu sob a headline; 360 px com headline em 4 linhas (era 5). Transição do desktop idêntica; reversível. tsc, eslint (0 erros), build, fallbacks, reduzido, cursor/arraste, pausa (clique, toque, teclado), sem overflow (360–1920), 0 erros de console; GPU 1440 = 16,4–18,0 ms (C 16,3–18,4 na mesma sessão). Folhas `captures\ciclo01\comparacao-desktop.png`, `-empilhado.png`, `-rolagem.png`, `-recortes.png` | Aguardando avaliação artística |
+| 26/10/2026 | Repositório | Conferido o remoto: `origin/main` = `4d9f930` (PRs #1–#3 de `exp/hero-fidelidade` mergeados no GitHub, o último em 23/10/2026). O painel dizia `main` em `d498026` — corrigido. Nenhum push/merge feito nesta sessão | Registro |
 | 26/10/2026 | Gestão / HERO | Contexto atualizado antes dos ciclos: GitHub sincronizado até `d199bec` (painel corrigido); V2.3 definida como referência artística do Hero; V2.3r preservada como variante experimental para aproveitamento técnico seletivo; forma C segue padrão; plano de 6 ciclos de refinamento registrado e **Ciclo 01 — Composição e Hierarquia Visual** iniciado. Só documentação | Decisões do usuário; nenhuma aprovação visual |
 | 23/10/2026 | RIB-001 | **Escolha dos fundadores:** a Blender V2.3 (`?forma=blender2-v23`, geometria `f523f47`, cor azul/teal/prata de `ecfa1c8`) foi selecionada como referência visual favorita desta rodada. A V2.3r continua disponível para comparação. Não é aprovação definitiva do hero; a forma padrão do protótipo continua a C. Publicado em `origin/exp/hero-fidelidade` | Preferência registrada |
 | 23/10/2026 | RIB-001 / HERO-003 | V2.3r, 4 regiões marcadas: pente claro/escuro nas lâminas de perfil (sinal da normal da borda instável → orientação robusta), pontilhado nas frestas quase fechadas (abertura mínima 0,22), borda subpixel filtrada no shader; reflexo do piso sem barras brancas (destaques só do detalhe, compressão dos altos, molhado em manchas). Comparação `captures\regioes-antes-depois.png` | Aguardando avaliação |
