@@ -30,6 +30,8 @@ export interface BacklightOptions {
   reducedMotion: boolean;
   /** Plano de luz analítico no chão (lençol + reflexos das colunas). O piso cinematográfico faz isso sozinho. */
   floorLight?: boolean;
+  /** Ciclo 05: arquitetura de luz refinada (profundidade, colunas, fachada, atmosfera). */
+  c05?: boolean;
 }
 
 /** Núcleo + colunas da parede: [centro x, largura, intensidade, altura relativa]. Núcleo = índice 0. */
@@ -87,6 +89,24 @@ uniform vec3 uDeep;
 uniform float uGain;
 uniform float uShift;
 uniform float uCine;
+uniform float uC05;
+// Ciclo 05: coluna como luz caindo numa aleta arquitetônica — acumula na base e sobe com cauda
+// irregular (não é uma barra de brilho uniforme). depth 0 = perto (borda nítida, mais forte),
+// 1 = longe (macia, fraca, mais fria).
+float column05(float x, float y, float H, vec4 c, float depth) {
+  float hw = c.y * 0.5;
+  float edge = mix(max(0.02, c.y * 0.06), max(0.06, c.y * 0.24), depth);
+  float body = smoothstep(hw + edge, hw - edge, abs(x - c.x));
+  if (body <= 0.0) return 0.0;
+  // Miolo um pouco mais claro que as bordas (volume, não faixa chapada).
+  body *= 0.78 + 0.22 * smoothstep(hw, 0.0, abs(x - c.x));
+  float top = H * c.w;
+  float v = y / top;
+  float pool = exp(-v / 0.22);
+  // Irregularidade da cauda: variação por coluna (constante), não por pixel — mais barato.
+  float tail = (1.0 - smoothstep(0.35, 1.0, v)) * (0.85 + 0.15 * fract(c.x * 7.31));
+  return body * (0.45 * pool + 0.75 * tail);
+}
 void main() {
   float x = (vUv.x - 0.5) * uSize.x + uShift;
   float y = vUv.y * uSize.y;
@@ -101,6 +121,11 @@ void main() {
   float cols = 0.0;
   for (int i = 1; i < NCOL; i++) {
     float breathe = 0.9 + 0.1 * sin(uTime * 0.17 + float(i) * 2.1);
+    if (uC05 > 0.5) {
+      // Profundidade por coluna (determinística): as mais fracas ficam "atrás" — macias e frias.
+      float depth = clamp(1.0 - (COLS[i].z - 0.18) / 0.2, 0.0, 1.0);
+      cols += COLS[i].z * breathe * column05(x, y, H, COLS[i], depth) * mix(1.3, 0.85, depth);
+    } else
     cols += COLS[i].z * breathe * column(x, y, H, COLS[i], sharp);
   }
   // Névoa atmosférica: volume amplo que envolve tudo.
@@ -129,15 +154,31 @@ void main() {
       float aa = dx / cell * 1.2;
       float line = smoothstep(hw + aa, hw - aa, abs(fx - 0.5)) * step(0.3, r1);
       float tall = mix(0.1, 0.34, r3 * r3) * H;
-      float zone = smoothstep(1.55, 2.15, x) * (1.0 - smoothstep(3.7, 4.3, x));
+      // Ciclo 05: entrada da fachada gradual — com a borda em 1,55–2,15 o bloco claro tinha um lado
+      // esquerdo definido que o reflexo em traços verticais do piso levava até a câmera (borda
+      // vertical artificial no piso, bem visível a 940 px).
+      float zone = uC05 > 0.5 ? smoothstep(1.3, 2.7, x) * (1.0 - smoothstep(3.5, 4.3, x)) : smoothstep(1.55, 2.15, x) * (1.0 - smoothstep(3.7, 4.3, x));
       slats = line * zone * mix(0.35, 1.0, r1) * pow(clamp(1.0 - y / tall, 0.0, 1.0), 1.6);
     }
     // Brilho localizado ciano-branco junto ao horizonte atrás da figura (contraluz).
     float back = exp(-pow((x - 2.35) / 0.85, 2.0)) * exp(-pow(y / (0.16 * H), 2.0));
+    if (uC05 > 0.5) {
+      // Mesma composição e energia da base aprovada; mudam a forma das colunas (column05), a
+      // cor da fachada e do contraluz da figura (branco frio em vez de ciano: a figura recorta
+      // contra luz fria, não some num campo turquesa) e a parede do fundo (perspectiva aérea).
+      vec3 whiteCool = mix(uCore, vec3(0.88, 0.95, 1.0), 0.5);
+      col = uDeep * wall * 0.04
+          + low * (haze * 0.035 + hz * 0.13 + cols * mix(0.55, 0.85, smoothstep(-0.5, 0.5, x)) + horizon * 0.3)
+          + uCore * (core * 0.4 + hot * 0.3 + cols * 0.22)
+          + whiteCool * (slats * 0.62 + back * 0.26);
+      if (uShift != 0.0) col = mix(col, uDeep * dot(col, vec3(0.333)) * 2.2, 0.25) * 0.92;
+      col *= mix(1.0, 0.3, smoothstep(0.16, 0.66, h));
+    } else {
     col = uDeep * wall * 0.04
         + low * (haze * 0.035 + hz * 0.13 + cols * mix(0.55, 0.85, smoothstep(-0.5, 0.5, x)) + horizon * 0.3)
         + uCore * (core * 0.4 + hot * 0.3 + cols * 0.22 + slats * 0.75 + back * 0.32);
     col *= mix(1.0, 0.3, smoothstep(0.16, 0.66, h));
+    }
   } else {
     col = uDeep * wall * 0.14
         + uHalo * (haze * 0.2 + cols * 0.95 + horizon * 0.6)
@@ -234,6 +275,7 @@ export function createBacklight(o: BacklightOptions) {
     uGain: { value: gain },
     uShift: { value: shift },
     uCine: { value: o.floorLight === false ? 1 : 0 },
+    uC05: { value: o.c05 ? 1 : 0 },
   });
   const far = new Mesh(geo, make(WALL_FRAG, wallUniforms(0.45, 1.3)));
   far.scale.set(ww * 1.5, wh * 1.35, 1);

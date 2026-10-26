@@ -399,6 +399,10 @@
     inset: -8px calc(var(--hero-gutter) * -1) -40px;
     pointer-events: none;
     background: linear-gradient(180deg, transparent, rgb(3 7 18 / 0.5) 22%, rgb(3 7 18 / 0.5) 70%, transparent);
+    /* Ciclo 05: o véu acabava num corte reto na largura da coluna (≈ 796 px a 940) — a "borda
+       vertical" que parecia estar no reflexo do piso. Esmaece para a direita. */
+    -webkit-mask-image: linear-gradient(90deg, #000 55%, transparent);
+    mask-image: linear-gradient(90deg, #000 55%, transparent);
   }
   .title,
   .lede {

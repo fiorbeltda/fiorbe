@@ -5,7 +5,7 @@ import { chromium } from "playwright-core";
 import { mkdir } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 const [name, q = "forma=blender2-v23", lap = "0.62"] = process.argv.slice(2);
-const dir = fileURLToPath(new URL("../captures/ciclo04/", import.meta.url));
+const dir = fileURLToPath(new URL(`../captures/${process.env.CAPDIR ?? "ciclo04"}/`, import.meta.url));
 await mkdir(dir, { recursive: true });
 const b = await chromium.launch({ headless: true, args: ["--use-angle=d3d11", "--enable-gpu", "--ignore-gpu-blocklist"] });
 const p = await b.newPage({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: Number(process.env.DPR ?? 2) });

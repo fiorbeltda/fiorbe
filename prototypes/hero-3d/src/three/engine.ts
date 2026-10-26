@@ -245,6 +245,8 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
       floorC02: params.get("piso") === "c02" || (params.get("piso") !== "atual" && formParam === "blender2-v23"),
       // Ciclo 03 (figura humana): idem — padrão na V2.3; ?figura=c03 liga, ?figura=atual desliga.
       figureC03: params.get("figura") === "c03" || (params.get("figura") !== "atual" && formParam === "blender2-v23"),
+      // Ciclo 05 (arquitetura e luz): idem — padrão na V2.3; ?luz=c05 liga, ?luz=atual desliga.
+      lightC05: params.get("luz") === "c05" || (params.get("luz") !== "atual" && formParam === "blender2-v23"),
     },
     reflectionGeometry ? { geometry: reflectionGeometry, material } : null,
   );

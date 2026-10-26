@@ -5,9 +5,28 @@
 | Área | Hero Experience |
 | Etapa do plano | 04 (cenário), no protótipo `E:\dev\fiorbe\prototypes\hero-3d` |
 | Implementação | Ambiente cinematográfico V2 (todas as formas) + **acabamento de piso do Ciclo 02** (`uC02`: padrão só na V2.3; `?piso=c02` liga em qualquer forma, `?piso=atual` volta ao anterior). Ambiente v1 em `?ambiente=v1` |
-| Aprovação | Base da luz arquitetônica aprovada como experimental (22/10/2026); Ciclo 02 implementado em 26/10/2026, **aguardando revisão artística** |
+| Aprovação | Base da luz aprovada como experimental (22/10/2026); Ciclo 02 aprovado (26/10/2026); **Ciclo 05 implementado, aguardando revisão artística** |
 | Branch / checkpoint | `exp/hero-fidelidade` · ver Histórico |
-| Próximo objetivo | Revisão artística do Ciclo 02 (`E:\dev\fiorbe\prototypes\hero-3d\captures\ciclo02\comparacao-*.png`). Ciclo 03 (figura humana) só com nova autorização |
+| Próximo objetivo | Revisão artística do Ciclo 05 (`E:\dev\fiorbe\prototypes\hero-3d\captures\ciclo05\comparacao-*.png`). Ciclo 06 só com nova autorização |
+
+## Ciclo 05 — arquitetura e iluminação (26/10/2026)
+
+Chave `uC05` em `backlight.ts` (opção `lightC05`): padrão só na V2.3; `?luz=c05` liga em qualquer forma, `?luz=atual` volta à anterior. Forma C e V2.3r conferidas idênticas (0,000%).
+
+**Diagnóstico.** A arquitetura é 100% procedural e aditiva: duas paredes planas (principal e uma ao fundo, deslocada, ganho 0,45) com núcleo, 6 colunas, névoa, brilho do horizonte e uma "fachada" de lâminas finas à direita da figura; plano de contraluz atrás da figura; o piso reflete as duas paredes e o contraluz. Custo dominado pelo preenchimento das paredes (loop de 6 colunas por pixel em dois planos grandes).
+| Problema | Causa |
+|---|---|
+| Colunas gráficas (faixas uniformes) | Caixa suavizada com borda igual para todas e queda de brilho simples para cima — sem distinção de distância |
+| Região atrás da figura chapada em ciano-branco | Fachada e brilho de contraluz somados em `uCore` (ciano) com ganho alto |
+| Parede do fundo igual à principal, só mais fraca | Mesmo shader; nenhuma perspectiva aérea |
+| **Borda vertical no piso a 940/768 px** (pendência registrada) | **Não era reflexo**: o véu editorial do Ciclo 01 (`.copy::before`, layout empilhado) termina num corte reto na largura da coluna de texto (≈ 796 px a 940). Confirmado nas etapas `?pisodebug` (a borda aparece até no reflexo bruto, sobreposta pelo DOM) |
+
+**Implementado.** (1) `column05`: luz acumulada na base e cauda que sobe, miolo mais claro que as bordas; profundidade por coluna derivada da intensidade (fracas = macias, frias, atrás; fortes = nítidas, à frente). (2) Fachada e contraluz atrás da figura em branco frio (meio-termo entre `uCore` e branco) e entrada da fachada gradual. (3) Parede do fundo com perspectiva aérea leve (dessatura para azul profundo, −8%). (4) Véu editorial empilhado com máscara esmaecendo para a direita (`Hero.module.css`) — some a borda vertical do piso.
+**Descartado.** Concentrar a luz no horizonte e escurecer o meio da parede (1ª e 2ª iterações): a cena ficou visivelmente mais escura e menos monumental — "menos luz" sem ganho de profundidade. Cor das colunas em degradê branco→azul: reduzia a energia da base aprovada. `sin` por pixel na cauda das colunas: custo sem ganho visível.
+
+**Verificado.** Cena idêntica acima e na escultura (material do Ciclo 04 intacto); onda, cursor, arraste, pausa, reduzido, rolagem reversível, sem JS/WebGL, 0 erros de console; tsc, eslint (0 erros), build. GPU 1440 alto (A/B, 2 séries): 17,1–17,4 × 16,7–16,8 ms (≈ +0,4 ms, 2,5%). Movimento real (`scripts\ciclo05-motion.mjs`): variação entre quadros igual ou menor. Folhas `captures\ciclo05\comparacao-A-cena.png` … `-F-movimento.png`.
+
+**Limitações.** Mudança deliberadamente contida: a base da luz já era aprovada, e as tentativas mais ousadas pioraram a profundidade. Colunas continuam planos procedurais (sem geometria). Antes de nova volumetria, valeria rever com os fundadores se a direção "mais escura/mais contraste" é desejada.
 
 ## Ciclo 02 — piso e reflexos (26/10/2026)
 

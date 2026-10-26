@@ -50,6 +50,8 @@ export interface SetOptions {
   floorC02?: boolean;
   /** Figura do Ciclo 03 (silhueta, contrapposto, contraluz, sombra de contato e reflexo que esmaece). */
   figureC03?: boolean;
+  /** Arquitetura de luz do Ciclo 05. */
+  lightC05?: boolean;
 }
 
 export interface SculptureSet {
@@ -157,6 +159,7 @@ export function createSculptureSet(opts: SetOptions, reflectionSource: { geometr
     camera: opts.camera ?? null,
     reducedMotion: opts.reducedMotion,
     floorLight: !cinematic,
+    c05: opts.lightC05,
   });
   disposables.push(backlight);
   backlight.fadeables.forEach((material) => fadeables.push({ material, base: 1 }));
