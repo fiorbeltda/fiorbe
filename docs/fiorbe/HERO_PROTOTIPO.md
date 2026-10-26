@@ -2,6 +2,29 @@
 
 > Registro **técnico** das rodadas (decisões, arquitetura, medições). Status e aprovações ficam no painel de `docs/fiorbe/ESTADO.md`; plano de cada componente em `docs/fiorbe/tarefas/`.
 
+## Ciclo 06 — interface, microinterações e transição (26/10/2026)
+
+Mudanças só em CSS (`Hero.module.css`, `HeroStage.module.css`, `ManifestoStub.module.css`) — **compartilhadas por todas as formas** (a interface é a mesma em C, V2.2, V2.3r e V2.3; nada do 3D mudou). Tipografia, fonte, tamanhos, quebras, wordmark e textos preservados (decisões do DS-001 seguem pendentes; DS-002 e HERO-006 não iniciados).
+
+**Diagnóstico** (DPR 2, estados normal/hover/pressionado/foco: `scripts\ciclo06-ui.mjs`; rolagem em frações do percurso real da timeline: `scripts\ciclo06-scroll.mjs`):
+| Problema | Real? |
+|---|---|
+| CTA principal retângulo de 18 px; todos os outros controles pílula | Sim — linguagem de forma inconsistente |
+| Pressionado = hover em todos os botões | Sim — sem feedback de clique |
+| Hover da navbar quase imperceptível; foco dos links em quadrado de canto vivo | Sim |
+| Ponto verde com brilho no badge lê como "online agora" | Sim (o status é "em desenvolvimento") |
+| "Pausar movimento" com texto apagado sobre reflexo claro; estado pausado só no texto | Sim |
+| "Conversar" com brilho de neon | Leve |
+| **Rolagem desktop: de ~30% a ~70% do percurso (≈ 450 px a 900 de altura) só a escultura no escuro**; o manifesto entrava aos 75% | Sim — efeito colateral da margem de 62vh do manifesto (espaço de rolagem) + saída rápida do texto do hero (×1,6) |
+| Wordmark, rótulo, headline, texto e barra informativa | Sem problema real — não alterados |
+
+**Implementado.** CTA principal em pílula; pressionado afunda 1 px (60 ms, sem escala); navbar com filete que cresce do centro no hover e foco arredondado; "Conversar" com borda de 1 px e brilho contido; CTA secundário com borda de 1 px e leve preenchimento no hover; ponto do badge em mint sem brilho; "Pausar movimento" em vidro com desfoque, texto mais claro e borda ciano quando pausado. Transição: margem do manifesto 62vh → 38vh (só desktop/tablet; celular já tinha 40vh) e saída do texto do hero ×1,6 → ×1,15, barra ×2 → ×1,5 — o trecho vazio cai pela metade e o manifesto entra aos ~60%. Escultura, câmera, timeline e física intocadas.
+**Rejeitado/não feito.** Mover o controle de pausa (posição aprovada no Ciclo 01); pulsação no ponto do badge; trocar fonte/lettering; preencher a transição com conteúdo novo.
+
+**Verificado.** tsc, eslint (0 erros), build; ordem de foco preservada; pausa por clique/toque/teclado com `aria-pressed` e estado visual; rolagem reversível em 6 larguras; sem rolagem horizontal (360–1920); sem JS/WebGL e movimento reduzido ok; 0 erros de console. GPU: rodada com a GPU disputada (todas ≈ 38 ms) — antes e depois iguais na mesma condição; mudanças só de CSS não alteram o WebGL. Folhas `captures\ciclo06\comparacao-A-interface.png` … `-G-responsivo.png`.
+
+**Para a validação final.** A transição ainda tem um trecho curto só com a escultura desenrolando (intencional — é o gesto da marca virando a régua do manifesto). O desfoque do controle de pausa tem custo de composição pequeno, não medido isoladamente.
+
 ## Ciclo 01 — composição e hierarquia visual (26/10/2026) — branch `exp/hero-fidelidade`
 
 Variante avaliada: V2.3 (`?forma=blender2-v23`). Escopo: só composição; geometria, materiais, onda, interação, figura e piso intocados.

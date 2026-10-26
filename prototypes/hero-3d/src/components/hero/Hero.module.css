@@ -51,14 +51,33 @@
 }
 
 .nav a {
-  color: #d5deea;
+  position: relative;
+  color: #c9d4e3;
   text-decoration: none;
   padding: var(--space-2) 2px;
+  border-radius: 6px;
   transition: color var(--motion-fast) var(--ease-out);
+}
+
+/* Ciclo 06: o hover só clareava o texto (quase imperceptível). Filete fino que cresce do centro. */
+.nav a::after {
+  content: "";
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  bottom: 2px;
+  height: 1px;
+  background: currentColor;
+  transform: scaleX(0);
+  transition: transform var(--motion-base) var(--ease-out);
 }
 
 .nav a:hover {
   color: #fff;
+}
+
+.nav a:hover::after {
+  transform: scaleX(1);
 }
 
 .headerCta {
@@ -69,10 +88,12 @@
   height: clamp(44px, 3.1vw, 52px);
   padding: 0 clamp(20px, 1.8vw, 30px);
   border-radius: 999px;
-  border: 1.5px solid rgb(64 140 255 / 0.75);
+  border: 1px solid rgb(90 155 255 / 0.7);
+  background: rgb(8 16 32 / 0.35);
+  /* Ciclo 06: brilho mais contido (lia neon ao lado da escultura). */
   box-shadow:
-    0 0 18px rgb(47 107 255 / 0.25),
-    inset 0 0 12px rgb(47 107 255 / 0.12);
+    0 0 14px rgb(47 107 255 / 0.16),
+    inset 0 0 10px rgb(47 107 255 / 0.08);
   color: #eef3fa;
   font-size: clamp(14px, 1.02vw, 17px);
   font-weight: 500;
@@ -81,8 +102,8 @@
 }
 
 .headerCta:hover {
-  border-color: rgb(110 180 255);
-  box-shadow: 0 0 26px rgb(47 107 255 / 0.4), inset 0 0 14px rgb(47 107 255 / 0.18);
+  border-color: rgb(130 190 255);
+  box-shadow: 0 0 20px rgb(47 107 255 / 0.28), inset 0 0 12px rgb(47 107 255 / 0.14);
 }
 
 .headerCta svg,
@@ -103,7 +124,8 @@
   width: min(44vw, 820px);
   display: flex;
   flex-direction: column;
-  opacity: calc(1 - var(--hero-out, 0) * 1.6);
+  /* Ciclo 06: sai mais devagar (×1,6 → ×1,15) para acompanhar a recomposição da escultura. */
+  opacity: calc(1 - var(--hero-out, 0) * 1.15);
   transform: translate3d(0, calc(var(--hero-out, 0) * -48px), 0);
   will-change: opacity, transform;
 }
@@ -157,6 +179,21 @@
   margin-top: clamp(22px, 3.6vh, 36px);
 }
 
+/* Ciclo 06: estado pressionado (antes igual ao hover) — afunda 1 px, sem escala nem salto. */
+.headerCta:active,
+.primary:active,
+.secondary:active {
+  transform: translateY(1px);
+  transition-duration: 60ms;
+}
+
+.primary:active {
+  background: linear-gradient(180deg, #1d6af2 0%, #104fdc 100%);
+  box-shadow:
+    0 0 0 1px rgb(110 170 255 / 0.3) inset,
+    0 6px 18px -8px rgb(30 100 255 / 0.6);
+}
+
 .primary,
 .secondary {
   display: inline-flex;
@@ -168,11 +205,12 @@
   font-size: clamp(15px, 1.08vw, 18px);
   font-weight: 600;
   text-decoration: none;
-  transition: background var(--motion-fast) var(--ease-out), border-color var(--motion-fast) var(--ease-out), box-shadow var(--motion-base) var(--ease-out);
+  transition: background var(--motion-fast) var(--ease-out), border-color var(--motion-fast) var(--ease-out), box-shadow var(--motion-base) var(--ease-out), transform var(--motion-fast) var(--ease-out);
 }
 
 .primary {
-  border-radius: 18px;
+  /* Ciclo 06: pílula como todos os outros controles (era o único retângulo de 18 px). */
+  border-radius: 999px;
   color: #fff;
   background: linear-gradient(180deg, #2d7bff 0%, #1458f0 100%);
   box-shadow:
@@ -190,12 +228,13 @@
 .secondary {
   border-radius: 999px;
   color: #eef3fa;
-  border: 1.5px solid rgb(200 215 235 / 0.5);
-  background: rgb(6 12 24 / 0.3);
+  border: 1px solid rgb(200 215 235 / 0.45);
+  background: rgb(6 12 24 / 0.35);
 }
 
 .secondary:hover {
   border-color: rgb(220 232 250 / 0.85);
+  background: rgb(200 215 235 / 0.06);
 }
 
 .status {
@@ -212,12 +251,13 @@
   color: #c3cfdd;
 }
 
+/* Ciclo 06: estágio de desenvolvimento, não "online agora" — sem brilho, cor de marca (mint). */
 .dot {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
-  background: #2bd4a0;
-  box-shadow: 0 0 8px rgb(43 212 160 / 0.8);
+  background: var(--color-mint);
+  box-shadow: 0 0 0 3px rgb(123 227 203 / 0.12);
 }
 
 .trails {
@@ -273,7 +313,7 @@
   border: 1px solid rgb(110 140 190 / 0.22);
   background: rgb(8 16 32 / 0.42);
   backdrop-filter: blur(6px);
-  opacity: calc(1 - var(--hero-out, 0) * 2);
+  opacity: calc(1 - var(--hero-out, 0) * 1.5);
 }
 
 .band li {
