@@ -1,0 +1,686 @@
+/*
+ * ENT-003 — Entrelace 003 · L3 (canvas Claude Design, quadro 3a 1440 × 900; 390 × 844 e 360 × 640).
+ * Medidas do canvas convertidas em proporções da primeira tela. Exploração: nada aqui é token
+ * aprovado; cores e fontes ficam locais a esta rota (DS-001 segue pendente).
+ *
+ * Empilhamento SEM contexto próprio (nenhum z-index no .hero): arco de fallback e canvas fixo (z 0) atrás;
+ * h1 (z 1) → palco com o pôster (z 2) → contorno decorativo (z 3) → interface (z 4) → header (z 10).
+ */
+.hero {
+  --gut: clamp(20px, 3.9vw, 80px);
+  /* Altura útil da primeira tela (mesmos limites do Hero). */
+  --hh: clamp(640px, 100svh, 1100px);
+  /* Headline: 208 px a 1440 × 900 — pela largura ou pela altura, o que for menor. */
+  --fs: min(14.45vw, calc(var(--hh) * 0.231));
+  --ink: #f4f7fb;
+  --ice: #eaf7ff;
+  --label: #9cc0e0;
+  position: relative;
+  height: var(--hh);
+  overflow-x: clip;
+  font-family: var(--ent-sans), system-ui, sans-serif;
+  color: #eef3fa;
+}
+
+/* ---------- Header ---------- */
+.header {
+  position: absolute;
+  z-index: 10;
+  inset: 0 var(--gut) auto;
+  height: clamp(64px, 9.3svh, 96px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.wordmark {
+  font-family: var(--ent-display), system-ui, sans-serif;
+  font-weight: 600;
+  font-size: clamp(16px, 1.25vw, 22px);
+  letter-spacing: 0.26em;
+  color: var(--ink);
+  text-decoration: none;
+  padding: 8px 0;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: clamp(22px, 2.1vw, 36px);
+  font-size: clamp(14px, 0.98vw, 16px);
+  color: #c3cfdd;
+}
+
+/* Índice + filete que cresce da esquerda (canvas: "links com índice e filete que cresce"). */
+.navLink {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 10px 0;
+  text-decoration: none;
+  background: linear-gradient(currentColor, currentColor) 0 100% / 0% 1px no-repeat;
+  transition:
+    background-size 220ms var(--ease-out),
+    color 160ms var(--ease-out);
+}
+
+.navLink:hover,
+.navLink:focus-visible {
+  color: #fff;
+  background-size: 100% 1px;
+}
+
+.navIndex {
+  font-family: var(--ent-mono), ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 500;
+  color: #8ea3bf;
+}
+
+/* "Contato": contorno que fica sólido no hover (a regra do entrelace aplicada à interface). */
+.contact {
+  height: 40px;
+  padding: 0 16px;
+  display: inline-flex;
+  align-items: center;
+  box-shadow: inset 0 0 0 1px rgb(234 247 255 / 0.55);
+  color: var(--ink);
+  text-decoration: none;
+  transition:
+    background 200ms var(--ease-out),
+    color 200ms var(--ease-out);
+}
+
+.contact:hover,
+.contact:focus-visible {
+  background: var(--ice);
+  color: #06101f;
+}
+
+.menu {
+  display: none;
+}
+
+/* ---------- Headline ---------- */
+.titleWrap {
+  position: absolute;
+  left: 3.47vw;
+  top: 11.6%;
+  /* Sem z-index: h1 e contorno entram na pilha da página, um abaixo e outro acima do palco. */
+}
+
+.title,
+.titleLine {
+  margin: 0;
+  font-family: var(--ent-display), system-ui, sans-serif;
+  font-weight: 540;
+  font-size: var(--fs);
+  line-height: 0.86;
+  letter-spacing: -0.048em;
+  white-space: nowrap;
+  /* Saída pela rolagem: o motor lê a caixa e a opacidade reais deste elemento a cada quadro. */
+  opacity: calc(1 - var(--hero-out, 0) * 1.15);
+  transform: translate3d(0, calc(var(--hero-out, 0) * -48px), 0);
+}
+
+.title {
+  position: relative;
+  z-index: 1;
+  color: var(--ink);
+}
+
+/* Desktop: "Cada camada" / "importa." */
+.w3 {
+  display: block;
+}
+
+/* Contorno do entrelace sem 3D (pôster por cima do h1, este por cima do pôster). Decorativo. */
+.titleLine {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  user-select: none;
+  /* Só o filete: sobre a letra sólida ele desaparece no branco; sobre o pôster, desenha a letra.
+     (Halo e véu escureciam as letras sólidas — sem máscara não há como restringi-los à peça.) */
+  color: transparent;
+  -webkit-text-stroke: 1.5px var(--ice);
+}
+
+/* Arquitetura L3 em CSS para quando o 3D não está desenhando (pôster, sem WebGL, sem JS): os
+   valores do canvas 3a sobre a mesma caixa do palco. Some quando o motor assume (o L3 real é 3D). */
+.archFallback {
+  position: absolute;
+  /* Mesmo nível do canvas e antes dele no DOM (z negativo ficaria sob o fundo do body). */
+  z-index: 0;
+  left: max(31.6%, calc(var(--gut) + 392px));
+  right: 3.5%;
+  top: 16%;
+  height: 64%;
+  pointer-events: none;
+}
+
+.archFallback span {
+  position: absolute;
+  bottom: 7.5%;
+  left: 50%;
+  border-radius: 999px 999px 0 0;
+  border: 1px solid rgb(165 222 255 / var(--a));
+  border-bottom: 0;
+}
+
+.archFallback span:nth-child(1) { --a: 0.4; width: 65%; height: 113%; transform: translateX(-45%); }
+.archFallback span:nth-child(2) { --a: 0.4; width: 70%; height: 117%; transform: translateX(-44%); }
+.archFallback span:nth-child(3) { --a: 0.3; width: 74%; height: 121%; transform: translateX(-43%); }
+.archFallback span:nth-child(4) { --a: 0.2; width: 79%; height: 125%; transform: translateX(-42%); }
+.archFallback span:nth-child(5) { --a: 0.1; width: 84%; height: 129%; transform: translateX(-41%); }
+.archFallback span:nth-child(6) {
+  width: 60%;
+  height: 109%;
+  transform: translateX(-46%);
+  border: 0;
+  background: linear-gradient(to top, #f0faff 0%, rgb(150 222 255) 11%, rgb(62 142 255) 32%, rgb(28 74 196) 58%, rgb(12 34 98) 100%);
+  box-shadow: 0 0 70px rgb(60 150 255 / 0.35);
+}
+
+.hero[data-entrelace="live"] .archFallback {
+  display: none;
+}
+
+/* 3D vivo: o motor desenha a headline; o DOM fica transparente (selecionável) e só reassume a
+   cor no complemento da opacidade do canvas (--ent-dom, escrito pelo motor). */
+.hero[data-entrelace="live"] .title {
+  color: rgb(244 247 251 / var(--ent-dom, 1));
+}
+
+.hero[data-entrelace="live"] .titleLine {
+  visibility: hidden;
+}
+
+/* ---------- Palco (escultura real) ---------- */
+.stage {
+  position: absolute;
+  z-index: 2;
+  /* Nunca sob a coluna institucional (texto + CTAs). */
+  left: max(31.6%, calc(var(--gut) + 392px));
+  right: 3.5%;
+  top: 16%;
+  height: 64%;
+}
+
+/* ---------- Coluna institucional ---------- */
+.copy {
+  position: absolute;
+  z-index: 4;
+  left: var(--gut);
+  bottom: 21.6%;
+  width: 372px;
+  display: flex;
+  flex-direction: column;
+  opacity: calc(1 - var(--hero-out, 0) * 1.15);
+  transform: translate3d(0, calc(var(--hero-out, 0) * -48px), 0);
+}
+
+.eyebrow {
+  margin: 0;
+  font-family: var(--ent-mono), ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--label);
+}
+
+.lede {
+  margin: 14px 0 0;
+  font-size: 17px;
+  line-height: 1.5;
+  color: #c8d3e0;
+  text-wrap: pretty;
+}
+
+.actions {
+  margin-top: 28px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+/* CTA principal: placa clara que termina em lamelas (vindas da escultura). A área clicável é a
+   placa inteira + lamelas; o texto nunca fica sobre as lamelas. */
+.primary {
+  display: inline-flex;
+  align-items: stretch;
+  height: 54px;
+  color: #06101f;
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+  text-decoration: none;
+  transition: filter 160ms var(--ease-out), transform 60ms var(--ease-out);
+}
+
+.primaryLabel {
+  display: flex;
+  align-items: center;
+  padding: 0 20px 0 22px;
+  background: #eef7ff;
+}
+
+.lamellae {
+  width: 44px;
+  background: linear-gradient(90deg, #eef7ff, rgb(60 198 230 / 0.55) 70%, rgb(60 198 230 / 0));
+  -webkit-mask-image: repeating-linear-gradient(180deg, #000 0 10px, transparent 10px 14px);
+  mask-image: repeating-linear-gradient(180deg, #000 0 10px, transparent 10px 14px);
+  transition: width 220ms var(--ease-out);
+}
+
+.primary:hover {
+  filter: brightness(1.06);
+}
+
+.primary:hover .lamellae {
+  width: 52px;
+}
+
+.primary:active {
+  transform: translateY(1px);
+}
+
+.primary:focus-visible {
+  outline-offset: 4px;
+}
+
+.secondary {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  font-size: 15px;
+  font-weight: 500;
+  color: #dbe5f2;
+  text-decoration: underline;
+  text-underline-offset: 7px;
+  text-decoration-color: rgb(219 229 242 / 0.4);
+  white-space: nowrap;
+  transition: text-decoration-color 160ms var(--ease-out), color 160ms var(--ease-out);
+}
+
+.secondary:hover {
+  color: #fff;
+  text-decoration-color: currentColor;
+}
+
+/* ---------- Etiqueta de obra do produto ---------- */
+.product {
+  position: absolute;
+  z-index: 4;
+  right: var(--gut);
+  top: 83.6%;
+  width: min(330px, 26vw);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 1px solid rgb(234 247 255 / 0.4);
+  opacity: calc(1 - var(--hero-out, 0) * 1.5);
+}
+
+.product p {
+  margin: 0;
+}
+
+/* Véu suave (sem caixa): o reflexo claro do piso passa por trás da etiqueta. */
+.product::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: -28px -40px -24px;
+  pointer-events: none;
+  background: radial-gradient(60% 60% at 50% 50%, rgb(2 6 16 / 0.55), transparent 75%);
+}
+
+.productMeta {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--ent-mono), ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--label);
+}
+
+/* O nome em contorno acompanha o estágio escrito por extenso — nunca o substitui. */
+.productName {
+  font-family: var(--ent-display), system-ui, sans-serif;
+  font-weight: 540;
+  font-size: clamp(32px, 2.8vw, 46px);
+  line-height: 1;
+  letter-spacing: -0.035em;
+  color: rgb(205 235 255 / 0.06);
+  -webkit-text-stroke: 1px var(--ice);
+}
+
+.productStage {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: #e3eaf3;
+}
+
+.ring {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px var(--color-mint);
+}
+
+/* ---------- Rodapé da tela: índice + controle de movimento ---------- */
+.foot {
+  position: absolute;
+  z-index: 4;
+  left: var(--gut);
+  bottom: 30px;
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  opacity: calc(1 - var(--hero-out, 0) * 3);
+}
+
+.index {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 36px;
+  font-family: var(--ent-mono), ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #a3b1c4;
+  text-decoration: none;
+}
+
+.index:hover {
+  color: #fff;
+}
+
+.indexMark {
+  width: 9px;
+  height: 22px;
+  background:
+    linear-gradient(currentColor, currentColor) 0 0 / 1px 100% no-repeat,
+    linear-gradient(currentColor, currentColor) 4px 0 / 1px 70% no-repeat,
+    linear-gradient(currentColor, currentColor) 8px 0 / 1px 40% no-repeat;
+}
+
+/* O controle real de pausa (HeroStage) é montado aqui, no fluxo do rodapé. */
+.controlsSlot {
+  --controls-position: static;
+  display: flex;
+  min-height: 36px;
+}
+
+.controlsSlot button {
+  border-radius: 0;
+  border: 0;
+  box-shadow: inset 0 0 0 1px rgb(234 247 255 / 0.3);
+  background: rgb(2 6 16 / 0.55);
+  color: #d5dfea;
+  font-family: var(--ent-sans), system-ui, sans-serif;
+}
+
+.controlsSlot button:hover {
+  box-shadow: inset 0 0 0 1px rgb(234 247 255 / 0.75);
+}
+
+.controlsSlot button[aria-pressed="true"] {
+  box-shadow: inset 0 0 0 1px rgb(60 198 230 / 0.7);
+}
+
+/* ---------- 1024–1279: coluna institucional mais justa; a peça sobe para cruzar a frase ---------- */
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .archFallback {
+    left: max(31.6%, calc(var(--gut) + 326px));
+    right: 1.5%;
+    top: 10%;
+    height: 66%;
+  }
+  .copy {
+    width: 318px;
+    bottom: 24%;
+  }
+  .lede {
+    font-size: 15px;
+  }
+  .actions {
+    gap: 18px;
+  }
+  .stage {
+    left: max(31.6%, calc(var(--gut) + 326px));
+    right: 1.5%;
+    top: 10%;
+    height: 66%;
+  }
+}
+
+/* ---------- Empilhado (< 1024): composição própria do celular ---------- */
+@media (max-width: 1023px) {
+  .hero {
+    --fs: 24vw;
+    height: auto;
+    padding: 0 var(--gut) 48px;
+    display: flex;
+    flex-direction: column;
+  }
+  .header {
+    position: relative;
+    inset: auto;
+    height: 64px;
+  }
+  .nav {
+    display: none;
+  }
+  .menu {
+    display: block;
+    position: relative;
+  }
+  .menuButton {
+    list-style: none;
+    display: inline-flex;
+    align-items: center;
+    height: 44px;
+    padding: 0 14px;
+    box-shadow: inset 0 0 0 1px rgb(234 247 255 / 0.45);
+    font-size: 14px;
+    color: var(--ink);
+    cursor: pointer;
+  }
+  .menuButton::-webkit-details-marker {
+    display: none;
+  }
+  .menu[open] .menuButton {
+    background: var(--ice);
+    color: #06101f;
+  }
+  .menuPanel {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 8px);
+    min-width: 200px;
+    display: flex;
+    flex-direction: column;
+    padding: 8px 0;
+    background: rgb(4 10 24 / 0.94);
+    box-shadow: inset 0 0 0 1px rgb(234 247 255 / 0.2);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+  }
+  .menuPanel a {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    min-height: 44px;
+    padding: 12px 18px;
+    font-size: 16px;
+    text-decoration: none;
+  }
+  .menuPanel span {
+    font-family: var(--ent-mono), ui-monospace, monospace;
+    font-size: 10px;
+    color: #8ea3bf;
+  }
+  .titleWrap {
+    position: relative;
+    left: auto;
+    top: auto;
+    margin-top: clamp(12px, 3svh, 28px);
+  }
+  /* Três linhas: "Cada" sempre livre, o entrelace acontece em "camada" e "importa.". */
+  .title {
+    /* Celular: letras no meio da profundidade da peça — o lóbulo de trás (escuro) passa atrás da
+       frase e só as fitas da frente a cortam; a inicial de "importa." fica livre. Lido pelo motor. */
+    --ent-plane: meio;
+  }
+  .w1,
+  .w2,
+  .w3 {
+    display: block;
+  }
+  .title,
+  .titleLine {
+    /* O conteúdo rola normalmente no empilhado (a transição só começa depois do hero). */
+    opacity: 1;
+    transform: none;
+  }
+  /* A peça sobe sob as duas últimas linhas; cortada à esquerda para a figura e o arco caberem. */
+  .stage {
+    position: relative;
+    left: auto;
+    right: auto;
+    top: auto;
+    height: 72vw;
+    margin: calc(var(--fs) * -1.1) calc(var(--gut) * -1) 0 calc(var(--gut) * -1 - 30vw);
+  }
+  .copy {
+    position: relative;
+    left: auto;
+    bottom: auto;
+    width: auto;
+    max-width: 520px;
+    padding-top: 18px;
+    opacity: 1;
+    transform: none;
+  }
+  /* O reflexo do piso continua sob o texto: véu horizontal suave (sem caixa) que esmaece à direita. */
+  .copy::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    inset: -8px calc(var(--gut) * -1) -24px;
+    pointer-events: none;
+    background: linear-gradient(180deg, transparent, rgb(2 6 16 / 0.55) 18%, rgb(2 6 16 / 0.55) 75%, transparent);
+    -webkit-mask-image: linear-gradient(90deg, #000 60%, transparent);
+    mask-image: linear-gradient(90deg, #000 60%, transparent);
+  }
+  .lede {
+    font-size: 16px;
+  }
+  .actions {
+    margin-top: 22px;
+    flex-wrap: wrap;
+    gap: 14px 24px;
+  }
+  .product {
+    position: relative;
+    right: auto;
+    top: auto;
+    width: auto;
+    max-width: 360px;
+    margin-top: 44px;
+    opacity: 1;
+  }
+  .foot {
+    position: static;
+    opacity: 1;
+  }
+  .index,
+  .archFallback {
+    display: none;
+  }
+  /* Pausa: canto superior direito, logo abaixo do Menu (celular). */
+  .controlsSlot {
+    position: absolute;
+    z-index: 10;
+    right: var(--gut);
+    top: 72px;
+  }
+}
+
+/* Celular baixo (360 × 640): o CTA principal precisa caber na primeira dobra. */
+@media (max-width: 767px) and (max-height: 700px) {
+  .hero {
+    --fs: 21.5vw;
+  }
+  .titleWrap {
+    margin-top: 8px;
+  }
+  .eyebrow {
+    display: none;
+  }
+  .copy {
+    padding-top: 10px;
+  }
+  .lede {
+    margin-top: 0;
+    font-size: 15px;
+    line-height: 1.45;
+  }
+  .actions {
+    margin-top: 14px;
+  }
+  .primary {
+    height: 50px;
+  }
+}
+
+/* Tablet (768–1023): duas linhas, peça menos cortada. */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .hero {
+    --fs: 15vw;
+  }
+  .w1,
+  .w2 {
+    display: inline;
+  }
+  .stage {
+    height: 66vw;
+    margin: calc(var(--fs) * -0.7) calc(var(--gut) * -1) 0 calc(var(--gut) * -1 - 14vw);
+  }
+}
+
+@media (max-width: 400px) {
+  .primary {
+    flex: 1 1 100%;
+  }
+  .primaryLabel {
+    flex: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .title,
+  .titleLine,
+  .copy {
+    opacity: 1;
+    transform: none;
+  }
+  .product,
+  .foot {
+    opacity: 1;
+  }
+  .lamellae {
+    transition: none;
+  }
+}

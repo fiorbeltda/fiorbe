@@ -4,6 +4,7 @@ import Image from "next/image";
 // Import estático: a URL leva o hash do conteúdo, então um poster novo nunca é servido do cache antigo.
 import poster from "@/assets/hero-poster.png";
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { EngineStats, HeroEngine } from "@/three/engine";
 import styles from "./HeroStage.module.css";
 import { useReducedMotion } from "./useReducedMotion";
@@ -15,7 +16,17 @@ type Status = "poster" | "live" | "fallback";
  * motor 3D (chunk separado, depois do primeiro paint). Se WebGL falhar
  * ou o contexto for perdido, o poster continua — o hero nunca fica vazio.
  */
-export function HeroStage({ className }: { className?: string }) {
+export function HeroStage({
+  className,
+  entrelace,
+  controlsSlot,
+}: {
+  className?: string;
+  /** ENT-003: ids da headline e do elemento que recebe data-entrelace (Entrelace 003). */
+  entrelace?: { headlineId: string; hostId: string };
+  /** id de um elemento onde o controle de movimento é montado (portal); ausente = dentro do palco. */
+  controlsSlot?: string;
+}) {
   const stageRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef<HeroEngine | null>(null);
@@ -23,6 +34,10 @@ export function HeroStage({ className }: { className?: string }) {
   const [paused, setPaused] = useState(false);
   const reduced = useReducedMotion();
   const [stats, setStats] = useState<EngineStats | null>(null);
+  const entHeadline = entrelace?.headlineId;
+  const entHost = entrelace?.hostId;
+  // Os controles só existem com o 3D vivo (sempre no cliente): o slot pode ser lido no render.
+  const slot = status === "live" && controlsSlot ? document.getElementById(controlsSlot) : null;
 
   useEffect(() => {
     const reducedMotion = reduced;
@@ -41,6 +56,8 @@ export function HeroStage({ className }: { className?: string }) {
         const { createHeroEngine, preloadSculpture } = await import("@/three/engine");
         const sculpture = await preloadSculpture();
         if (cancelled) return;
+        const headline = entHeadline ? document.getElementById(entHeadline) : null;
+        const host = entHost ? document.getElementById(entHost) : null;
         engineRef.current = createHeroEngine({
           canvas,
           stage,
@@ -50,6 +67,7 @@ export function HeroStage({ className }: { className?: string }) {
           onContextLost: () => setStatus("fallback"),
           onStats: setStats,
           sculpture,
+          entrelace: headline && host ? { headline, host } : null,
         });
       } catch (error) {
         console.warn("[FIORBE] WebGL indisponível, mantendo o poster.", error);
@@ -70,14 +88,34 @@ export function HeroStage({ className }: { className?: string }) {
       engineRef.current?.dispose();
       engineRef.current = null;
     };
-  }, [reduced]);
+  }, [reduced, entHeadline, entHost]);
 
   useEffect(() => {
     engineRef.current?.setPaused(paused);
   }, [paused]);
 
+  const controls = status === "live" && !reduced && (
+    <div className={styles.controls}>
+      <span className={styles.hint}>Mova o cursor ou arraste a escultura</span>
+      <button type="button" className={styles.pause} aria-pressed={paused} onClick={() => setPaused((p) => !p)}>
+        {paused ? (
+          <svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+            <path d="M3 1.8v8.4L10 6z" />
+          </svg>
+        ) : (
+          <svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+            <rect x="2" y="1.5" width="2.5" height="9" rx="1" />
+            <rect x="7.5" y="1.5" width="2.5" height="9" rx="1" />
+          </svg>
+        )}
+        {paused ? "Retomar movimento" : "Pausar movimento"}
+      </button>
+    </div>
+  );
+
   return (
     <>
+      {slot && controls && createPortal(controls, slot)}
       <canvas ref={canvasRef} className={styles.canvas} aria-hidden="true" data-status={status} />
       <div ref={stageRef} className={`${styles.stage} ${className ?? ""}`} data-status={status} aria-hidden={status === "live" ? undefined : true}>
         <Image
@@ -92,24 +130,7 @@ export function HeroStage({ className }: { className?: string }) {
           fetchPriority="high"
           draggable={false}
         />
-        {status === "live" && !reduced && (
-          <div className={styles.controls}>
-            <span className={styles.hint}>Mova o cursor ou arraste a escultura</span>
-            <button type="button" className={styles.pause} aria-pressed={paused} onClick={() => setPaused((p) => !p)}>
-              {paused ? (
-                <svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
-                  <path d="M3 1.8v8.4L10 6z" />
-                </svg>
-              ) : (
-                <svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
-                  <rect x="2" y="1.5" width="2.5" height="9" rx="1" />
-                  <rect x="7.5" y="1.5" width="2.5" height="9" rx="1" />
-                </svg>
-              )}
-              {paused ? "Retomar movimento" : "Pausar movimento"}
-            </button>
-          </div>
-        )}
+        {!slot && controls}
       </div>
       {stats && (
         <output className={styles.debug}>

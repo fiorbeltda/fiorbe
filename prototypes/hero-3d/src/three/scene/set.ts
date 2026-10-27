@@ -22,6 +22,7 @@ import {
 } from "three";
 import { createFigureRig } from "../figure/figureRig";
 import { FigureMotion } from "../figure/figureMotion";
+import { createArchL3 } from "./archL3";
 import { CORE_X, createBacklight } from "./backlight";
 import { createCinematicFloor, type CinematicFloor } from "./floor";
 
@@ -52,6 +53,8 @@ export interface SetOptions {
   figureC03?: boolean;
   /** Arquitetura de luz do Ciclo 05. */
   lightC05?: boolean;
+  /** ENT-003: arquitetura luminosa L3 (arco com cinco molduras e planos laterais), somada ao cenário. */
+  archL3?: boolean;
 }
 
 export interface SculptureSet {
@@ -164,6 +167,13 @@ export function createSculptureSet(opts: SetOptions, reflectionSource: { geometr
   disposables.push(backlight);
   backlight.fadeables.forEach((material) => fadeables.push({ material, base: 1 }));
   group.add(backlight.group);
+  // ENT-003: módulo independente; sem a flag, nada muda.
+  const arch = opts.archL3 ? createArchL3({ floorY: F, bounds, reducedMotion: opts.reducedMotion }) : null;
+  if (arch) {
+    disposables.push(arch);
+    arch.fadeables.forEach((material) => fadeables.push({ material, base: 1 }));
+    group.add(arch.group);
+  }
   const glowGeo = new PlaneGeometry(1, 1);
   disposables.push(glowGeo);
 
@@ -280,7 +290,7 @@ export function createSculptureSet(opts: SetOptions, reflectionSource: { geometr
     if (opts.reflections) {
       if (reflection) floor.reflScene.add(reflection);
       if (figureReflection) floor.reflScene.add(figureReflection);
-      for (const src of backlight.mirrorSources) {
+      for (const src of [...backlight.mirrorSources, ...(arch?.mirrorSources ?? [])]) {
         const dst = new Mesh(src.geometry, src.material);
         dst.matrixAutoUpdate = false;
         dst.matrixWorldAutoUpdate = false;

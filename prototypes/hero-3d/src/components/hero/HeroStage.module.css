@@ -51,7 +51,8 @@
 
 /* Posição definida por quem monta o palco (--controls-*): alinhada à grade, longe das bordas. */
 .controls {
-  position: absolute;
+  /* ENT-003: montado num slot do layout (portal), entra no fluxo dele. */
+  position: var(--controls-position, absolute);
   right: var(--controls-right, 0);
   top: var(--controls-top, -4px);
   z-index: 1;

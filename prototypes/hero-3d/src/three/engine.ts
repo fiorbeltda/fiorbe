@@ -36,6 +36,7 @@ import { InteractionController } from "./motion/interaction";
 import { createSpring, damp, stepSpring } from "./motion/spring";
 import { ScrollTimeline } from "./motion/scrollTimeline";
 import { AdaptiveDpr, detectTier, profileFor, type Tier } from "./quality/quality";
+import { createHeadlineLayer } from "./entrelace/headlineLayer";
 
 export interface EngineOptions {
   canvas: HTMLCanvasElement;
@@ -49,6 +50,11 @@ export interface EngineOptions {
   onStats?: (stats: EngineStats) => void;
   /** Malha da escultura vinda do Blender (ver preloadSculpture); ausente = geometria procedural. */
   sculpture?: BufferGeometry | null;
+  /**
+   * ENT-003 (Entrelace): a headline real é redesenhada dentro do render, atrás da escultura, e o
+   * cenário ganha a arquitetura L3. Ausente = motor exatamente como antes.
+   */
+  entrelace?: { headline: HTMLElement; host: HTMLElement } | null;
 }
 
 /**
@@ -254,6 +260,8 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
       figureC03: params.get("figura") === "c03" || (params.get("figura") !== "atual" && formParam === "blender2-v23"),
       // Ciclo 05 (arquitetura e luz): idem — padrão na V2.3; ?luz=c05 liga, ?luz=atual desliga.
       lightC05: params.get("luz") === "c05" || (params.get("luz") !== "atual" && formParam === "blender2-v23"),
+      // ENT-003: arco L3 só no Entrelace; ?arco=0 compara sem ele.
+      archL3: Boolean(opts.entrelace) && params.get("arco") !== "0",
     },
     reflectionGeometry ? { geometry: reflectionGeometry, material } : null,
   );
@@ -264,6 +272,21 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
   // Ambiente v1: reflexos na cena principal. Cinematográfico: já estão na cena do reflexo do piso.
   if (set.reflection && !set.reflection.parent) scene.add(set.reflection);
   if (set.figureReflection && !set.figureReflection.parent) scene.add(set.figureReflection);
+
+  // ENT-003: headline entrelaçada (planos de tela no render principal; não mexe em nada acima).
+  // ?entrelace=0 desliga só a headline no 3D (medição de custo); o DOM volta a ser o texto.
+  const entrelace = opts.entrelace && params.get("entrelace") !== "0"
+    ? createHeadlineLayer({
+        el: opts.entrelace.headline,
+        host: opts.entrelace.host,
+        canvas,
+        sculpture: mesh,
+        shadow: profile.tier !== "low" && params.get("sombra") !== "0",
+        // ?entrelace=fundo|meio força para comparação; sem ele, a composição decide (CSS).
+        plane: params.get("entrelace") === "meio" ? "meio" : params.get("entrelace") === "fundo" ? "fundo" : "auto",
+      })
+    : null;
+  entrelace?.meshes.forEach((m) => scene.add(m));
 
   const interaction = new InteractionController(
     stage,
@@ -384,7 +407,10 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
 
     const canvasOpacity = reducedMotion ? 1 - Math.min(1, t.progress * 2.5) : 1 - t.handoff;
     canvas.style.opacity = readySent ? String(canvasOpacity) : "0";
-    if (canvasOpacity <= 0.001 && readySent) return; // nada visível: não renderiza
+    if (canvasOpacity <= 0.001 && readySent) {
+      entrelace?.sync(camera); // o DOM reassume a headline
+      return; // nada visível: não renderiza
+    }
 
     if (!paused && !reducedMotion) idleTime += dt;
     uniforms.uTime.value = idleTime;
@@ -514,6 +540,11 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
       trailsDirty = false;
     }
 
+    // Mesmo quadro, mesmas matrizes: o recorte da headline nunca atrasa em relação à peça.
+    if (entrelace) {
+      entrelace.sync(camera);
+      entrelace.renderMask(renderer, camera);
+    }
     set.renderEnvironment(renderer, camera);
     renderer.render(scene, camera);
 
@@ -535,6 +566,7 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
 
   const onResize = () => {
     layout();
+    entrelace?.layout();
     const nextCompact = isCompact();
     // Sempre: dentro do layout empilhado a faixa com reflexo também depende da largura.
     set.setCompact(nextCompact);
@@ -561,6 +593,7 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
     e.preventDefault();
     lost = true;
     cancelAnimationFrame(raf);
+    entrelace?.detach();
     opts.onContextLost();
   };
   canvas.addEventListener("webglcontextlost", onLost);
@@ -631,6 +664,7 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
         const t0 = performance.now();
         for (let i = 0; i < frames; i++) {
           uniforms.uTime.value += 1 / 60;
+          entrelace?.renderMask(renderer, camera);
           set.renderEnvironment(renderer, camera);
           renderer.render(scene, camera);
           sync();
@@ -659,6 +693,7 @@ export function createHeroEngine(opts: EngineOptions): HeroEngine {
       document.removeEventListener("visibilitychange", onVisibility);
       canvas.removeEventListener("webglcontextlost", onLost);
       interaction.dispose();
+      entrelace?.dispose();
       geometry.dispose();
       if (reflectionGeometry !== geometry) reflectionGeometry?.dispose();
       set.dispose();
