@@ -537,12 +537,8 @@
     top: auto;
     margin-top: clamp(12px, 3svh, 28px);
   }
-  /* Três linhas: "Cada" sempre livre, o entrelace acontece em "camada" e "importa.". */
-  .title {
-    /* Celular: letras no meio da profundidade da peça — o lóbulo de trás (escuro) passa atrás da
-       frase e só as fitas da frente a cortam; a inicial de "importa." fica livre. Lido pelo motor. */
-    --ent-plane: meio;
-  }
+  /* Três linhas: "Cada" e "camada" livres; o entrelace acontece na base de "importa." (as letras
+     ficam atrás da peça, como no desktop — com o plano no meio as lamelas finas picavam a palavra). */
   .w1,
   .w2,
   .w3 {
@@ -554,14 +550,26 @@
     opacity: 1;
     transform: none;
   }
-  /* A peça sobe sob as duas últimas linhas; cortada à esquerda para a figura e o arco caberem. */
+  /* A peça encosta na base da última linha; cortada à esquerda para a figura e o arco caberem. */
   .stage {
     position: relative;
     left: auto;
     right: auto;
     top: auto;
     height: 72vw;
-    margin: calc(var(--fs) * -1.1) calc(var(--gut) * -1) 0 calc(var(--gut) * -1 - 30vw);
+    margin: calc(var(--fs) * -0.62) calc(var(--gut) * -1) 0 calc(var(--gut) * -1 - 30vw);
+  }
+  /* No empilhado o motor não desenha o reflexo do piso: a luz do arco terminava num corte reto no
+     horizonte. Transição suave para o chão escuro (só cor; não intercepta toque). */
+  .stage::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: calc(7.5% + 44px);
+    pointer-events: none;
+    background: linear-gradient(180deg, rgb(2 6 16 / 0), rgb(2 6 16 / 0.55) 62%, rgb(2 6 16 / 0.85));
   }
   .copy {
     position: relative;
