@@ -3,19 +3,19 @@
 > **Fonte canônica do status.** Atualizar ao fim de TODA tarefa: painel, mapa de componentes e ficha da tarefa (`docs/fiorbe/tarefas/`). Sempre registrar qual é o **próximo objetivo**.
 > Implementado ≠ aprovado. Commit ≠ aprovação. Não usar porcentagens de progresso.
 
-**Última atualização:** 26/10/2026
+**Última atualização:** 27/10/2026
 
 ## Painel
 
 | Campo | Situação |
 |---|---|
 | **Objetivo principal** | Concluir a landing page institucional da FIORBE (`/` e `/produtos/motor-fiscal`) no nível de qualidade definido em `CLAUDE.md`. |
-| **Etapa atual** | Hero Experience **consolidado** no protótipo `E:\dev\fiorbe\prototypes\hero-3d` (HERO-FINAL-001, 26/10/2026). Fase experimental encerrada. Próxima etapa: DS-001 (identidade visual) — só com autorização. |
-| **Componentes em desenvolvimento** | `HERO-003` — Cenário: ambiente cinematográfico V2, padrão em todas as formas, anterior em `?ambiente=v1` ([ficha](tarefas/HERO-003.md)) · `RIB-001` — Escultura viva (referência artística: Blender V2.3, `?forma=blender2-v23`; variante experimental V2.3r em `?forma=blender2-v23r`; padrão segue forma C) ([ficha](tarefas/RIB-001.md)) · `FIG-001` — Figura humana (v1, aguardando revisão) ([ficha](tarefas/FIG-001.md)) |
+| **Etapa atual** | **DS-001 — Identidade Visual, sub-etapa DS-001A (exploração editorial da primeira tela).** Três direções (A, B, C) implementadas em `/editorial/a|b|c` e enviadas ao GitHub (commit `bc41d0c`, branch `exp/ds001a-editorial`); **aguardando revisão visual e decisão dos fundadores** — nenhuma direção escolhida. Hero Experience segue consolidado (HERO-FINAL-001, 26/10/2026). |
+| **Componentes em desenvolvimento** | `HERO-003` — Cenário: ambiente cinematográfico V2, padrão em todas as formas, anterior em `?ambiente=v1` ([ficha](tarefas/HERO-003.md)) · `RIB-001` — Escultura viva (referência artística: Blender V2.3, `?forma=blender2-v23`; V2.3 refinada é a forma padrão do protótipo desde HERO-FINAL-001; C, V2.2 e V2.3r preservadas por `?forma=`) ([ficha](tarefas/RIB-001.md)) · `FIG-001` — Figura humana (v1, aguardando revisão) ([ficha](tarefas/FIG-001.md)) |
 | **Versão-base do Hero** | **Blender V2.3 refinada é a forma padrão do protótipo** (`/` = `?forma=blender2-v23`), com os acabamentos dos Ciclos 01–06. Forma C, V2.2 e V2.3r preservadas por `?forma=c`, `?forma=blender2-v22`, `?forma=blender2-v23r`. Pôster regenerado da V2.3. Decisão de consolidação autorizada pelo usuário; não converte os Ciclos 04 e 05 em aprovações individuais. |
-| **Tarefa ativa** | Nenhuma em execução. Estado dos ciclos: 01, 02, 03 e 06 aprovados formalmente; 04 e 05 com avaliação artística positiva e autorização para continuar (sem aprovação formal individual); validação integrada concluída sem bloqueadores; PERF-001 concluído (7 amostras descartadas). |
-| **Próximo objetivo** | **DS-001 — Consolidação da Identidade Visual** (marca e símbolo, lettering/wordmark, tipografia, paleta e hierarquia de cores, espaçamentos, botões, ícones, princípios de animação, tokens). O Hero é referência artística, não decisão de marca. DS-002, HERO-006 e seções da landing seguem bloqueados até decisão. |
-| **Branch / último checkpoint** | `exp/hero-fidelidade` · checkpoint de consolidação HERO-FINAL-001 **enviado ao GitHub** (push normal, avanço linear) em 26/10/2026 — ver Log. `origin/main` em `4d9f930` (merges dos PRs #1–#3); merge na `main` não feito e continua exigindo autorização. |
+| **Tarefa ativa** | **DS-001A — revisão visual das direções A, B e C** (preparação de evidências: folhas Atual × A × B × C em 1440×900 e 390×844). Sem redesign, sem escolha automática. Hero — estado dos ciclos: 01, 02, 03 e 06 aprovados formalmente; 04 e 05 com avaliação artística positiva e autorização para continuar (sem aprovação formal individual); validação integrada concluída sem bloqueadores; PERF-001 concluído (7 amostras descartadas). |
+| **Próximo objetivo** | **Fundadores escolherem uma direção editorial (A, B ou C) a partir das folhas comparativas do DS-001A.** Sequência acordada: corrigir status → comparar A, B e C → escolher → refinar a direção escolhida → consolidar o Design System (DS-001: marca e símbolo, lettering/wordmark, tipografia, paleta, espaçamentos, botões, ícones, animação, tokens). O Hero é referência artística, não decisão de marca. DS-002, HERO-006 e seções da landing seguem bloqueados até decisão. |
+| **Branch / último checkpoint** | `exp/ds001a-editorial` (criada a partir de `exp/hero-fidelidade`) · último commit `bc41d0c` (DS-001A) **enviado ao GitHub**, sincronizado com `origin/exp/ds001a-editorial`. `exp/hero-fidelidade` em `c9f1672` (HERO-FINAL-001), também no GitHub. `origin/main` em `4d9f930` (merges dos PRs #1–#3); merge na `main` não feito e continua exigindo autorização. |
 | **Servidor local** | `npm run dev` em `E:\dev\fiorbe\prototypes\hero-3d` → http://localhost:3100 (`?debug` mostra fps/qualidade) |
 
 ### Aprovado pelo usuário
@@ -47,17 +47,17 @@
 
 ## Ciclos de refinamento do Hero
 
-Iniciados em 26/10/2026. Referência artística: Blender V2.3. Padrão do protótipo: forma C. **Nenhuma etapa visual foi formalmente aprovada até aqui.**
+Iniciados em 26/10/2026. Referência artística: Blender V2.3. Padrão do protótipo: forma C durante os ciclos; **V2.3 refinada passou a ser o padrão em HERO-FINAL-001**. Aprovações formais: Ciclos 01, 02, 03 e 06.
 
 | Ciclo | Tema | Situação |
 |---|---|---|
 | 01 | Composição e hierarquia visual | **Aprovado pelo usuário em 26/10/2026** (commits `d3f8142`, `ebf490c`, `2562713`; registro técnico em `HERO_PROTOTIPO.md`, "Ciclo 01") |
 | 02 | Piso e reflexos cinematográficos — highlights excessivos, reflexos artificiais, roughness, distribuição de umidade, textura de concreto, integração | **Aprovado pelo usuário em 26/10/2026** (commit `b05d462`; ficha `tarefas/HERO-003.md`, seção "Ciclo 02") |
 | 03 | Figura humana — anatomia aparente, silhueta, postura, animação, iluminação, contato dos pés, sombra e reflexo | **Aprovado pelo usuário em 26/10/2026** (commit `6e6f3df`; ficha `tarefas/FIG-001.md`, seção "Ciclo 03") |
-| 04 | Escultura metálica — materialidade, microestrias, bordas, normais, separação das lâminas, redemoinho, metal premium, preservando a V2.3 | **Implementado e tecnicamente validado** (26/10/2026; ficha `tarefas/RIB-001.md`, seção "Ciclo 04"). Usuário autorizou avançar para o Ciclo 05 **sem revisão visual independente das capturas** — autorização para prosseguir, não aprovação visual |
-| 05 | Arquitetura e iluminação — colunas luminosas, profundidade, atmosfera, contraluz, gradação cromática, coesão cinematográfica | **Implementado; aguardando revisão artística** (26/10/2026; ficha `tarefas/HERO-003.md`, seção "Ciclo 05") |
+| 04 | Escultura metálica — materialidade, microestrias, bordas, normais, separação das lâminas, redemoinho, metal premium, preservando a V2.3 | **Implementado e tecnicamente validado** (26/10/2026; ficha `tarefas/RIB-001.md`, seção "Ciclo 04"). Avaliação artística positiva do usuário na revisão conjunta — **sem aprovação formal individual** |
+| 05 | Arquitetura e iluminação — colunas luminosas, profundidade, atmosfera, contraluz, gradação cromática, coesão cinematográfica | **Implementado** (26/10/2026; ficha `tarefas/HERO-003.md`, seção "Ciclo 05"). Avaliação artística positiva do usuário — **sem aprovação formal individual** |
 | 06 | Interface e microinterações — wordmark, tipografia, navbar, CTAs, badges, controles, microanimações, transição para a próxima seção | **Aprovado pelo usuário em 26/10/2026** (commit `40c7b58`; registro em `HERO_PROTOTIPO.md`, "Ciclo 06") |
-| — | Validação final do Hero — composição, responsividade, acessibilidade, interações, desempenho, comparação com a referência original | **Executada em 26/10/2026; aguardando decisão dos fundadores** (registro em `HERO_PROTOTIPO.md`, "Validação final integrada") |
+| — | Validação final do Hero — composição, responsividade, acessibilidade, interações, desempenho, comparação com a referência original | **Executada em 26/10/2026, sem bloqueadores**; consolidação (HERO-FINAL-001) autorizada pelo usuário (registro em `HERO_PROTOTIPO.md`, "Validação final integrada") |
 
 Depois da aprovação do Hero: demais seções da landing. Cada ciclo só começa com autorização.
 
@@ -70,9 +70,9 @@ Legenda — **Implementação:** Não iniciado · Em andamento · Implementado �
 | Área | ID | Componente | Etapa do plano | Implementação | Aprovação | Ficha / registro |
 |---|---|---|---|---|---|---|
 | Projeto | PRJ-00 | Auditoria e preparação | 00 | Implementado | **Aprovado** (22/10/2026) | `AUDITORIA_00.md` |
-| Design System | DS-001 | Fundação visual (Camada A: paleta, tipografia, lettering, direção) | 01 | Implementado (2 rodadas) | Aguardando revisão | Canvas + "Decisões pendentes" |
+| Design System | DS-001 | Fundação visual (Camada A: paleta, tipografia, lettering, direção) | 01 | Em andamento: laboratório (2 rodadas) + **DS-001A** três direções editoriais em `/editorial/a|b|c` (`bc41d0c`) | Aguardando revisão — nenhuma direção escolhida | Canvas + \"Decisões pendentes\" + `captures\ds001a` |
 | Design System | DS-002 | Tokens e componentes no repositório (Camada B) | 01 | Bloqueado por DS-001 | — | — |
-| Hero Experience | HERO-001 | Composição e interface do hero | 02–03 | Implementado (protótipo; Ciclo 01 de composição em 26/10/2026) | Aguardando revisão (Ciclo 01 aguardando avaliação artística) | `HERO_PROTOTIPO.md` |
+| Hero Experience | HERO-001 | Composição e interface do hero | 02–03 | Implementado (protótipo; Ciclos 01 e 06 em 26/10/2026) | **Ciclos 01 e 06 aprovados** (26/10/2026); hero consolidado (HERO-FINAL-001) | `HERO_PROTOTIPO.md` |
 | Hero Experience | HERO-002 | Escultura 3D (geometria e material) | 04 | Implementado (protótipo) | Aguardando revisão | `HERO_PROTOTIPO.md` |
 | Hero Experience | HERO-003 | Cenário: chão, reflexo, sombras, luz, atmosfera, trilhas | 04 | Implementado (ambiente cinematográfico V2 + piso do Ciclo 02 na V2.3) | Base da luz aprovada; **Ciclo 02 aprovado** (26/10/2026) | [tarefas/HERO-003.md](tarefas/HERO-003.md) |
 | Hero Experience | FIG-001 | Figura humana tridimensional | 04 | v1 + Ciclo 03 (padrão na V2.3) | **Ciclo 03 aprovado** (26/10/2026) | [tarefas/FIG-001.md](tarefas/FIG-001.md) |
@@ -123,6 +123,7 @@ Componentes ganham ficha em `tarefas/` quando entram em desenvolvimento. Correç
 | 22/10/2026 | HERO-001..005 | Rodada de fidelidade à referência (8 ciclos comparativos) na branch `exp/hero-fidelidade`; commit `517b62f` | Visual pendente |
 | 22/10/2026 | FIG-001 | Figura v1: esqueleto, idle em camadas, IK, integração de luz; commit `763b72a` | Visual pendente |
 | 22/10/2026 | Gestão | Painel central, hierarquia de componentes, fichas em `tarefas/`, skill `/fiorbe-status` | Pedido do usuário |
+| 27/10/2026 | Gestão / DS-001A | Correção documental do painel: DS-001A registrado como exploração implementada, enviada ao GitHub (`bc41d0c`, `exp/ds001a-editorial`) e aguardando decisão dos fundadores; branch/checkpoint e próximo objetivo atualizados; referências antigas a "forma C padrão" e a revisões já feitas (Ciclos 01, 04, 05, validação final) alinhadas ao log. Nenhuma aprovação alterada. Folhas Atual × A × B × C em `captures\ds001a\` | Só documentação |
 | 26/10/2026 | DS-001 (DS-001A) | Exploração editorial da primeira tela **em andamento** na branch `exp/ds001a-editorial`: três direções (A editorial minimalista, B contraste conceitual, C engenharia e confiança) em rotas estáticas `/editorial/a|b|c`; `/` inalterada; 3D intocado; fontes candidatas OFL (Instrument Serif, Archivo, IBM Plex). Nenhuma direção escolhida | Exploração (não aprovado) |
 | 26/10/2026 | HERO (HERO-FINAL-001) | **Consolidação autorizada pelo usuário.** V2.3 refinada promovida a forma padrão do protótipo (`/` idêntica a `?forma=blender2-v23`, 0,01% de pixels diferentes); C, V2.2 e V2.3r preservadas por `?forma=`; pôster regenerado da V2.3 (sem troca forma C → V2.3 no carregamento). Validado: variantes, onda, cursor/arraste/toque, pausa, rolagem reversível, movimento reduzido, sem WebGL/JS, 1440/940/390, tsc/eslint/build, 0 erros. Branch enviada ao GitHub (push normal) | Consolidação (autorização do usuário) |
 | 26/10/2026 | HERO (PERF-001) | Reflexo do piso com 7 toques em vez de 9: ganho não reproduzível (≈ −0,2 ms, dentro do ruído) e leve aumento de cintilação → **descartado**, código preservado. Custo de GPU da V2.3 a 1440 segue 17,2–17,7 ms; alternativas registradas em `HERO_PROTOTIPO.md` | Registro |
