@@ -147,9 +147,10 @@ function EditorialHero({ direction }: { direction: Direction }) {
             {c.primary.label}
             <Arrow />
           </a>
-          <a href={c.secondary.href} className={`${styles.secondary} ${ed.secondary}`}>
+          <a href={c.secondary.href} className={c.secondaryAsLink ? ed.textLink : `${styles.secondary} ${ed.secondary}`}>
             {c.secondary.label}
             {c.secondary.status && <span className={ed.secondaryStatus}>{c.secondary.status}</span>}
+            {c.secondaryAsLink && <Arrow />}
           </a>
         </div>
         {c.badge && (
