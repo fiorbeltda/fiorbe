@@ -2,10 +2,11 @@
  * DS-001A — três direções editoriais para a primeira tela (EXPLORAÇÃO, não decisão de marca).
  * Cada direção troca só texto e acabamento da interface; escultura, cena e motor 3D são os
  * mesmos. Rotas: /editorial/a, /editorial/b, /editorial/c e a síntese "Engenharia Escultural"
- * em duas tipografias: /editorial/d (Archivo) e /editorial/e (IBM Plex Sans). A rota "/" não usa este arquivo.
+ * em duas tipografias: /editorial/d (Archivo) e /editorial/e (IBM Plex Sans). DS-001B: /editorial/f1 (Forma)
+ * e /editorial/f2 (Contraste), sobre a base de D. A rota "/" não usa este arquivo.
  * Restrições de copy: docs/fiorbe/IDENTIDADE_E_COPY.md (nada de métricas, clientes ou produto disponível).
  */
-export type Direction = "a" | "b" | "c" | "d" | "e";
+export type Direction = "a" | "b" | "c" | "d" | "e" | "f1" | "f2";
 
 export interface EditorialCopy {
   name: string;
@@ -104,6 +105,39 @@ export const EDITORIAL: Record<Direction, EditorialCopy> = {
     band: [
       ["Produto 01", "Motor Fiscal"],
       ["Estágio", "Em desenvolvimento"],
+    ],
+  },
+  // DS-001B — duas direções autorais sobre a base de D (Archivo + Manrope + mono só em rótulos).
+  // F1 Forma: a frase abraça a escultura — "O complexo" no alto à esquerda (recuado em tom),
+  // "ganha forma." embaixo à direita, no mesmo corpo; a escultura é o elo entre as duas linhas.
+  f1: {
+    name: "F1 · Forma",
+    eyebrow: "Software multiproduto",
+    title: [["O complexo ", false], ["ganha forma.", true]],
+    lede: "A FIORBE desenvolve produtos próprios de software para problemas que exigem engenharia e clareza. Começamos pelo Motor Fiscal, em desenvolvimento.",
+    primary: { label: "Conhecer a FIORBE", href: "#sobre" },
+    secondary: { label: "Sobre o Motor Fiscal", href: "#produtos" },
+    secondaryAsLink: true,
+    badge: null,
+    headerCta: "Conversar",
+    band: [],
+  },
+  // F2 Contraste: estrutura × forma — grade de fios (engenharia) quebrada pela escultura fluida;
+  // "Complexidade," na largura mínima da Archivo e "sob outra forma." na máxima: a letra muda de forma.
+  f2: {
+    name: "F2 · Contraste",
+    eyebrow: "FIORBE / Software multiproduto",
+    title: [["Complexidade, ", true], ["sob outra forma.", false]],
+    lede: "Criamos produtos de software que buscam tornar operações difíceis mais claras, sem perder o rigor técnico.",
+    primary: { label: "Conhecer a FIORBE", href: "#sobre" },
+    secondary: { label: "Sobre o Motor Fiscal", href: "#produtos" },
+    secondaryAsLink: true,
+    badge: null,
+    headerCta: "Conversar",
+    band: [
+      ["01 — Empresa", "Software multiproduto"],
+      ["02 — Primeiro produto", "Motor Fiscal"],
+      ["03 — Estágio", "Em desenvolvimento"],
     ],
   },
 };

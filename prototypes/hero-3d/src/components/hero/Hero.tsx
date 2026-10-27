@@ -2,6 +2,7 @@ import { HeroStage } from "./HeroStage";
 import styles from "./Hero.module.css";
 import ed from "./Editorial.module.css";
 import { EDITORIAL, type Direction } from "./editorial";
+import sig from "../editorial/signature.module.css";
 
 /**
  * Hero em HTML real (server component), na composição da referência
@@ -118,7 +119,9 @@ export function Hero({ direction }: { direction?: Direction } = {}) {
 /** Mesma estrutura, palco e trilhas do Hero; texto, faixa e acabamento de cada direção. */
 function EditorialHero({ direction }: { direction: Direction }) {
   const c = EDITORIAL[direction];
-  const d = ed[direction];
+  // DS-001B: F1/F2 herdam navegação, botões e link da síntese D.
+  const f = direction === "f1" || direction === "f2";
+  const d = f ? `${ed.d} ${ed[direction]}` : ed[direction];
   return (
     <section className={`${styles.hero} ${ed.root} ${d}`} aria-labelledby="hero-title" data-editorial={direction}>
       <header className={styles.header}>
@@ -137,7 +140,10 @@ function EditorialHero({ direction }: { direction: Direction }) {
       </header>
 
       <div className={`${styles.copy} ${ed.copy}`}>
-        <p className={`${styles.eyebrow} ${ed.eyebrow}`}>{c.eyebrow}</p>
+        <p className={`${styles.eyebrow} ${ed.eyebrow}`}>
+          {f && <span className={sig.lamina} aria-hidden="true" />}
+          {c.eyebrow}
+        </p>
         <h1 id="hero-title" className={`${styles.title} ${ed.title}`}>
           {c.title.map(([t, em], i) => (em ? <em key={i} className={ed.em}>{t}</em> : <span key={i}>{t}</span>))}
         </h1>
@@ -170,14 +176,16 @@ function EditorialHero({ direction }: { direction: Direction }) {
 
       <HeroStage className={styles.stage} />
 
-      <dl className={`${styles.band} ${ed.band}`} aria-label="Sobre a FIORBE">
-        {c.band.map(([k, v]) => (
-          <div key={k} className={ed.bandItem}>
-            <dt className={ed.bandKey}>{k}</dt>
-            <dd className={ed.bandValue}>{v}</dd>
-          </div>
-        ))}
-      </dl>
+      {c.band.length > 0 && (
+        <dl className={`${styles.band} ${ed.band}`} aria-label="Sobre a FIORBE">
+          {c.band.map(([k, v]) => (
+            <div key={k} className={ed.bandItem}>
+              <dt className={`${ed.bandKey} ${f ? sig.index : ""}`}>{k}</dt>
+              <dd className={ed.bandValue}>{v}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
     </section>
   );
 }

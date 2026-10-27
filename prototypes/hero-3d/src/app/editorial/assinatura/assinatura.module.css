@@ -1,0 +1,167 @@
+/* DS-001B — amostra da assinatura editorial (estudo). Mesmas medidas da síntese D/F. */
+.page {
+  --ed-mono: var(--ed-plexmono), ui-monospace, monospace;
+  font-family: var(--ed-manrope), system-ui, sans-serif;
+  background: #05080f;
+  color: #e8eef7;
+}
+
+.intro {
+  max-width: 760px;
+  padding: 72px clamp(20px, 8.25vw, 160px) 56px;
+}
+
+.intro p {
+  margin: 0 0 12px;
+  color: #7f95b3;
+}
+
+.intro h1 {
+  margin: 0 0 24px;
+  font-family: var(--ed-archivo), system-ui, sans-serif;
+  font-stretch: 75%;
+  font-weight: 500;
+  font-size: clamp(44px, 5vw, 72px);
+  line-height: 0.95;
+  letter-spacing: -0.02em;
+}
+
+.intro ol {
+  margin: 0;
+  padding-left: 20px;
+  display: grid;
+  gap: 8px;
+  color: #aebbcc;
+  line-height: 1.5;
+}
+
+.intro b {
+  color: #f4f7fb;
+  font-weight: 600;
+}
+
+.panel {
+  --line: rgb(160 185 215 / 0.12);
+  --text: #f4f7fb;
+  --text-2: #aebbcc;
+  --recede: #7f95b3;
+  position: relative;
+  padding: 96px clamp(20px, 8.25vw, 160px) 88px;
+  background: var(--bg);
+  color: var(--text);
+  overflow: hidden;
+}
+
+.dark {
+  --bg: #060c18;
+}
+
+/* Fundo claro: mesmas relações, tons invertidos (contraste AA conferido nos textos). */
+.light {
+  --bg: #f3f5f8;
+  --line: rgb(20 40 70 / 0.12);
+  --text: #071222;
+  --text-2: #3d4a5c;
+  --recede: #56677d;
+}
+
+.grid {
+  position: absolute;
+  inset: 0 clamp(20px, 8.25vw, 160px);
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, var(--line) 1px, transparent 1px) 0 0 / calc(25% - 0.25px) 100%,
+    linear-gradient(90deg, transparent calc(100% - 1px), var(--line) 1px) 0 0 / 100% 100% no-repeat;
+}
+
+.label {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 0 0 28px;
+  color: var(--recede);
+}
+
+.title {
+  position: relative;
+  margin: 0;
+  font-family: var(--ed-archivo), system-ui, sans-serif;
+  font-stretch: 75%;
+  font-weight: 500;
+  font-size: clamp(52px, 7vw, 120px);
+  line-height: 0.92;
+  letter-spacing: -0.024em;
+}
+
+.title > span {
+  display: block;
+}
+
+.recede {
+  color: var(--recede);
+}
+
+.contrast {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 18px;
+  margin: 40px 0 0;
+  font-family: var(--ed-archivo), system-ui, sans-serif;
+}
+
+.narrow {
+  font-stretch: 62%;
+  font-weight: 600;
+  font-size: clamp(36px, 4vw, 60px);
+  line-height: 1;
+}
+
+.wide {
+  font-stretch: 125%;
+  font-weight: 300;
+  font-size: clamp(16px, 1.5vw, 22px);
+  color: var(--text-2);
+}
+
+.horizon {
+  position: relative;
+  margin: 56px 0 18px;
+  border: 0;
+  border-top: 1px solid var(--recede);
+  opacity: 0.6;
+}
+
+.sheet {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 0;
+}
+
+.sheet > div {
+  padding-left: 16px;
+}
+
+.sheet dt {
+  margin-bottom: 6px;
+  color: var(--recede);
+}
+
+.sheet dd {
+  margin: 0;
+  font-size: 15px;
+  color: var(--text);
+}
+
+@media (max-width: 767px) {
+  .sheet {
+    grid-template-columns: 1fr;
+    row-gap: 14px;
+  }
+  .sheet > div {
+    padding-left: 0;
+  }
+}
