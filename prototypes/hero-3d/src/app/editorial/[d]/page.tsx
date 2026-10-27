@@ -10,6 +10,9 @@ import type { Direction } from "@/components/hero/editorial";
  *   A: Instrument Serif (display) + Manrope (texto)
  *   B: Archivo com largura variável (display e wordmark) + Manrope (texto)
  *   C: IBM Plex Sans (display e texto) + IBM Plex Mono (rótulos)
+ *   D: Archivo (display e wordmark, largura variável) + Manrope (texto) + IBM Plex Mono (só índices da faixa)
+ *   E: IBM Plex Sans (display e texto) + IBM Plex Mono (só índices da faixa)
+ *   F1, F2 (DS-001B): mesmas fontes de D; F2 usa os extremos do eixo de largura da Archivo (62% e 125%)
  */
 const instrument = Instrument_Serif({ subsets: ["latin"], weight: "400", style: ["normal", "italic"], variable: "--ed-instrument", display: "swap" });
 const archivo = Archivo({ subsets: ["latin"], axes: ["wdth"], variable: "--ed-archivo", display: "swap" });
@@ -21,23 +24,27 @@ const FONTS: Record<Direction, { className: string; style: Record<string, string
   a: { className: `${instrument.variable} ${manrope.variable}`, style: { "--ed-display": "var(--ed-instrument), Georgia, serif", "--ed-text": "var(--ed-manrope), system-ui, sans-serif" } },
   b: { className: `${archivo.variable} ${manrope.variable}`, style: { "--ed-display": "var(--ed-archivo), system-ui, sans-serif", "--ed-text": "var(--ed-manrope), system-ui, sans-serif" } },
   c: { className: `${plexSans.variable} ${plexMono.variable}`, style: { "--ed-display": "var(--ed-plex), system-ui, sans-serif", "--ed-text": "var(--ed-plex), system-ui, sans-serif", "--ed-mono": "var(--ed-plexmono), ui-monospace, monospace" } },
+  d: { className: `${archivo.variable} ${manrope.variable} ${plexMono.variable}`, style: { "--ed-display": "var(--ed-archivo), system-ui, sans-serif", "--ed-text": "var(--ed-manrope), system-ui, sans-serif", "--ed-mono": "var(--ed-plexmono), ui-monospace, monospace" } },
+  e: { className: `${plexSans.variable} ${plexMono.variable}`, style: { "--ed-display": "var(--ed-plex), system-ui, sans-serif", "--ed-text": "var(--ed-plex), system-ui, sans-serif", "--ed-mono": "var(--ed-plexmono), ui-monospace, monospace" } },
+  f1: { className: `${archivo.variable} ${manrope.variable} ${plexMono.variable}`, style: { "--ed-display": "var(--ed-archivo), system-ui, sans-serif", "--ed-text": "var(--ed-manrope), system-ui, sans-serif", "--ed-mono": "var(--ed-plexmono), ui-monospace, monospace" } },
+  f2: { className: `${archivo.variable} ${manrope.variable} ${plexMono.variable}`, style: { "--ed-display": "var(--ed-archivo), system-ui, sans-serif", "--ed-text": "var(--ed-manrope), system-ui, sans-serif", "--ed-mono": "var(--ed-plexmono), ui-monospace, monospace" } },
 };
 
 export const dynamicParams = false;
 
 export function generateStaticParams() {
-  return [{ d: "a" }, { d: "b" }, { d: "c" }];
+  return ["a", "b", "c", "d", "e", "f1", "f2"].map((d) => ({ d }));
 }
 
 export const metadata = { robots: { index: false, follow: false } };
 
 export default async function EditorialPage({ params }: { params: Promise<{ d: string }> }) {
   const { d } = await params;
-  if (d !== "a" && d !== "b" && d !== "c") notFound();
-  const f = FONTS[d];
+  if (!["a", "b", "c", "d", "e", "f1", "f2"].includes(d)) notFound();
+  const f = FONTS[d as Direction];
   return (
     <main className={f.className} style={f.style}>
-      <Hero direction={d} />
+      <Hero direction={d as Direction} />
       <ManifestoStub />
     </main>
   );

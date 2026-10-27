@@ -336,3 +336,483 @@
     font-size: 34px;
   }
 }
+
+/* ============ D/E — Engenharia Escultural (síntese; D = Archivo, E = IBM Plex Sans) ============
+ * Estrutura comum às duas tipografias: navegação agrupada à direita com o CTA, wordmark menor e
+ * mais largo, headline em duas linhas fixas — a segunda recua em tom ("nos bastidores") —,
+ * um botão claro + um link, sem selo; a faixa diz só o produto e o estágio. Raio único de 4 px.
+ */
+.d .header,
+.e .header {
+  gap: 0;
+}
+
+.d .nav,
+.e .nav {
+  margin-left: auto;
+  margin-right: clamp(28px, 2.6vw, 44px);
+  gap: clamp(24px, 2.2vw, 36px);
+  font-size: clamp(14px, 0.97vw, 16px);
+}
+
+.d .nav a,
+.e .nav a {
+  color: #9fb0c6;
+}
+
+.d .nav a:hover,
+.e .nav a:hover {
+  color: #f2f6fb;
+}
+
+.d .headerCta,
+.e .headerCta {
+  margin-left: 0;
+  height: 42px;
+  padding: 0 18px;
+  gap: 10px;
+  border-radius: 4px;
+  border-color: rgb(220 230 245 / 0.3);
+  background: none;
+  box-shadow: none;
+  font-size: clamp(14px, 0.97vw, 16px);
+}
+
+.d .headerCta:hover,
+.e .headerCta:hover {
+  border-color: rgb(235 242 250 / 0.75);
+  box-shadow: none;
+}
+
+.d .wordmark {
+  font-family: var(--ed-display);
+  font-stretch: 125%;
+  font-weight: 600;
+  font-size: clamp(17px, 1.3vw, 22px);
+  letter-spacing: 0.14em;
+}
+
+.e .wordmark {
+  font-family: var(--ed-display);
+  font-weight: 600;
+  font-size: clamp(17px, 1.3vw, 22px);
+  letter-spacing: 0.24em;
+}
+
+.d .eyebrow,
+.e .eyebrow {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  color: #8ea4c2;
+  margin-bottom: clamp(20px, 2.8vh, 30px);
+}
+
+.d .eyebrow::before,
+.e .eyebrow::before {
+  display: none;
+}
+
+.d .title,
+.e .title {
+  font-family: var(--ed-display);
+  max-width: none;
+  background: none;
+  color: #f4f7fb;
+}
+
+/* r2: mais condensada e maior — escala de cartaz sem invadir a escultura (≈ 460 px de linha a 1440). */
+.d .title {
+  font-stretch: 75%;
+  font-weight: 500;
+  font-size: clamp(60px, 6.1vw, 116px);
+  line-height: 0.93;
+  letter-spacing: -0.022em;
+}
+
+.e .title {
+  font-weight: 500;
+  font-size: clamp(50px, 4.7vw, 90px);
+  line-height: 1.02;
+  letter-spacing: -0.035em;
+}
+
+/* Quebra fixa e recuo em tom: o complexo vai para trás, literalmente. */
+.d .title > span,
+.e .title > span,
+.d .em,
+.e .em {
+  display: block;
+}
+
+.d .em,
+.e .em {
+  color: #7f95b3;
+}
+
+.d .lede,
+.e .lede {
+  margin-top: clamp(26px, 3.8vh, 40px);
+  max-width: clamp(340px, 29vw, 500px);
+  font-size: clamp(16px, 1.15vw, 19px);
+  line-height: 1.5;
+  color: #aebbcc;
+}
+
+.d .actions,
+.e .actions {
+  align-items: center;
+  gap: clamp(22px, 2vw, 32px);
+  margin-top: clamp(26px, 3.8vh, 40px);
+}
+
+.d .primary,
+.e .primary {
+  height: clamp(48px, 3.3vw, 56px);
+  border-radius: 4px;
+  background: #f2f5fa;
+  color: #06101f;
+  box-shadow: none;
+}
+
+.d .primary:hover,
+.e .primary:hover {
+  background: #fff;
+  box-shadow: 0 0 0 4px rgb(242 245 250 / 0.1);
+}
+
+.d .primary:active,
+.e .primary:active {
+  background: #dfe6f0;
+  box-shadow: none;
+}
+
+/* Link secundário: texto com filete, alvo de toque de 44 px. */
+.textLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  font-size: clamp(15px, 1.05vw, 17px);
+  font-weight: 500;
+  color: #dbe5f2;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 7px;
+  text-decoration-color: rgb(219 229 242 / 0.35);
+  transition: text-decoration-color var(--motion-fast) var(--ease-out), color var(--motion-fast) var(--ease-out);
+}
+
+.textLink:hover {
+  color: #fff;
+  text-decoration-color: currentColor;
+}
+
+.textLink svg {
+  transition: transform var(--motion-base) var(--ease-out);
+}
+
+.textLink:hover svg {
+  transform: translateX(3px);
+}
+
+/* Faixa: um fio na largura da grade e dois pares curtos à esquerda; mono só nos rótulos. */
+.d .band,
+.e .band {
+  display: grid;
+  grid-template-columns: auto auto;
+  justify-content: start;
+  column-gap: clamp(40px, 4vw, 72px);
+  border-top: 1px solid rgb(160 185 215 / 0.16);
+  padding-top: 18px;
+  bottom: 6%;
+}
+
+.d .bandKey,
+.e .bandKey {
+  font-family: var(--ed-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #6f849f;
+  margin-bottom: 6px;
+}
+
+.d .bandValue,
+.e .bandValue {
+  font-size: 15px;
+  color: #e3eaf3;
+}
+
+.d .bandItem:first-child .bandValue,
+.e .bandItem:first-child .bandValue {
+  font-weight: 600;
+}
+
+/* Controle de movimento no mesmo raio dos outros controles (só desktop; no celular segue circular). */
+@media (min-width: 1024px) {
+  .d button[aria-pressed],
+  .e button[aria-pressed] {
+    border-radius: 4px;
+  }
+}
+
+@media (max-width: 1023px) {
+  .d .nav,
+  .e .nav {
+    margin-right: 0;
+  }
+  .d .title {
+    font-size: clamp(52px, 13.6vw, 92px);
+  }
+  .e .title {
+    font-size: clamp(40px, 10.4vw, 70px);
+  }
+  .d .lede,
+  .e .lede {
+    max-width: 34em;
+  }
+  .d .band,
+  .e .band {
+    grid-template-columns: auto auto !important;
+    column-gap: 40px;
+  }
+}
+
+/* Celular: a 125% de largura o wordmark encostava em "Produtos" (360 px). */
+@media (max-width: 420px) {
+  .d .wordmark {
+    font-size: 15px;
+    font-stretch: 112.5%;
+    letter-spacing: 0.1em;
+  }
+  .e .wordmark {
+    font-size: 15px;
+    letter-spacing: 0.16em;
+  }
+  .d .nav,
+  .e .nav {
+    gap: 12px;
+  }
+}
+
+@media (max-width: 767px) {
+  .d .actions .textLink,
+  .e .actions .textLink {
+    flex: 0 0 auto;
+  }
+}
+
+/* ============ DS-001B — F1 Forma e F2 Contraste (sobre a base de D) ============
+ * Rótulo com o fio laminado (signature.module.css) no lugar do traço simples.
+ */
+.f1 .eyebrow,
+.f2 .eyebrow {
+  gap: 14px;
+}
+
+/* ---------- F1 — Forma: a frase abraça a escultura ----------
+ * A coluna de texto vira um quadro do tamanho do hero: "O complexo" no alto à esquerda, recuado
+ * em tom; "ganha forma." embaixo à direita, em branco, no mesmo corpo — a escultura fica entre as
+ * duas linhas. Rótulo, texto e ações descem para a base à esquerda, na mesma linha de apoio.
+ */
+.f1 .copy {
+  inset: 0;
+  top: 0;
+  left: 0;
+  width: auto;
+  justify-content: flex-end;
+  padding: 0 var(--hero-gutter) 7%;
+  pointer-events: none;
+}
+
+.f1 .copy > * {
+  pointer-events: auto;
+}
+
+.f1 .title {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  font-stretch: 75%;
+  font-weight: 500;
+  font-size: clamp(72px, 8.4vw, 160px);
+  line-height: 0.9;
+  letter-spacing: -0.026em;
+  text-shadow: 0 0 48px rgb(3 7 18 / 0.55);
+}
+
+.f1 .title > span {
+  position: absolute;
+  left: var(--hero-gutter);
+  top: 13.5%;
+  color: #7f95b3;
+}
+
+.f1 .em {
+  position: absolute;
+  right: var(--hero-gutter);
+  /* linha de base da frase alinhada à base das ações (descendente do "g" abaixo dela) */
+  bottom: calc(7% - 0.16em);
+  color: #f4f7fb;
+}
+
+.f1 .lede {
+  max-width: clamp(320px, 27vw, 420px);
+  margin-top: 16px;
+}
+
+.f1 .actions {
+  margin-top: clamp(22px, 3vh, 30px);
+}
+
+/* ---------- F2 — Contraste: estrutura × forma ----------
+ * Grade de quatro colunas em fios (a engenharia) sobre a cena, quebrada pela escultura fluida;
+ * horizonte marcado na linha do piso. "Complexidade," na largura mínima da Archivo, "sob outra
+ * forma." na máxima e leve: a mesma letra, em outra forma. A faixa assenta nas colunas da grade.
+ */
+.f2::after {
+  content: "";
+  position: absolute;
+  /* Mesmo nível do canvas e depois dele no DOM: fica sobre a cena e SOB o texto (não cruza a headline). */
+  z-index: var(--z-canvas);
+  inset: 0 var(--hero-gutter);
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgb(160 185 215 / 0.1) 1px, transparent 1px) 0 0 / calc(25% - 0.25px) 100%,
+    linear-gradient(90deg, transparent calc(100% - 1px), rgb(160 185 215 / 0.1) 1px) 0 0 / 100% 100% no-repeat,
+    linear-gradient(180deg, transparent calc(72% - 0.5px), rgb(160 185 215 / 0.24) calc(72% - 0.5px) calc(72% + 0.5px), transparent calc(72% + 0.5px)) 0 0 / 100% 100% no-repeat;
+  opacity: calc(1 - var(--hero-out, 0) * 2);
+}
+
+.f2 .eyebrow {
+  font-family: var(--ed-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+}
+
+.f2 .title {
+  font-stretch: 62%;
+  font-weight: 600;
+  font-size: clamp(76px, 8.8vw, 168px);
+  line-height: 0.86;
+  letter-spacing: -0.018em;
+}
+
+.f2 .em {
+  color: #f4f7fb;
+}
+
+.f2 .title > span {
+  margin-top: 0.34em;
+  font-stretch: 125%;
+  font-weight: 300;
+  font-size: 0.3em;
+  line-height: 1.15;
+  letter-spacing: -0.005em;
+  color: #aebbcc;
+}
+
+.f2 .lede {
+  max-width: clamp(320px, 25vw, 400px);
+  margin-top: clamp(28px, 4vh, 44px);
+}
+
+/* Faixa nas colunas da grade: cada item começa num fio. */
+.f2.d .band {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  column-gap: 0;
+  border-top: 0;
+  padding-top: 0;
+}
+
+.f2 .bandItem {
+  padding-left: 16px;
+}
+
+.f2 .bandItem:first-child .bandValue {
+  font-weight: 400;
+}
+
+.f2 .bandItem:nth-child(2) .bandValue {
+  font-weight: 600;
+}
+
+/* ---------- Empilhado (tablet e celular) ---------- */
+@media (max-width: 1023px) {
+  /* F1: a frase continua abraçando a escultura — uma linha acima, outra abaixo do palco. */
+  .f1 {
+    --f1-fs: clamp(52px, 16.5vw, 120px);
+    --f1-top: 10px;
+    --f1-stage: clamp(190px, calc(100svh - 500px), 330px);
+  }
+  .f1 .copy {
+    inset: auto;
+    justify-content: flex-start;
+    padding: var(--f1-top) 0 0;
+    pointer-events: auto;
+  }
+  .f1 .title {
+    position: relative;
+    inset: auto;
+    order: 0;
+    font-size: var(--f1-fs);
+  }
+  .f1 .title > span,
+  .f1 .em {
+    position: static;
+    display: block;
+  }
+  .f1 .em {
+    margin-top: calc(var(--f1-stage) + 6px);
+    text-align: right;
+  }
+  .f1 .eyebrow {
+    order: 1;
+    margin: clamp(18px, 3svh, 28px) 0 0;
+  }
+  .f1 .lede {
+    order: 2;
+    max-width: 34em;
+  }
+  .f1 .actions {
+    order: 3;
+  }
+  .f1 > div[data-status] {
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    margin: 0;
+    top: calc(64px + var(--f1-top) + var(--f1-fs) * 0.9);
+    height: var(--f1-stage);
+    min-height: 0;
+  }
+
+  /* F2: texto primeiro (negócio antes da escultura); grade em duas colunas. */
+  .f2::after {
+    background:
+      linear-gradient(90deg, rgb(160 185 215 / 0.07) 1px, transparent 1px) 0 0 / calc(50% - 0.5px) 100%,
+      linear-gradient(90deg, transparent calc(100% - 1px), rgb(160 185 215 / 0.07) 1px) 0 0 / 100% 100% no-repeat;
+  }
+  .f2 .copy {
+    order: 1;
+  }
+  .f2 > div[data-status] {
+    order: 2;
+    margin-top: var(--space-8);
+  }
+  /* "Complexidade," inteira na coluna (a 20,5vw a vírgula saía da tela em 390 e 360). */
+  .f2 .title {
+    font-size: clamp(56px, 18vw, 140px);
+  }
+  .f2 .title > span {
+    font-size: 0.32em;
+  }
+  .f2.d .band {
+    grid-template-columns: 1fr !important;
+    order: 3;
+  }
+  .f2 .bandItem {
+    padding-left: 0;
+  }
+}
